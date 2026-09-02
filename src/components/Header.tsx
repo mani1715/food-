@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
 import { Search, Heart, ShoppingBag, User, MapPin } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 
-export const Header: React.FC = () => {
+interface HeaderProps {
+  onOpenSearch?: () => void;
+}
+
+export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { cartItems, wishlistProductIds, currentLocation } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -14,15 +19,31 @@ export const Header: React.FC = () => {
     e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/products?search=${encodeURIComponent(searchQuery)}`);
+    } else if (onOpenSearch) {
+      onOpenSearch();
     }
   };
 
+  const navLinks = [
+    { label: 'Home', path: '/' },
+    { label: 'Categories', path: '/categories' },
+    { label: 'Pickles', path: '/products?category=Pickles' },
+    { label: 'Sweets', path: '/products?category=Sweets' },
+    { label: 'Snacks', path: '/products?category=Snacks' },
+    { label: 'Bakery', path: '/products?category=Bakery' },
+    { label: 'Veg', path: '/products?dietary=Veg' },
+    { label: 'Non-Veg', path: '/products?dietary=Non-Veg' },
+    { label: 'Gift Boxes', path: '/products?category=Gift%20Boxes' },
+    { label: 'Festival Specials', path: '/products?category=Gift%20Boxes' },
+  ];
+
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-neutral-200 transition-all">
+      {/* Top Header Bar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
         
         {/* Brand Logo & Name */}
-        <div onClick={() => navigate('/')} className="flex items-center gap-3 cursor-pointer group">
+        <div onClick={() => navigate('/')} className="flex items-center gap-3 cursor-pointer group shrink-0">
           <div className="w-10 h-10 rounded-2xl bg-black text-white flex items-center justify-center font-extrabold text-lg tracking-tighter shadow-subtle group-hover:scale-105 transition-transform">
             A
           </div>
@@ -33,25 +54,35 @@ export const Header: React.FC = () => {
         </div>
 
         {/* Center Search Bar */}
-        <form onSubmit={handleSearchSubmit} className="hidden md:flex flex-1 max-w-md relative">
+        <form onSubmit={handleSearchSubmit} className="hidden lg:flex flex-1 max-w-sm relative">
           <Search className="w-4 h-4 text-neutral-400 absolute left-4 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchQuery}
+            onClick={() => onOpenSearch && onOpenSearch()}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search pickles, sweets, snacks, gift hampers..."
             className="w-full pl-11 pr-4 py-2.5 rounded-2xl border border-neutral-200 text-xs font-medium focus:outline-none focus:border-black bg-neutral-50 transition-colors"
           />
         </form>
 
-        {/* Right Nav Options */}
-        <div className="flex items-center gap-3">
+        {/* Right Nav Actions */}
+        <div className="flex items-center gap-3 shrink-0">
           
           {/* Location Indicator */}
-          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-neutral-200 text-xs text-neutral-600 font-medium">
+          <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-neutral-200 text-xs text-neutral-600 font-medium">
             <MapPin className="w-3.5 h-3.5 text-black" />
             <span className="font-bold text-black">{currentLocation.city}</span>
           </div>
+
+          {/* Search Trigger Button */}
+          <button
+            onClick={() => onOpenSearch ? onOpenSearch() : navigate('/products')}
+            className="p-2.5 rounded-2xl border border-neutral-200 hover:border-black transition-all text-black lg:hidden"
+            title="Search"
+          >
+            <Search className="w-5 h-5" />
+          </button>
 
           {/* Wishlist Icon */}
           <button
@@ -93,19 +124,28 @@ export const Header: React.FC = () => {
 
       </div>
 
-      {/* Mobile Search Bar */}
-      <div className="md:hidden px-4 pb-3">
-        <form onSubmit={handleSearchSubmit} className="relative">
-          <Search className="w-4 h-4 text-neutral-400 absolute left-4 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search pickles, sweets, hampers..."
-            className="w-full pl-11 pr-4 py-2 rounded-xl border border-neutral-200 text-xs font-medium focus:outline-none focus:border-black bg-neutral-50"
-          />
-        </form>
-      </div>
+      {/* Primary Navigation Links (Desktop Row) */}
+      <nav className="hidden md:block border-t border-neutral-100 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-1 overflow-x-auto no-scrollbar py-2 text-xs font-bold text-neutral-600">
+          {navLinks.map((link) => {
+            const isActive = location.pathname + location.search === link.path || (link.path === '/' && location.pathname === '/');
+            return (
+              <button
+                key={link.label}
+                onClick={() => navigate(link.path)}
+                className={`px-3.5 py-1.5 rounded-xl transition-all whitespace-nowrap ${
+                  isActive
+                    ? 'bg-black text-white shadow-subtle'
+                    : 'hover:text-black hover:bg-neutral-100'
+                }`}
+              >
+                {link.label}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+
     </header>
   );
 };

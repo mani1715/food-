@@ -1,13 +1,15 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 
 // Layout & Global Components
 import { AnnouncementBar } from './components/AnnouncementBar';
 import { Header } from './components/Header';
+import { SecondaryCategoryBar } from './components/SecondaryCategoryBar';
 import { Footer } from './components/Footer';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { Toast } from './components/Toast';
+import { SearchModal } from './components/SearchModal';
 
 // Pages
 import { HomePage } from './pages/customer/HomePage';
@@ -24,6 +26,7 @@ import { HelpSupportPage } from './pages/customer/HelpSupportPage';
 
 const MainLayout: React.FC = () => {
   const { toasts, removeToast } = useApp();
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-white text-black font-sans selection:bg-black selection:text-white pb-16 lg:pb-0">
@@ -31,8 +34,11 @@ const MainLayout: React.FC = () => {
       {/* 1. Announcement Bar */}
       <AnnouncementBar />
 
-      {/* 2. Sticky Header */}
-      <Header />
+      {/* 2. Sticky Header with Primary Navigation */}
+      <Header onOpenSearch={() => setIsSearchOpen(true)} />
+
+      {/* 3. Secondary Category Bar (Desktop & Mobile Category Chips) */}
+      <SecondaryCategoryBar />
 
       {/* Main Content Router */}
       <main>
@@ -51,11 +57,17 @@ const MainLayout: React.FC = () => {
         </Routes>
       </main>
 
-      {/* 12. Footer */}
+      {/* Footer */}
       <Footer />
 
       {/* Mobile Bottom Navigation Bar (Home, Categories, Wishlist, Cart, Profile) */}
       <MobileBottomNav />
+
+      {/* Search Experience Modal */}
+      <SearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+      />
 
       {/* Toast Notifications */}
       <div className="fixed bottom-20 right-4 z-50 space-y-2 max-w-sm pointer-events-none">

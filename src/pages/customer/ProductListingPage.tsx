@@ -1,8 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { ProductCard } from '../../components/ProductCard';
 import { useSearchParams } from 'react-router-dom';
-import { Filter, SlidersHorizontal, Search, RotateCcw, X } from 'lucide-react';
+import { Filter, SlidersHorizontal, Search, X } from 'lucide-react';
 import { EmptyState } from '../../components/EmptyState';
 
 export const ProductListingPage: React.FC = () => {
@@ -10,26 +10,44 @@ export const ProductListingPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const categoryParam = searchParams.get('category') || 'All';
+  const dietaryParam = searchParams.get('dietary') || 'All';
   const queryParam = searchParams.get('search') || '';
 
   const [selectedCategory, setSelectedCategory] = useState<string>(categoryParam);
+  const [selectedDietary, setSelectedDietary] = useState<string>(dietaryParam);
   const [searchQuery, setSearchQuery] = useState<string>(queryParam);
-  const [maxPrice, setMaxPrice] = useState<number>(50);
+  const [maxPrice, setMaxPrice] = useState<number>(60);
   const [minRating, setMinRating] = useState<number>(0);
   const [sortBy, setSortBy] = useState<'popular' | 'newest' | 'price-low' | 'price-high'>('popular');
   const [showMobileFilter, setShowMobileFilter] = useState(false);
 
+  useEffect(() => {
+    setSelectedCategory(searchParams.get('category') || 'All');
+    setSelectedDietary(searchParams.get('dietary') || 'All');
+    setSearchQuery(searchParams.get('search') || '');
+  }, [searchParams]);
+
   const filteredProducts = useMemo(() => {
     return products
       .filter((p) => {
-        const matchesCategory = selectedCategory === 'All' || p.category.toLowerCase() === selectedCategory.toLowerCase();
+        const matchesCategory =
+          selectedCategory === 'All' || p.category.toLowerCase() === selectedCategory.toLowerCase();
+        
+        const matchesDietary =
+          selectedDietary === 'All' ||
+          (selectedDietary === 'Veg' && p.isVeg) ||
+          (selectedDietary === 'Non-Veg' && !p.isVeg);
+
         const matchesQuery =
           !searchQuery.trim() ||
           p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.description.toLowerCase().includes(searchQuery.toLowerCase());
+          p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.category.toLowerCase().includes(searchQuery.toLowerCase());
+
         const matchesPrice = p.price <= maxPrice;
         const matchesRating = p.rating >= minRating;
-        return matchesCategory && matchesQuery && matchesPrice && matchesRating;
+
+        return matchesCategory && matchesDietary && matchesQuery && matchesPrice && matchesRating;
       })
       .sort((a, b) => {
         if (sortBy === 'newest') return (b.isNewArrival ? 1 : 0) - (a.isNewArrival ? 1 : 0);
@@ -37,12 +55,13 @@ export const ProductListingPage: React.FC = () => {
         if (sortBy === 'price-high') return b.price - a.price;
         return b.reviewsCount - a.reviewsCount; // popular
       });
-  }, [products, selectedCategory, searchQuery, maxPrice, minRating, sortBy]);
+  }, [products, selectedCategory, selectedDietary, searchQuery, maxPrice, minRating, sortBy]);
 
   const resetFilters = () => {
     setSelectedCategory('All');
+    setSelectedDietary('All');
     setSearchQuery('');
-    setMaxPrice(50);
+    setMaxPrice(60);
     setMinRating(0);
     setSortBy('popular');
     setSearchParams({});
@@ -51,10 +70,10 @@ export const ProductListingPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-white text-black py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-left space-y-8">
       
-      {/* Header & Title */}
+      {/* Title & Page Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-neutral-200 pb-6">
         <div>
-          <span className="text-xs font-bold uppercase tracking-widest text-neutral-400">Complete Catalog</span>
+          <span className="text-xs font-bold uppercase tracking-widest text-neutral-400">Products Catalog</span>
           <h1 className="text-3xl font-extrabold text-black tracking-tight mt-1">
             {selectedCategory === 'All' ? 'All Homemade Products' : `${selectedCategory} Collection`}
           </h1>
@@ -87,11 +106,31 @@ export const ProductListingPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Grid: Filters Sidebar + Products */}
+      {/* Quick Veg / Non-Veg Filter Chips Strip */}
+      <div className="flex items-center gap-2 pb-2">
+        <span className="text-xs font-bold uppercase tracking-wider text-neutral-400 mr-2">Dietary Filter:</span>
+        {['All', 'Veg', 'Non-Veg'].map((diet) => (
+          <button
+            key={diet}
+            onClick={() => setSelectedDietary(diet)}
+            className={`px-4 py-2 rounded-2xl border text-xs font-bold transition-all flex items-center gap-1.5 ${
+              selectedDietary === diet
+                ? 'bg-black text-white border-black shadow-subtle'
+                : 'bg-neutral-50 text-neutral-700 border-neutral-200 hover:border-black'
+            }`}
+          >
+            {diet === 'Veg' && <span className="w-2 h-2 rounded-full bg-emerald-600 inline-block" />}
+            {diet === 'Non-Veg' && <span className="w-2 h-2 rounded-full bg-rose-600 inline-block" />}
+            <span>{diet}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Main Layout */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
         
         {/* Desktop Sidebar Filters */}
-        <div className="hidden md:block md:col-span-3 space-y-6 sticky top-28 bg-neutral-50 p-6 rounded-3xl border border-neutral-200 shadow-subtle">
+        <div className="hidden md:block md:col-span-3 space-y-6 sticky top-32 bg-neutral-50 p-6 rounded-3xl border border-neutral-200 shadow-subtle">
           <div className="flex items-center justify-between border-b pb-3">
             <h3 className="text-sm font-extrabold text-black uppercase tracking-wider flex items-center gap-2">
               <Filter className="w-4 h-4" />
@@ -127,7 +166,7 @@ export const ProductListingPage: React.FC = () => {
                   selectedCategory === 'All' ? 'bg-black text-white' : 'text-neutral-600 hover:bg-neutral-200'
                 }`}
               >
-                All Categories ({products.length})
+                All Categories
               </button>
               {categories.map((cat) => (
                 <button
@@ -137,7 +176,7 @@ export const ProductListingPage: React.FC = () => {
                     selectedCategory.toLowerCase() === cat.name.toLowerCase() ? 'bg-black text-white' : 'text-neutral-600 hover:bg-neutral-200'
                   }`}
                 >
-                  {cat.name} ({cat.itemCount})
+                  {cat.name}
                 </button>
               ))}
             </div>
@@ -182,7 +221,7 @@ export const ProductListingPage: React.FC = () => {
 
       </div>
 
-      {/* Mobile Filter Modal */}
+      {/* Mobile Filter Sheet */}
       {showMobileFilter && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end">
           <div className="bg-white rounded-t-3xl w-full p-6 space-y-6 text-left max-h-[85vh] overflow-y-auto shadow-modal">
@@ -194,6 +233,23 @@ export const ProductListingPage: React.FC = () => {
             </div>
 
             <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase text-neutral-500 mb-1">Dietary Filter</label>
+                <div className="flex gap-2">
+                  {['All', 'Veg', 'Non-Veg'].map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => setSelectedDietary(d)}
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold border ${
+                        selectedDietary === d ? 'bg-black text-white border-black' : 'bg-neutral-50 text-black border-neutral-200'
+                      }`}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-bold uppercase text-neutral-500 mb-1">Select Category</label>
                 <div className="flex flex-wrap gap-2">
@@ -217,18 +273,6 @@ export const ProductListingPage: React.FC = () => {
                     </button>
                   ))}
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase text-neutral-500 mb-1">Max Price: ${maxPrice}</label>
-                <input
-                  type="range"
-                  min="5"
-                  max="60"
-                  value={maxPrice}
-                  onChange={(e) => setMaxPrice(Number(e.target.value))}
-                  className="w-full accent-black"
-                />
               </div>
             </div>
 

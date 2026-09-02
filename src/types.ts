@@ -16,6 +16,7 @@ export interface Product {
   ingredients?: string[];
   weightOptions: WeightOption[];
   defaultWeight: string; // e.g. "500g"
+  isVeg: boolean; // true for Veg, false for Non-Veg
   isBestSeller?: boolean;
   isNewArrival?: boolean;
   isPickleSpecial?: boolean;

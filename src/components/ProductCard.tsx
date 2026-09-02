@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Product } from '../types';
 import { useApp } from '../context/AppContext';
-import { Heart, ShoppingBag, Star, Plus } from 'lucide-react';
+import { Heart, Star, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface ProductCardProps {
@@ -24,9 +24,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   };
 
   return (
-    <div className="bg-white border border-neutral-200 rounded-3xl p-4 shadow-subtle hover:border-black transition-all flex flex-col justify-between group">
+    <div className="bg-white border border-neutral-200 rounded-3xl p-4 shadow-subtle hover:border-black transition-all flex flex-col justify-between group text-left">
       
-      {/* Product Image & Wishlist Toggle */}
+      {/* Product Image & Badges */}
       <div className="relative rounded-2xl overflow-hidden aspect-square mb-3 bg-neutral-100 cursor-pointer" onClick={handleCardClick}>
         <img
           src={product.image}
@@ -34,16 +34,23 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
         
-        {/* Badges */}
-        <div className="absolute top-2 left-2 flex flex-col gap-1">
-          {product.isBestSeller && (
-            <span className="bg-black text-white text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full shadow-subtle">
-              Best Seller
+        {/* Top Left Badges: Best Seller, New, Veg/Non-Veg */}
+        <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
+          {product.isVeg ? (
+            <span className="bg-white/90 backdrop-blur-sm border border-emerald-800 text-emerald-900 text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow-subtle flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-700 inline-block" />
+              Veg
+            </span>
+          ) : (
+            <span className="bg-white/90 backdrop-blur-sm border border-rose-800 text-rose-900 text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow-subtle flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-rose-700 inline-block" />
+              Non-Veg
             </span>
           )}
-          {product.isNewArrival && (
-            <span className="bg-white border border-black text-black text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full shadow-subtle">
-              New
+
+          {product.isBestSeller && (
+            <span className="bg-black text-white text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full shadow-subtle">
+              Best Seller
             </span>
           )}
         </div>
@@ -63,7 +70,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       </div>
 
       {/* Product Details */}
-      <div className="space-y-3 flex-1 flex flex-col justify-between text-left">
+      <div className="space-y-3 flex-1 flex flex-col justify-between">
         <div>
           <div className="flex items-center justify-between text-[11px] text-neutral-400 font-bold uppercase mb-1">
             <span>{product.category}</span>
@@ -82,7 +89,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           <p className="text-xs text-neutral-500 line-clamp-1 mt-0.5">{product.description}</p>
         </div>
 
-        {/* Weight Selector Pills */}
+        {/* Weight Variants Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
           {product.weightOptions.map((opt) => (
             <button
@@ -99,19 +106,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           ))}
         </div>
 
-        {/* Price & Add to Cart Footer */}
+        {/* Price & Quick Add Button */}
         <div className="pt-3 border-t border-neutral-100 flex items-center justify-between">
           <div>
-            <span className="text-xs text-neutral-400 font-bold block">Price</span>
+            <span className="text-[10px] text-neutral-400 font-bold block uppercase">Price</span>
             <span className="text-base font-extrabold font-mono text-black">${currentPrice.toFixed(2)}</span>
           </div>
 
           <button
             onClick={() => addToCart(product, selectedWeight, 1)}
-            className="px-4 py-2.5 bg-black text-white text-xs font-bold rounded-xl hover:bg-neutral-800 transition-all flex items-center gap-1.5 shadow-subtle"
+            className="px-4 py-2 bg-black text-white text-xs font-bold rounded-xl hover:bg-neutral-800 transition-all flex items-center gap-1.5 shadow-subtle"
           >
             <Plus className="w-4 h-4" />
-            <span>Add</span>
+            <span>Quick Add</span>
           </button>
         </div>
       </div>
