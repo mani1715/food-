@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { CheckCircle2, Clock, MapPin, ArrowRight, ShoppingBag, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, ShoppingBag, ArrowRight, ShieldCheck, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export const OrderSuccessPage: React.FC = () => {
@@ -24,61 +24,53 @@ export const OrderSuccessPage: React.FC = () => {
         <CheckCircle2 className="w-14 h-14 text-white stroke-[1.5]" />
       </motion.div>
 
-      {/* Success Title & Subtitle */}
+      {/* Success Title */}
       <div className="space-y-2 max-w-lg">
         <span className="text-xs font-bold uppercase tracking-widest text-neutral-400">Order Confirmed</span>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-black tracking-tight">
-          Your Home Meal Is On Its Way!
+          Thank You For Your Order!
         </h1>
         <p className="text-sm text-neutral-600">
-          Order <strong className="text-black font-mono">#{order.orderNumber}</strong> has been received by <strong className="text-black">{order.chefName}</strong>.
+          Order <strong className="text-black font-mono">#{order.orderNumber}</strong> has been received and is being prepared in small fresh batches.
         </p>
       </div>
 
-      {/* Delivery Estimate Box */}
+      {/* Order Summary Box */}
       <div className="w-full bg-neutral-50 border border-neutral-200 rounded-3xl p-6 shadow-subtle space-y-4 text-left">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-200 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-black text-white flex items-center justify-center shrink-0">
-              <Clock className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-[10px] text-neutral-400 font-bold uppercase">Estimated Thermal Delivery</p>
-              <p className="text-base font-extrabold text-black">{order.estimatedDeliveryTime}</p>
-            </div>
+        <div className="flex items-center justify-between border-b border-neutral-200 pb-3">
+          <div>
+            <p className="text-[10px] text-neutral-400 font-bold uppercase">Delivery Address</p>
+            <p className="text-xs font-bold text-black">{order.deliveryAddress.label}: {order.deliveryAddress.address}</p>
           </div>
-
-          <div className="flex items-center gap-3">
-            <img src={order.chefAvatar} alt={order.chefName} className="w-10 h-10 rounded-full object-cover border border-neutral-200" />
-            <div>
-              <p className="text-[10px] text-neutral-400 font-bold uppercase">Prepared Fresh By</p>
-              <p className="text-xs font-bold text-black">{order.chefName}</p>
-            </div>
+          <div className="text-right">
+            <p className="text-[10px] text-neutral-400 font-bold uppercase">Total Paid</p>
+            <p className="text-sm font-extrabold font-mono text-black">${order.total.toFixed(2)} ({order.paymentMethod})</p>
           </div>
         </div>
 
-        {/* Delivery Address */}
-        <div className="flex items-start gap-3 pt-1">
-          <MapPin className="w-4 h-4 text-black shrink-0 mt-0.5" />
-          <div>
-            <p className="text-xs font-bold text-black">{order.deliveryAddress.label} Address</p>
-            <p className="text-xs text-neutral-500">{order.deliveryAddress.address}</p>
-          </div>
+        <div className="space-y-2">
+          <p className="text-[10px] text-neutral-400 font-bold uppercase">Items Ordered</p>
+          {order.items.map((item, idx) => (
+            <div key={idx} className="flex items-center justify-between text-xs text-neutral-700">
+              <span>{item.quantity}x {item.product.name} ({item.selectedWeight})</span>
+              <span className="font-mono font-bold">${(item.unitPrice * item.quantity).toFixed(2)}</span>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Action Buttons */}
+      {/* Actions */}
       <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md">
         <button
-          onClick={() => navigate(`/orders/${order.id}`)}
+          onClick={() => navigate('/orders')}
           className="flex-1 py-4 bg-black text-white text-xs font-extrabold rounded-2xl hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 shadow-subtle"
         >
-          <span>Track Order Status</span>
+          <span>View My Orders</span>
           <ArrowRight className="w-4 h-4" />
         </button>
 
         <button
-          onClick={() => navigate('/explore')}
+          onClick={() => navigate('/products')}
           className="flex-1 py-4 bg-white border-2 border-black text-black text-xs font-extrabold rounded-2xl hover:bg-neutral-100 transition-all flex items-center justify-center gap-2"
         >
           <ShoppingBag className="w-4 h-4" />
@@ -88,7 +80,7 @@ export const OrderSuccessPage: React.FC = () => {
 
       <div className="flex items-center gap-1.5 text-xs text-neutral-400 font-semibold pt-4">
         <ShieldCheck className="w-4 h-4 text-black" />
-        <span>Need help with this order? Contact our 24/7 Concierge Support.</span>
+        <span>Thermal Sealed & Freshness Guaranteed</span>
       </div>
 
     </div>

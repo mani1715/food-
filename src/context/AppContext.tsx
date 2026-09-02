@@ -1,394 +1,260 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
-  Dish,
-  Chef,
-  Category,
+  Product,
+  ProductCategory,
   CartItem,
-  UserLocation,
   Order,
-  NotificationItem,
-  SupportTicket,
-  Promotion,
   UserProfile,
-  PortalMode,
-  OrderStatus,
+  UserLocation,
+  ToastMessage,
+  ModalType,
 } from '../types';
-import {
-  MOCK_DISHES,
-  MOCK_CHEFS,
-  MOCK_CATEGORIES,
-  MOCK_LOCATIONS,
-  MOCK_ORDERS,
-  MOCK_NOTIFICATIONS,
-  MOCK_TICKETS,
-  MOCK_PROMOTIONS,
-  MOCK_USER_PROFILE,
-} from '../data/mockData';
-import { ToastContainer, ToastMessage } from '../components/Toast';
+import { MOCK_PRODUCTS, MOCK_CATEGORIES, MOCK_USER_PROFILE, MOCK_LOCATIONS } from '../data/mockData';
 
 interface AppContextType {
-  portalMode: PortalMode;
-  setPortalMode: (mode: PortalMode) => void;
-  dishes: Dish[];
-  chefs: Chef[];
-  categories: Category[];
+  products: Product[];
+  categories: ProductCategory[];
+  cartItems: CartItem[];
+  wishlistProductIds: string[];
+  recentlyViewedIds: string[];
+  orders: Order[];
+  userProfile: UserProfile;
   locations: UserLocation[];
   currentLocation: UserLocation;
-  setCurrentLocation: (loc: UserLocation) => void;
-  cartItems: CartItem[];
-  addToCart: (dish: Dish, quantity?: number, notes?: string) => void;
-  updateCartQuantity: (dishId: string, delta: number) => void;
-  removeFromCart: (dishId: string) => void;
+  toasts: ToastMessage[];
+
+  // Cart Actions
+  addToCart: (product: Product, selectedWeight?: string, quantity?: number) => void;
+  updateCartQuantity: (productId: string, selectedWeight: string, newQty: number) => void;
+  removeFromCart: (productId: string, selectedWeight: string) => void;
   clearCart: () => void;
-  favoriteDishIds: string[];
-  favoriteChefIds: string[];
-  toggleFavoriteDish: (dishId: string) => void;
-  toggleFavoriteChef: (chefId: string) => void;
-  orders: Order[];
-  createOrder: (order: Partial<Order>) => Order;
-  updateOrderStatus: (orderId: string, status: OrderStatus) => void;
-  notifications: NotificationItem[];
-  markNotificationRead: (id: string) => void;
-  clearNotifications: () => void;
-  tickets: SupportTicket[];
-  createSupportTicket: (subject: string, category: 'Order' | 'Payment' | 'Delivery' | 'General', text: string) => void;
-  promotions: Promotion[];
-  createPromotion: (promo: Partial<Promotion>) => void;
-  togglePromotionStatus: (id: string) => void;
-  userProfile: UserProfile;
-  updateUserProfile: (profile: Partial<UserProfile>) => void;
-  addLocation: (loc: Partial<UserLocation>) => void;
-  updateLocation: (loc: UserLocation) => void;
+
+  // Wishlist Actions
+  toggleWishlist: (productId: string) => void;
+
+  // Recently Viewed Actions
+  addRecentlyViewed: (productId: string) => void;
+
+  // Order Actions
+  createOrder: (paymentMethod: string, address: UserLocation) => Order;
+
+  // Location Actions
+  setCurrentLocation: (loc: UserLocation) => void;
+  addLocation: (loc: Omit<UserLocation, 'id'>) => void;
   deleteLocation: (id: string) => void;
-  addDish: (dish: Partial<Dish>) => void;
-  updateDish: (dish: Dish) => void;
-  deleteDish: (id: string) => void;
-  updateChefStatus: (chefId: string, status: 'Verified' | 'Rejected' | 'Suspended' | 'Active') => void;
-  addToast: (title: string, message: string, type?: 'success' | 'info' | 'error') => void;
+
+  // Profile Actions
+  updateUserProfile: (profile: Partial<UserProfile>) => void;
+
+  // Toast Notifications
+  addToast: (title: string, message: string, type?: 'success' | 'error' | 'info') => void;
+  removeToast: (id: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [portalMode, setPortalMode] = useState<PortalMode>('customer');
-  const [dishes, setDishes] = useState<Dish[]>(MOCK_DISHES);
-  const [chefs, setChefs] = useState<Chef[]>(MOCK_CHEFS);
-  const [categories] = useState<Category[]>(MOCK_CATEGORIES);
+  const [products] = useState<Product[]>(MOCK_PRODUCTS);
+  const [categories] = useState<ProductCategory[]>(MOCK_CATEGORIES);
+  const [cartItems, setCartItems] = useState<CartItem[]>([
+    {
+      product: MOCK_PRODUCTS[0], // Grandma Avakaya
+      selectedWeight: '500g',
+      unitPrice: 9.99,
+      quantity: 1,
+    },
+    {
+      product: MOCK_PRODUCTS[5], // Pure Ghee Mysore Pak
+      selectedWeight: '500g',
+      unitPrice: 12.99,
+      quantity: 1,
+    },
+  ]);
+
+  const [wishlistProductIds, setWishlistProductIds] = useState<string[]>(['prod-1', 'prod-6', 'prod-14']);
+  const [recentlyViewedIds, setRecentlyViewedIds] = useState<string[]>(['prod-1', 'prod-2', 'prod-6', 'prod-7']);
+  const [orders, setOrders] = useState<Order[]>([
+    {
+      id: 'ord-101',
+      orderNumber: 'AURA-84920',
+      date: '2026-08-28',
+      items: [
+        { product: MOCK_PRODUCTS[0], selectedWeight: '500g', unitPrice: 9.99, quantity: 2 },
+        { product: MOCK_PRODUCTS[6], selectedWeight: '500g', unitPrice: 15.99, quantity: 1 },
+      ],
+      subtotal: 35.97,
+      deliveryFee: 3.50,
+      discount: 5.00,
+      total: 34.47,
+      status: 'Delivered',
+      deliveryAddress: MOCK_LOCATIONS[0],
+      paymentMethod: 'UPI (GPay)',
+    },
+  ]);
+
+  const [userProfile, setUserProfile] = useState<UserProfile>(MOCK_USER_PROFILE);
   const [locations, setLocations] = useState<UserLocation[]>(MOCK_LOCATIONS);
   const [currentLocation, setCurrentLocation] = useState<UserLocation>(MOCK_LOCATIONS[0]);
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [favoriteDishIds, setFavoriteDishIds] = useState<string[]>(['dish-1', 'dish-2']);
-  const [favoriteChefIds, setFavoriteChefIds] = useState<string[]>(['chef-1']);
-  const [orders, setOrders] = useState<Order[]>(MOCK_ORDERS);
-  const [notifications, setNotifications] = useState<NotificationItem[]>(MOCK_NOTIFICATIONS);
-  const [tickets, setTickets] = useState<SupportTicket[]>(MOCK_TICKETS);
-  const [promotions, setPromotions] = useState<Promotion[]>(MOCK_PROMOTIONS);
-  const [userProfile, setUserProfile] = useState<UserProfile>(MOCK_USER_PROFILE);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
-  const addToast = (title: string, message: string, type: 'success' | 'info' | 'error' = 'success') => {
-    const newToast: ToastMessage = {
-      id: `toast-${Date.now()}-${Math.random()}`,
-      title,
-      message,
-      type,
-    };
-    setToasts((prev) => [...prev, newToast]);
+  // Toast Helper
+  const addToast = (title: string, message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    const id = `toast-${Date.now()}`;
+    setToasts((prev) => [...prev, { id, title, message, type }]);
+    setTimeout(() => {
+      removeToast(id);
+    }, 4000);
   };
 
   const removeToast = (id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const addToCart = (dish: Dish, quantity = 1, notes = '') => {
+  // Cart Handlers
+  const addToCart = (product: Product, selectedWeight?: string, quantity: number = 1) => {
+    const weight = selectedWeight || product.defaultWeight;
+    const option = product.weightOptions.find((w) => w.weight === weight);
+    const unitPrice = option ? option.price : product.price;
+
     setCartItems((prev) => {
-      const existing = prev.find((item) => item.dish.id === dish.id);
-      if (existing) {
-        return prev.map((item) =>
-          item.dish.id === dish.id ? { ...item, quantity: item.quantity + quantity, notes: notes || item.notes } : item
-        );
+      const existingIndex = prev.findIndex(
+        (i) => i.product.id === product.id && i.selectedWeight === weight
+      );
+      if (existingIndex > -1) {
+        const updated = [...prev];
+        updated[existingIndex].quantity += quantity;
+        return updated;
       }
-      return [...prev, { dish, quantity, notes }];
+      return [...prev, { product, selectedWeight: weight, unitPrice, quantity }];
     });
-    addToast('Added to Order Basket', `${quantity}x "${dish.name}" added to cart.`);
+
+    addToast('Added to Cart', `${product.name} (${weight}) added to your cart.`);
   };
 
-  const updateCartQuantity = (dishId: string, delta: number) => {
+  const updateCartQuantity = (productId: string, selectedWeight: string, newQty: number) => {
+    if (newQty <= 0) {
+      removeFromCart(productId, selectedWeight);
+      return;
+    }
     setCartItems((prev) =>
-      prev
-        .map((item) => {
-          if (item.dish.id === dishId) {
-            const newQty = item.quantity + delta;
-            return newQty > 0 ? { ...item, quantity: newQty } : null;
-          }
-          return item;
-        })
-        .filter(Boolean) as CartItem[]
+      prev.map((i) =>
+        i.product.id === productId && i.selectedWeight === selectedWeight
+          ? { ...i, quantity: newQty }
+          : i
+      )
     );
   };
 
-  const removeFromCart = (dishId: string) => {
-    setCartItems((prev) => prev.filter((item) => item.dish.id !== dishId));
-    addToast('Item Removed', 'Dish removed from your cart.', 'info');
+  const removeFromCart = (productId: string, selectedWeight: string) => {
+    setCartItems((prev) => prev.filter((i) => !(i.product.id === productId && i.selectedWeight === selectedWeight)));
+    addToast('Item Removed', 'Item removed from cart.', 'info');
   };
 
   const clearCart = () => {
     setCartItems([]);
   };
 
-  const toggleFavoriteDish = (dishId: string) => {
-    setFavoriteDishIds((prev) => {
-      const isFav = prev.includes(dishId);
-      if (isFav) {
-        addToast('Wishlist Updated', 'Dish removed from saved favorites.', 'info');
-        return prev.filter((id) => id !== dishId);
+  // Wishlist Handler
+  const toggleWishlist = (productId: string) => {
+    setWishlistProductIds((prev) => {
+      const exists = prev.includes(productId);
+      if (exists) {
+        addToast('Removed from Wishlist', 'Product removed from saved items.', 'info');
+        return prev.filter((id) => id !== productId);
+      } else {
+        addToast('Saved to Wishlist', 'Product added to your wishlist.');
+        return [...prev, productId];
       }
-      addToast('Saved to Wishlist ❤️', 'Dish bookmarked in your favorites.');
-      return [...prev, dishId];
     });
   };
 
-  const toggleFavoriteChef = (chefId: string) => {
-    setFavoriteChefIds((prev) => {
-      const isFav = prev.includes(chefId);
-      if (isFav) {
-        addToast('Wishlist Updated', 'Home chef unfollowed.', 'info');
-        return prev.filter((id) => id !== chefId);
-      }
-      addToast('Chef Followed ❤️', 'Home chef saved to your favorite cooks list.');
-      return [...prev, chefId];
+  // Recently Viewed Handler
+  const addRecentlyViewed = (productId: string) => {
+    setRecentlyViewedIds((prev) => {
+      const filtered = prev.filter((id) => id !== productId);
+      return [productId, ...filtered].slice(0, 8);
     });
   };
 
-  const createOrder = (orderData: Partial<Order>): Order => {
-    const subtotal = cartItems.reduce((acc, i) => acc + i.dish.price * i.quantity, 0);
-    const deliveryFee = 3.50;
-    const packagingFee = 1.50;
-    const taxes = Number((subtotal * 0.05).toFixed(2));
-    const total = Number((subtotal + deliveryFee + packagingFee + taxes).toFixed(2));
+  // Create Order Handler
+  const createOrder = (paymentMethod: string, address: UserLocation): Order => {
+    const subtotal = cartItems.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0);
+    const deliveryFee = subtotal > 35 ? 0 : 3.50;
+    const discount = subtotal > 50 ? 5.00 : 0;
+    const total = subtotal + deliveryFee - discount;
 
     const newOrder: Order = {
       id: `ord-${Date.now()}`,
-      orderNumber: `AURA-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
-      customerName: userProfile.name,
-      customerPhone: userProfile.phone,
-      customerEmail: userProfile.email,
-      deliveryAddress: currentLocation,
-      chefId: cartItems[0]?.dish.chefId || 'chef-1',
-      chefName: cartItems[0]?.dish.chefName || 'Chef Lakshmi Rao',
-      chefAvatar: cartItems[0]?.dish.chefImage || MOCK_CHEFS[0].avatar,
+      orderNumber: `AURA-${Math.floor(10000 + Math.random() * 90000)}`,
+      date: new Date().toISOString().split('T')[0],
       items: [...cartItems],
       subtotal,
       deliveryFee,
-      packagingFee,
-      discount: 0,
-      taxes,
+      discount,
       total,
-      paymentMethod: orderData.paymentMethod || 'UPI',
-      status: 'Order Placed',
-      date: 'Just now',
-      estimatedDeliveryTime: '25-30 Mins',
-      timeline: [
-        { status: 'Order Placed', time: 'Just now', completed: true, current: true, description: 'Order submitted to kitchen' },
-        { status: 'Chef Confirmed', time: 'Pending', completed: false, description: 'Waiting for chef acceptance' },
-        { status: 'Preparing Meal', time: 'Pending', completed: false, description: 'Clay pot cooking' },
-        { status: 'Quality Packed', time: 'Pending', completed: false, description: 'Eco thermal container seal' },
-        { status: 'Out for Delivery', time: 'Pending', completed: false, description: 'Express delivery partner' },
-        { status: 'Delivered', time: 'Pending', completed: false, description: 'Delivered hot to door' },
-      ],
+      status: 'Active',
+      deliveryAddress: address,
+      paymentMethod,
     };
 
     setOrders((prev) => [newOrder, ...prev]);
     clearCart();
-    addToast('Order Placed Successfully!', `Order #${newOrder.orderNumber} sent to ${newOrder.chefName}.`);
     return newOrder;
   };
 
-  const updateOrderStatus = (orderId: string, status: OrderStatus) => {
-    setOrders((prev) =>
-      prev.map((ord) => {
-        if (ord.id === orderId) {
-          const updatedTimeline = ord.timeline.map((step) => {
-            if (step.status.toLowerCase() === status.toLowerCase()) {
-              return { ...step, completed: true, current: true, time: 'Just now' };
-            }
-            return step;
-          });
-          return { ...ord, status, timeline: updatedTimeline };
-        }
-        return ord;
-      })
-    );
-    addToast('Order Status Updated', `Order status changed to "${status}".`, 'info');
-  };
-
-  const markNotificationRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
-  };
-
-  const clearNotifications = () => {
-    setNotifications([]);
-    addToast('Notifications Cleared', 'All notifications cleared.', 'info');
-  };
-
-  const createSupportTicket = (subject: string, category: 'Order' | 'Payment' | 'Delivery' | 'General', text: string) => {
-    const newTkt: SupportTicket = {
-      id: `tkt-${Date.now()}`,
-      ticketNumber: `TKT-${Math.floor(1000 + Math.random() * 9000)}`,
-      subject,
-      category,
-      status: 'Open',
-      date: 'Just now',
-      messages: [{ sender: 'You', text, time: 'Just now' }],
-    };
-    setTickets((prev) => [newTkt, ...prev]);
-    addToast('Support Ticket Created', `Ticket #${newTkt.ticketNumber} opened. Our team will reply shortly.`);
-  };
-
-  const createPromotion = (promoData: Partial<Promotion>) => {
-    const newPromo: Promotion = {
-      id: `promo-${Date.now()}`,
-      name: promoData.name || 'New Discount Offer',
-      code: (promoData.code || 'AURA10').toUpperCase(),
-      discountPercent: promoData.discountPercent || 10,
-      maxDiscount: promoData.maxDiscount || 5,
-      startDate: promoData.startDate || '2026-08-01',
-      endDate: promoData.endDate || '2026-12-31',
-      usageCount: 0,
-      usageLimit: promoData.usageLimit || 1000,
-      status: 'Active',
-    };
-    setPromotions((prev) => [newPromo, ...prev]);
-    addToast('Promotion Created', `Coupon code ${newPromo.code} is now active.`);
-  };
-
-  const togglePromotionStatus = (id: string) => {
-    setPromotions((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, status: p.status === 'Active' ? 'Disabled' : 'Active' } : p))
-    );
-  };
-
-  const updateUserProfile = (data: Partial<UserProfile>) => {
-    setUserProfile((prev) => ({ ...prev, ...data }));
-    addToast('Profile Updated', 'Your profile details have been saved.');
-  };
-
-  const addLocation = (locData: Partial<UserLocation>) => {
-    const newLoc: UserLocation = {
-      id: `loc-${Date.now()}`,
-      label: locData.label || 'Saved Location',
-      name: locData.name || userProfile.name,
-      phone: locData.phone || userProfile.phone,
-      houseNo: locData.houseNo || '',
-      street: locData.street || '',
-      area: locData.area || 'Jubilee Hills',
-      city: locData.city || 'Hyderabad',
-      state: locData.state || 'Telangana',
-      pincode: locData.pincode || '500033',
-      address: `${locData.houseNo ? locData.houseNo + ', ' : ''}${locData.area}, ${locData.city}`,
-      isDefault: locData.isDefault || false,
-    };
+  // Location Handlers
+  const addLocation = (loc: Omit<UserLocation, 'id'>) => {
+    const newLoc: UserLocation = { id: `loc-${Date.now()}`, ...loc };
     setLocations((prev) => [...prev, newLoc]);
-    addToast('Address Saved', `New delivery address "${newLoc.label}" added.`);
-  };
-
-  const updateLocation = (loc: UserLocation) => {
-    setLocations((prev) => prev.map((l) => (l.id === loc.id ? loc : l)));
-    addToast('Address Updated', 'Saved address modifications saved.');
+    setCurrentLocation(newLoc);
+    addToast('Address Saved', `${newLoc.label} address saved.`);
   };
 
   const deleteLocation = (id: string) => {
     setLocations((prev) => prev.filter((l) => l.id !== id));
-    addToast('Address Removed', 'Address deleted from saved list.', 'info');
+    addToast('Address Deleted', 'Address removed.', 'info');
   };
 
-  const addDish = (dishData: Partial<Dish>) => {
-    const newDish: Dish = {
-      id: `dish-${Date.now()}`,
-      name: dishData.name || 'New Kitchen Specialty',
-      chefId: 'chef-1',
-      chefName: 'Chef Lakshmi Rao',
-      chefImage: MOCK_CHEFS[0].avatar,
-      price: dishData.price || 12.50,
-      rating: 5.0,
-      reviewsCount: 0,
-      category: dishData.category || 'Lunch',
-      image: dishData.image || 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?q=80&w=800&auto=format&fit=crop',
-      description: dishData.description || 'Fresh homemade preparation cooked with pure ingredients.',
-      portionSize: dishData.portionSize || 'Serves 1 Person',
-      ingredients: dishData.ingredients || ['Fresh Produce', 'A2 Cow Ghee', 'Hand Ground Spices'],
-      dietaryInfo: dishData.dietaryInfo || ['100% Home Cooked'],
-      prepTime: dishData.prepTime || '25 min',
-      isVeg: dishData.isVeg !== undefined ? dishData.isVeg : true,
-      tags: ['Home Chef Special'],
-    };
-    setDishes((prev) => [newDish, ...prev]);
-    addToast('Dish Added to Menu', `"${newDish.name}" is now live on your menu.`);
-  };
-
-  const updateDish = (dish: Dish) => {
-    setDishes((prev) => prev.map((d) => (d.id === dish.id ? dish : d)));
-    addToast('Dish Updated', `Changes saved for "${dish.name}".`);
-  };
-
-  const deleteDish = (id: string) => {
-    setDishes((prev) => prev.filter((d) => d.id !== id));
-    addToast('Dish Removed', 'Dish deleted from kitchen menu.', 'info');
-  };
-
-  const updateChefStatus = (chefId: string, status: 'Verified' | 'Rejected' | 'Suspended' | 'Active') => {
-    setChefs((prev) =>
-      prev.map((c) => (c.id === chefId ? { ...c, status } : c))
-    );
-    addToast('Chef Status Updated', `Chef verification status set to ${status}.`);
+  // Profile Handler
+  const updateUserProfile = (updated: Partial<UserProfile>) => {
+    setUserProfile((prev) => ({ ...prev, ...updated }));
+    addToast('Profile Updated', 'Profile details updated.');
   };
 
   return (
     <AppContext.Provider
       value={{
-        portalMode,
-        setPortalMode,
-        dishes,
-        chefs,
+        products,
         categories,
+        cartItems,
+        wishlistProductIds,
+        recentlyViewedIds,
+        orders,
+        userProfile,
         locations,
         currentLocation,
-        setCurrentLocation,
-        cartItems,
+        toasts,
+
         addToCart,
         updateCartQuantity,
         removeFromCart,
         clearCart,
-        favoriteDishIds,
-        favoriteChefIds,
-        toggleFavoriteDish,
-        toggleFavoriteChef,
-        orders,
+
+        toggleWishlist,
+        addRecentlyViewed,
+
         createOrder,
-        updateOrderStatus,
-        notifications,
-        markNotificationRead,
-        clearNotifications,
-        tickets,
-        createSupportTicket,
-        promotions,
-        createPromotion,
-        togglePromotionStatus,
-        userProfile,
-        updateUserProfile,
+
+        setCurrentLocation,
         addLocation,
-        updateLocation,
         deleteLocation,
-        addDish,
-        updateDish,
-        deleteDish,
-        updateChefStatus,
+
+        updateUserProfile,
+
         addToast,
+        removeToast,
       }}
     >
-      <ToastContainer toasts={toasts} onDismiss={removeToast} />
       {children}
     </AppContext.Provider>
   );

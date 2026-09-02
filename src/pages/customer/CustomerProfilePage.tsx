@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useNavigate } from 'react-router-dom';
-import { User, ShoppingBag, Heart, MapPin, CreditCard, Bell, HelpCircle, Settings, LogOut, Edit2, ShieldCheck, Check, X } from 'lucide-react';
+import { ShoppingBag, Heart, MapPin, Edit2, LogOut, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const CustomerProfilePage: React.FC = () => {
-  const { userProfile, updateUserProfile, favoriteDishIds, favoriteChefIds, orders, addToast } = useApp();
+  const { userProfile, updateUserProfile, wishlistProductIds, orders, addToast } = useApp();
   const navigate = useNavigate();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -19,18 +19,16 @@ export const CustomerProfilePage: React.FC = () => {
     setIsEditing(false);
   };
 
-  const menuItems = [
+  const menuOptions = [
     { label: 'My Orders', icon: <ShoppingBag className="w-5 h-5 text-black" />, sub: `${orders.length} Past Orders`, action: () => navigate('/orders') },
-    { label: 'Saved Favorites', icon: <Heart className="w-5 h-5 text-black" />, sub: `${favoriteDishIds.length + favoriteChefIds.length} Saved Items`, action: () => navigate('/favorites') },
-    { label: 'Saved Addresses', icon: <MapPin className="w-5 h-5 text-black" />, sub: 'Manage Home & Office Addresses', action: () => navigate('/addresses') },
-    { label: 'Notifications', icon: <Bell className="w-5 h-5 text-black" />, sub: 'Order & Offer Alerts', action: () => navigate('/notifications') },
-    { label: 'Help & Support', icon: <HelpCircle className="w-5 h-5 text-black" />, sub: 'FAQ & Support Tickets', action: () => navigate('/help') },
+    { label: 'Wishlist', icon: <Heart className="w-5 h-5 text-black" />, sub: `${wishlistProductIds.length} Saved Products`, action: () => navigate('/wishlist') },
+    { label: 'Delivery Addresses', icon: <MapPin className="w-5 h-5 text-black" />, sub: 'Manage Home & Office Addresses', action: () => navigate('/cart') },
   ];
 
   return (
     <div className="min-h-screen bg-white text-black py-8 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto text-left space-y-8">
       
-      {/* Profile Header Card */}
+      {/* Profile Header */}
       <div className="bg-neutral-50 border border-neutral-200 rounded-3xl p-6 sm:p-8 shadow-subtle flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
         <div className="flex items-center gap-5">
           <img src={userProfile.avatar} alt={userProfile.name} className="w-20 h-20 rounded-full object-cover border-2 border-white shadow-subtle shrink-0" />
@@ -52,41 +50,39 @@ export const CustomerProfilePage: React.FC = () => {
         </button>
       </div>
 
-      {/* Menu Shortcuts Grid */}
+      {/* Menu Options Grid */}
       <div className="space-y-3">
         <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-400">Account Options</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {menuItems.map((item) => (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {menuOptions.map((opt) => (
             <div
-              key={item.label}
-              onClick={item.action}
-              className="p-5 rounded-3xl border border-neutral-200 bg-white hover:border-black cursor-pointer transition-all shadow-subtle flex items-center justify-between group"
+              key={opt.label}
+              onClick={opt.action}
+              className="p-5 rounded-3xl border border-neutral-200 bg-white hover:border-black cursor-pointer transition-all shadow-subtle space-y-2 group"
             >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-2xl bg-neutral-100 flex items-center justify-center group-hover:bg-black group-hover:text-white transition-colors">
-                  {item.icon}
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-black">{item.label}</h4>
-                  <p className="text-xs text-neutral-500">{item.sub}</p>
-                </div>
+              <div className="w-10 h-10 rounded-2xl bg-neutral-100 flex items-center justify-center group-hover:bg-black group-hover:text-white transition-colors">
+                {opt.icon}
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-black">{opt.label}</h4>
+                <p className="text-xs text-neutral-500">{opt.sub}</p>
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Logout Action */}
+      {/* Logout */}
       <div className="pt-4 border-t border-neutral-200">
         <button
           onClick={() => {
-            addToast('Logged Out', 'Signed out of customer account.', 'info');
+            addToast('Signed Out', 'Signed out of account.', 'info');
             navigate('/');
           }}
           className="w-full py-4 bg-neutral-100 hover:bg-black hover:text-white text-black text-xs font-bold rounded-2xl transition-all flex items-center justify-center gap-2 border border-neutral-300"
         >
           <LogOut className="w-4 h-4" />
-          <span>Sign Out of Account</span>
+          <span>Sign Out</span>
         </button>
       </div>
 
@@ -118,7 +114,7 @@ export const CustomerProfilePage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase text-neutral-500 mb-1">Email Address</label>
+                  <label className="block text-xs font-bold uppercase text-neutral-500 mb-1">Email</label>
                   <input
                     type="email"
                     value={email}
@@ -127,7 +123,7 @@ export const CustomerProfilePage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase text-neutral-500 mb-1">Phone Number</label>
+                  <label className="block text-xs font-bold uppercase text-neutral-500 mb-1">Phone</label>
                   <input
                     type="text"
                     value={phone}
@@ -136,7 +132,7 @@ export const CustomerProfilePage: React.FC = () => {
                   />
                 </div>
                 <button type="submit" className="w-full py-3.5 bg-black text-white text-xs font-bold rounded-2xl shadow-subtle">
-                  Save Modifications
+                  Save Changes
                 </button>
               </form>
             </motion.div>
