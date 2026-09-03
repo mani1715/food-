@@ -6,6 +6,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import { AnnouncementBar } from './components/AnnouncementBar';
 import { Header } from './components/Header';
 import { SecondaryCategoryBar } from './components/SecondaryCategoryBar';
+import { LocationDetectorBar } from './components/LocationDetectorBar';
 import { Footer } from './components/Footer';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { Toast } from './components/Toast';
@@ -38,8 +39,11 @@ const MainLayout: React.FC = () => {
       {/* 2. Sticky Header with Primary Navigation */}
       <Header onOpenSearch={() => setIsSearchOpen(true)} />
 
-      {/* 3. Secondary Category Bar (Desktop & Mobile Category Chips) */}
+      {/* 3. Secondary Category Bar */}
       <SecondaryCategoryBar />
+
+      {/* 4. Top Location Detector & City Switcher Bar */}
+      <LocationDetectorBar />
 
       {/* Main Content Router */}
       <main>
