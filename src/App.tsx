@@ -5,7 +5,6 @@ import { AppProvider, useApp } from './context/AppContext';
 // Layout & Global Components
 import { AnnouncementBar } from './components/AnnouncementBar';
 import { Header } from './components/Header';
-import { SecondaryCategoryBar } from './components/SecondaryCategoryBar';
 import { Footer } from './components/Footer';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { Toast } from './components/Toast';
@@ -36,11 +35,8 @@ const MainLayout: React.FC = () => {
       {/* 1. Announcement Bar */}
       <AnnouncementBar />
 
-      {/* 2. Sticky Header with Primary Navigation */}
+      {/* 2. Single-Line Clean Sticky Header with Primary Navigation */}
       <Header onOpenSearch={() => setIsSearchOpen(true)} />
-
-      {/* 3. Secondary Category Bar */}
-      <SecondaryCategoryBar />
 
       {/* Main Content Router */}
       <main>

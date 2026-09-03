@@ -27,23 +27,23 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
   const navLinks = [
     { label: 'Home', path: '/' },
     { label: 'New Arrivals ✨', path: '/products?filter=new-arrivals', isSpecial: true },
-    { label: 'Categories', path: '/categories' },
     { label: 'Pickles', path: '/products?category=Pickles' },
     { label: 'Sweets', path: '/products?category=Sweets' },
     { label: 'Snacks', path: '/products?category=Snacks' },
     { label: 'Bakery', path: '/products?category=Bakery' },
-    { label: 'Veg', path: '/products?dietary=Veg' },
-    { label: 'Non-Veg', path: '/products?dietary=Non-Veg' },
+    { label: 'Veg ●', path: '/products?dietary=Veg' },
+    { label: 'Non-Veg ▲', path: '/products?dietary=Non-Veg' },
+    { label: 'All Categories', path: '/categories' },
   ];
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-neutral-200 transition-all">
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-neutral-200 transition-all shadow-subtle">
       {/* Top Header Bar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
         
         {/* Brand Logo & Name */}
         <div onClick={() => navigate('/')} className="flex items-center gap-3 cursor-pointer group shrink-0">
-          <div className="w-10 h-10 rounded-2xl bg-black text-white flex items-center justify-center font-extrabold text-lg tracking-tighter shadow-subtle group-hover:scale-105 transition-transform">
+          <div className="w-10 h-10 rounded-2xl bg-black text-white flex items-center justify-center font-black text-lg tracking-tighter shadow-subtle group-hover:scale-105 transition-transform">
             A
           </div>
           <div>
@@ -117,21 +117,21 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
 
       </div>
 
-      {/* Primary Navigation Links (Desktop Row) */}
-      <nav className="hidden md:block border-t border-neutral-100 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-1 overflow-x-auto no-scrollbar py-2 text-xs font-bold text-neutral-600">
+      {/* Single-Line Clean Category Navigation Links */}
+      <nav className="hidden md:block border-t border-neutral-100 bg-neutral-50/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-center gap-2 overflow-x-auto no-scrollbar py-2.5 text-xs font-extrabold">
           {navLinks.map((link) => {
             const isActive = location.pathname + location.search === link.path || (link.path === '/' && location.pathname === '/');
             return (
               <button
                 key={link.label}
                 onClick={() => navigate(link.path)}
-                className={`px-3.5 py-1.5 rounded-xl transition-all whitespace-nowrap cursor-pointer ${
+                className={`px-4 py-1.5 rounded-full transition-all whitespace-nowrap cursor-pointer border ${
                   isActive
-                    ? 'bg-black text-white shadow-subtle'
+                    ? 'bg-black text-white border-black shadow-subtle'
                     : link.isSpecial
-                    ? 'bg-neutral-900 text-white font-extrabold hover:bg-black'
-                    : 'hover:text-black hover:bg-neutral-100'
+                    ? 'bg-neutral-900 text-white border-black hover:bg-black'
+                    : 'bg-white text-neutral-800 border-neutral-200 hover:border-black hover:bg-black hover:text-white'
                 }`}
               >
                 {link.label}
