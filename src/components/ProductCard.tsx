@@ -13,8 +13,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const navigate = useNavigate();
 
   const isWishlisted = wishlistProductIds.includes(product.id);
-  const [selectedWeight, setSelectedWeight] = useState(product.defaultWeight || product.weightOptions[0]?.weight);
-
+  const selectedWeight = product.defaultWeight || product.weightOptions[0]?.weight || '500g';
   const selectedOption = product.weightOptions.find((w) => w.weight === selectedWeight) || product.weightOptions[0];
   const currentPrice = selectedOption ? selectedOption.price : product.price;
 
@@ -95,27 +94,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           <p className="text-xs text-neutral-500 line-clamp-1 mt-0.5">{product.description}</p>
         </div>
 
-        {/* Weight Variants Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
-          {product.weightOptions.map((opt) => (
-            <button
-              key={opt.weight}
-              onClick={() => setSelectedWeight(opt.weight)}
-              className={`px-2.5 py-1 rounded-xl text-[10px] font-bold border transition-all whitespace-nowrap cursor-pointer ${
-                selectedWeight === opt.weight
-                  ? 'bg-black text-white border-black shadow-subtle'
-                  : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-black'
-              }`}
-            >
-              {opt.weight}
-            </button>
-          ))}
-        </div>
-
         {/* Price & Action Buttons (Quick Add + Buy Now) */}
         <div className="pt-3 border-t border-neutral-100 flex items-center justify-between gap-1.5">
           <div>
-            <span className="text-[9px] text-neutral-400 font-bold block uppercase">Price</span>
+            <span className="text-[9px] text-neutral-400 font-bold block uppercase">Price ({selectedWeight})</span>
             <span className="text-sm font-extrabold font-mono text-black">${currentPrice.toFixed(2)}</span>
           </div>
 
