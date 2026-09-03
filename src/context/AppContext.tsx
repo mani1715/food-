@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import {
   Product,
   ProductCategory,
@@ -10,6 +10,7 @@ import {
   DeliveryCity,
   CitySuggestion,
   WhatsAppContact,
+  WeeklyHighlights,
 } from '../types';
 import {
   MOCK_PRODUCTS,
@@ -20,6 +21,7 @@ import {
   MOCK_CITY_SUGGESTIONS,
   MOCK_WHATSAPP_CONTACTS,
   MOCK_SUBSCRIBERS,
+  MOCK_WEEKLY_HIGHLIGHTS,
 } from '../data/mockData';
 
 interface AppContextType {
@@ -34,6 +36,7 @@ interface AppContextType {
   locations: UserLocation[];
   currentLocation: UserLocation;
   toasts: ToastMessage[];
+  weeklyHighlights: WeeklyHighlights;
 
   // Admin Data & State
   isAdminAuthenticated: boolean;
@@ -66,6 +69,7 @@ interface AppContextType {
   toggleProductFestival: (id: string) => void;
   updateProductDiscount: (id: string, percentage: number, expiryDate: string) => void;
   removeProductDiscount: (id: string) => void;
+  updateWeeklyHighlights: (highlights: WeeklyHighlights) => void;
   
   // Locations & Suggestions Admin
   addDeliveryCity: (city: Omit<DeliveryCity, 'id'>) => void;
@@ -100,6 +104,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [currentLocation, setCurrentLocation] = useState<UserLocation>(MOCK_LOCATIONS[0]);
   const [userProfile, setUserProfile] = useState<UserProfile>(MOCK_USER_PROFILE);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [weeklyHighlights, setWeeklyHighlights] = useState<WeeklyHighlights>(MOCK_WEEKLY_HIGHLIGHTS);
 
   // Admin Specific State
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
@@ -326,6 +331,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast('Discount Removed', 'Product discount cleared.', 'info');
   };
 
+  const updateWeeklyHighlights = (highlights: WeeklyHighlights) => {
+    setWeeklyHighlights(highlights);
+    addToast('Highlights Updated', 'Weekly Highlights & Festive Specials saved & live on homepage!', 'success');
+  };
+
   // Locations & Suggestions Admin
   const addDeliveryCity = (city: Omit<DeliveryCity, 'id'>) => {
     const newCity: DeliveryCity = { ...city, id: `city-${Date.now()}` };
@@ -456,6 +466,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         locations,
         currentLocation,
         toasts,
+        weeklyHighlights,
         isAdminAuthenticated,
         deliveryCities,
         citySuggestions,
@@ -482,6 +493,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleProductFestival,
         updateProductDiscount,
         removeProductDiscount,
+        updateWeeklyHighlights,
         addDeliveryCity,
         updateDeliveryCity,
         deleteDeliveryCity,

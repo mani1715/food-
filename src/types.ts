@@ -115,6 +115,21 @@ export interface ToastMessage {
   type?: 'success' | 'error' | 'info';
 }
 
+export interface HighlightItem {
+  type: 'day' | 'week' | 'festival';
+  badgeText: string;
+  title: string;
+  subtitle: string;
+  productId: string;
+  discountPercentage?: number;
+}
+
+export interface WeeklyHighlights {
+  specialOfDay: HighlightItem;
+  specialOfWeek: HighlightItem;
+  festivalSpecial: HighlightItem;
+}
+
 export type AdminTab =
   | 'products'
   | 'orders'

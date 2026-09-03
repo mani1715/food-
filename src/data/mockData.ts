@@ -1,4 +1,31 @@
-import { Product, ProductCategory, UserLocation, DeliveryCity, CitySuggestion, WhatsAppContact } from '../types';
+import { Product, ProductCategory, UserLocation, DeliveryCity, CitySuggestion, WhatsAppContact, WeeklyHighlights } from '../types';
+
+export const MOCK_WEEKLY_HIGHLIGHTS: WeeklyHighlights = {
+  specialOfDay: {
+    type: 'day',
+    badgeText: 'TODAY\'S HOT SPECIAL',
+    title: 'Grandma Avakaya Mango Pickle',
+    subtitle: 'Handcrafted fresh today with Guntur red chili powder and cold-pressed sesame oil.',
+    productId: 'prod-1',
+    discountPercentage: 15,
+  },
+  specialOfWeek: {
+    type: 'week',
+    badgeText: 'WEEKLY FEATURED SPECIAL',
+    title: 'Pure Ghee Mysore Pak',
+    subtitle: 'Melt-in-your-mouth royal sweet made with A2 cow ghee and roasted besan.',
+    productId: 'prod-6',
+    discountPercentage: 10,
+  },
+  festivalSpecial: {
+    type: 'festival',
+    badgeText: 'FESTIVAL SPECIAL HAMPER',
+    title: 'Royal Sweets & Snacks Gift Hamper',
+    subtitle: 'Luxury handcrafted rigid box featuring sweets, Andhra pickles & crunchy snacks.',
+    productId: 'prod-14',
+    discountPercentage: 20,
+  },
+};
 
 export const MOCK_DELIVERY_CITIES: DeliveryCity[] = [
   { id: 'city-1', name: 'Hyderabad', state: 'Telangana', charge: 49, freeDeliveryThreshold: 500, enabled: true },

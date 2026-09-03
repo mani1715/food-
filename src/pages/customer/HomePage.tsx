@@ -1,7 +1,7 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 
-import { Hero } from '../../components/Hero';
+import { WeeklyHighlightsShowcase } from '../../components/WeeklyHighlightsShowcase';
 import { ShopByCategory } from '../../components/ShopByCategory';
 import { BestSellers } from '../../components/BestSellers';
 import { FestivalCollections } from '../../components/FestivalCollections';
@@ -16,8 +16,8 @@ export const HomePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white text-black font-sans">
-      {/* 3. Hero Banner */}
-      <Hero />
+      {/* 3. Weekly Highlights & Special Offers Showcase (Replaces static Hero Banner) */}
+      <WeeklyHighlightsShowcase />
 
       {/* 4. Shop By Category */}
       <ShopByCategory categories={categories} />
