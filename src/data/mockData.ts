@@ -28,11 +28,30 @@ export const MOCK_WEEKLY_HIGHLIGHTS: WeeklyHighlights = {
 };
 
 export const MOCK_DELIVERY_CITIES: DeliveryCity[] = [
-  { id: 'city-1', name: 'Hyderabad', state: 'Telangana', charge: 49, freeDeliveryThreshold: 500, enabled: true },
-  { id: 'city-2', name: 'Vijayawada', state: 'Andhra Pradesh', charge: 59, freeDeliveryThreshold: 750, enabled: true },
-  { id: 'city-3', name: 'Visakhapatnam', state: 'Andhra Pradesh', charge: 69, freeDeliveryThreshold: 750, enabled: true },
-  { id: 'city-4', name: 'Bengaluru', state: 'Karnataka', charge: 79, freeDeliveryThreshold: 1000, enabled: true },
-  { id: 'city-5', name: 'Chennai', state: 'Tamil Nadu', charge: 79, freeDeliveryThreshold: 1000, enabled: true },
+  // Andhra Pradesh Cities
+  { id: 'city-ap-1', name: 'Vijayawada', state: 'Andhra Pradesh', charge: 59, freeDeliveryThreshold: 750, enabled: true },
+  { id: 'city-ap-2', name: 'Visakhapatnam', state: 'Andhra Pradesh', charge: 69, freeDeliveryThreshold: 750, enabled: true },
+  { id: 'city-ap-3', name: 'Guntur', state: 'Andhra Pradesh', charge: 59, freeDeliveryThreshold: 750, enabled: true },
+  { id: 'city-ap-4', name: 'Tirupati', state: 'Andhra Pradesh', charge: 69, freeDeliveryThreshold: 750, enabled: true },
+  { id: 'city-ap-5', name: 'Nellore', state: 'Andhra Pradesh', charge: 69, freeDeliveryThreshold: 750, enabled: true },
+  { id: 'city-ap-6', name: 'Rajahmundry', state: 'Andhra Pradesh', charge: 69, freeDeliveryThreshold: 750, enabled: true },
+  { id: 'city-ap-7', name: 'Kakinada', state: 'Andhra Pradesh', charge: 69, freeDeliveryThreshold: 750, enabled: true },
+  { id: 'city-ap-8', name: 'Kurnool', state: 'Andhra Pradesh', charge: 69, freeDeliveryThreshold: 750, enabled: true },
+  { id: 'city-ap-9', name: 'Kadapa', state: 'Andhra Pradesh', charge: 69, freeDeliveryThreshold: 750, enabled: true },
+  { id: 'city-ap-10', name: 'Anantapur', state: 'Andhra Pradesh', charge: 69, freeDeliveryThreshold: 750, enabled: true },
+  { id: 'city-ap-11', name: 'Eluru', state: 'Andhra Pradesh', charge: 69, freeDeliveryThreshold: 750, enabled: true },
+  { id: 'city-ap-12', name: 'Ongole', state: 'Andhra Pradesh', charge: 69, freeDeliveryThreshold: 750, enabled: true },
+  
+  // Telangana Cities
+  { id: 'city-tg-1', name: 'Hyderabad', state: 'Telangana', charge: 49, freeDeliveryThreshold: 500, enabled: true },
+  { id: 'city-tg-2', name: 'Warangal', state: 'Telangana', charge: 59, freeDeliveryThreshold: 750, enabled: true },
+  { id: 'city-tg-3', name: 'Karimnagar', state: 'Telangana', charge: 59, freeDeliveryThreshold: 750, enabled: true },
+  { id: 'city-tg-4', name: 'Nizamabad', state: 'Telangana', charge: 59, freeDeliveryThreshold: 750, enabled: true },
+  { id: 'city-tg-5', name: 'Khammam', state: 'Telangana', charge: 59, freeDeliveryThreshold: 750, enabled: true },
+
+  // Karnataka & Tamil Nadu Major Cities
+  { id: 'city-ka-1', name: 'Bengaluru', state: 'Karnataka', charge: 79, freeDeliveryThreshold: 1000, enabled: true },
+  { id: 'city-tn-1', name: 'Chennai', state: 'Tamil Nadu', charge: 79, freeDeliveryThreshold: 1000, enabled: true },
 ];
 
 export const MOCK_CITY_SUGGESTIONS: CitySuggestion[] = [
@@ -43,7 +62,7 @@ export const MOCK_CITY_SUGGESTIONS: CitySuggestion[] = [
     customerName: 'Ramesh Babu',
     phone: '+91 98480 12345',
     email: 'ramesh.b@gmail.com',
-    status: 'pending',
+    status: 'approved',
     suggestedAt: '2026-09-01T10:30:00Z',
   },
   {
@@ -53,18 +72,8 @@ export const MOCK_CITY_SUGGESTIONS: CitySuggestion[] = [
     customerName: 'Sravani Rao',
     phone: '+91 99590 67890',
     email: 'sravani.r@gmail.com',
-    status: 'pending',
-    suggestedAt: '2026-08-28T14:15:00Z',
-  },
-  {
-    id: 'sug-3',
-    city: 'Kakinada',
-    state: 'Andhra Pradesh',
-    customerName: 'Venkat Reddy',
-    phone: '+91 94401 54321',
-    email: 'venkat.k@gmail.com',
     status: 'approved',
-    suggestedAt: '2026-08-20T09:00:00Z',
+    suggestedAt: '2026-08-28T14:15:00Z',
   },
 ];
 
@@ -171,7 +180,7 @@ export const MOCK_PRODUCTS: Product[] = [
     isFestival: true,
     inventoryCount: 150,
     outOfStock: false,
-    availableCities: ['Hyderabad', 'Vijayawada', 'Bengaluru'],
+    availableCities: ['Hyderabad', 'Vijayawada', 'Visakhapatnam', 'Guntur', 'Tirupati', 'Bengaluru'],
     inStock: true,
   },
   {
@@ -195,7 +204,7 @@ export const MOCK_PRODUCTS: Product[] = [
     isPickleSpecial: true,
     inventoryCount: 80,
     outOfStock: false,
-    availableCities: ['Hyderabad', 'Vijayawada'],
+    availableCities: ['Hyderabad', 'Vijayawada', 'Guntur'],
     inStock: true,
   },
   {

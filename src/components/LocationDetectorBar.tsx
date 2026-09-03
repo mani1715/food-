@@ -4,77 +4,88 @@ import { MapPin, Navigation, Plus, ChevronDown, CheckCircle2 } from 'lucide-reac
 import { AddCityModal } from './modals/AddCityModal';
 
 export const LocationDetectorBar: React.FC = () => {
-  const { deliveryCities, currentLocation, setCurrentLocation, addToast } = useApp();
+  const { deliveryCities, addDeliveryCity, currentLocation, setCurrentLocation, addToast } = useApp();
 
   const [isDetecting, setIsDetecting] = useState(false);
   const [showAddCityModal, setShowAddCityModal] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-  // Helper: Match detected city string against enabled deliveryCities list
-  const matchAndSetCity = (detectedCityName: string, detectedStateName: string) => {
-    let matchedCity = deliveryCities.find((c) =>
-      c.name.toLowerCase().includes(detectedCityName.toLowerCase()) ||
-      detectedCityName.toLowerCase().includes(c.name.toLowerCase())
+  // Helper: Match detected city against deliveryCities or dynamically auto-register exact city
+  const setExactLocation = (rawCity: string, rawState: string) => {
+    const cleanCity = rawCity.trim();
+    const cleanState = rawState.trim() || 'Andhra Pradesh';
+
+    if (!cleanCity) return false;
+
+    // Check if exact city exists in deliveryCities list (case-insensitive)
+    let matchedCity = deliveryCities.find(
+      (c) =>
+        c.name.toLowerCase() === cleanCity.toLowerCase() ||
+        cleanCity.toLowerCase().includes(c.name.toLowerCase()) ||
+        c.name.toLowerCase().includes(cleanCity.toLowerCase())
     );
 
-    if (!matchedCity && detectedStateName) {
-      matchedCity = deliveryCities.find((c) =>
-        c.state.toLowerCase().includes(detectedStateName.toLowerCase()) ||
-        detectedStateName.toLowerCase().includes(c.state.toLowerCase())
-      );
-    }
-
+    // If city not found, dynamically add it to active delivery cities!
     if (!matchedCity) {
-      matchedCity = deliveryCities[0]; // Default fallback to first delivery city
-    }
-
-    if (matchedCity) {
-      setCurrentLocation({
-        id: `loc-${matchedCity.id}`,
-        label: 'Detected Location',
-        address: `${matchedCity.name}, ${matchedCity.state}`,
-        city: matchedCity.name,
-        pincode: '500001',
+      addDeliveryCity({
+        name: cleanCity,
+        state: cleanState,
+        charge: 59,
+        freeDeliveryThreshold: 750,
+        enabled: true,
       });
-
-      setStatusMessage(`📍 Location detected: ${matchedCity.name}, ${matchedCity.state}! Showing items available for delivery ($${matchedCity.charge} delivery fee).`);
-      addToast('Location Detected!', `Delivering to ${matchedCity.name}, ${matchedCity.state}.`, 'success');
-      return true;
+      matchedCity = {
+        id: `city-auto-${Date.now()}`,
+        name: cleanCity,
+        state: cleanState,
+        charge: 59,
+        freeDeliveryThreshold: 750,
+        enabled: true,
+      };
     }
-    return false;
+
+    setCurrentLocation({
+      id: `loc-${matchedCity.id}`,
+      label: 'Exact Detected Location',
+      address: `${matchedCity.name}, ${matchedCity.state}`,
+      city: matchedCity.name,
+      pincode: '500001',
+    });
+
+    setStatusMessage(`📍 Location detected: ${matchedCity.name}, ${matchedCity.state}! Showing products with delivery fee $${matchedCity.charge}.`);
+    addToast('Location Detected!', `Delivering to ${matchedCity.name}, ${matchedCity.state}.`, 'success');
+    return true;
   };
 
-  // Fallback: IP-based Location API
+  // IP Geolocation Fallback
   const detectViaIP = async () => {
     try {
-      setStatusMessage('Detecting location via IP lookup...');
+      setStatusMessage('Querying IP location lookup...');
       const res = await fetch('https://ipwho.is/');
       const data = await res.json();
-      
+
       if (data && data.success) {
-        const city = data.city || data.region || 'Hyderabad';
-        const region = data.region || 'Telangana';
-        matchAndSetCity(city, region);
+        const city = data.city || data.region || 'Vijayawada';
+        const region = data.region || 'Andhra Pradesh';
+        setExactLocation(city, region);
       } else {
-        // Second IP API fallback
         const res2 = await fetch('https://ipapi.co/json/');
         const data2 = await res2.json();
-        const city2 = data2.city || 'Hyderabad';
-        const region2 = data2.region || 'Telangana';
-        matchAndSetCity(city2, region2);
+        const city2 = data2.city || 'Vijayawada';
+        const region2 = data2.region || 'Andhra Pradesh';
+        setExactLocation(city2, region2);
       }
     } catch (err) {
-      // Default to Hyderabad
-      matchAndSetCity('Hyderabad', 'Telangana');
+      setExactLocation('Vijayawada', 'Andhra Pradesh');
     } finally {
       setIsDetecting(false);
     }
   };
 
-  // Main Detection Trigger (GPS Geolocation + IP Fallback)
+  // Main Detection Trigger (High Precision GPS + Reverse Geocoding)
   const handleDetectLocation = () => {
     setIsDetecting(true);
-    setStatusMessage('Acquiring GPS location...');
+    setStatusMessage('Acquiring high-precision GPS location...');
 
     if (!('geolocation' in navigator)) {
       detectViaIP();
@@ -85,29 +96,47 @@ export const LocationDetectorBar: React.FC = () => {
       async (pos) => {
         try {
           const { latitude, longitude } = pos.coords;
+          console.log('📍 High-precision GPS coordinates:', latitude, longitude);
+
+          // High Precision reverse geocoding with zoom=18 & addressdetails=1
           const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`
           );
           const data = await res.json();
           const addr = data.address || {};
+          console.log('🗺️ Detailed location address:', addr);
 
-          const detectedCity = addr.city || addr.town || addr.municipality || addr.county || addr.district || addr.suburb || 'Hyderabad';
-          const detectedState = addr.state || 'Telangana';
+          const rawCity =
+            addr.city ||
+            addr.town ||
+            addr.village ||
+            addr.municipality ||
+            addr.suburb ||
+            addr.neighbourhood ||
+            addr.county ||
+            addr.district ||
+            addr.state_district ||
+            (data.display_name ? data.display_name.split(',')[0] : '');
 
-          matchAndSetCity(detectedCity, detectedState);
+          const rawState = addr.state || 'Andhra Pradesh';
+
+          if (rawCity) {
+            setExactLocation(rawCity, rawState);
+          } else {
+            detectViaIP();
+          }
         } catch (err) {
-          // Reverse geocoding failed, try IP lookup
+          console.error('Reverse geocoding failed:', err);
           detectViaIP();
         } finally {
           setIsDetecting(false);
         }
       },
       (error) => {
-        // Geolocation denied or timed out, use IP lookup fallback instantly
-        console.warn('GPS Geolocation unavailable, falling back to IP location:', error);
+        console.warn('GPS position error or permission denied:', error);
         detectViaIP();
       },
-      { timeout: 8000, enableHighAccuracy: false } // enableHighAccuracy: false speeds up desktop detection
+      { timeout: 12000, enableHighAccuracy: true, maximumAge: 0 }
     );
   };
 
