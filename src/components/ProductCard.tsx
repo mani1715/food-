@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Product } from '../types';
 import { useApp } from '../context/AppContext';
-import { Heart, Star, Plus } from 'lucide-react';
+import { Heart, Star, Plus, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface ProductCardProps {
@@ -21,6 +21,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const handleCardClick = () => {
     addRecentlyViewed(product.id);
     navigate(`/product/${product.id}`);
+  };
+
+  const handleBuyNow = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    addToCart(product, selectedWeight, 1);
+    navigate('/checkout');
   };
 
   return (
@@ -61,7 +67,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             e.stopPropagation();
             toggleWishlist(product.id);
           }}
-          className={`absolute top-2 right-2 p-2 rounded-full transition-all shadow-subtle ${
+          className={`absolute top-2 right-2 p-2 rounded-full transition-all shadow-subtle cursor-pointer ${
             isWishlisted ? 'bg-black text-white' : 'bg-white/90 text-black hover:bg-black hover:text-white backdrop-blur-sm'
           }`}
         >
@@ -95,7 +101,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             <button
               key={opt.weight}
               onClick={() => setSelectedWeight(opt.weight)}
-              className={`px-2.5 py-1 rounded-xl text-[10px] font-bold border transition-all whitespace-nowrap ${
+              className={`px-2.5 py-1 rounded-xl text-[10px] font-bold border transition-all whitespace-nowrap cursor-pointer ${
                 selectedWeight === opt.weight
                   ? 'bg-black text-white border-black shadow-subtle'
                   : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-black'
@@ -106,20 +112,35 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           ))}
         </div>
 
-        {/* Price & Quick Add Button */}
-        <div className="pt-3 border-t border-neutral-100 flex items-center justify-between">
+        {/* Price & Action Buttons (Quick Add + Buy Now) */}
+        <div className="pt-3 border-t border-neutral-100 flex items-center justify-between gap-1.5">
           <div>
-            <span className="text-[10px] text-neutral-400 font-bold block uppercase">Price</span>
-            <span className="text-base font-extrabold font-mono text-black">${currentPrice.toFixed(2)}</span>
+            <span className="text-[9px] text-neutral-400 font-bold block uppercase">Price</span>
+            <span className="text-sm font-extrabold font-mono text-black">${currentPrice.toFixed(2)}</span>
           </div>
 
-          <button
-            onClick={() => addToCart(product, selectedWeight, 1)}
-            className="px-4 py-2 bg-black text-white text-xs font-bold rounded-xl hover:bg-neutral-800 transition-all flex items-center gap-1.5 shadow-subtle"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Quick Add</span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                addToCart(product, selectedWeight, 1);
+              }}
+              className="px-2.5 py-2 bg-neutral-100 border border-neutral-300 text-black text-[10px] font-extrabold rounded-xl hover:bg-neutral-200 transition-all flex items-center gap-1 shadow-subtle cursor-pointer"
+              title="Add to Basket"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Quick Add</span>
+            </button>
+
+            <button
+              onClick={handleBuyNow}
+              className="px-2.5 py-2 bg-black text-white text-[10px] font-extrabold rounded-xl hover:bg-neutral-800 transition-all flex items-center gap-1 shadow-subtle cursor-pointer"
+              title="Instant Checkout"
+            >
+              <Zap className="w-3.5 h-3.5" />
+              <span>Buy Now</span>
+            </button>
+          </div>
         </div>
       </div>
 
