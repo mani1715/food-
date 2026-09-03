@@ -56,6 +56,8 @@ interface AppContextType {
   createOrder: (paymentMethod: string, deliveryAddress: UserLocation) => Order;
   updateUserProfile: (profile: Partial<UserProfile>) => void;
   setCurrentLocation: (loc: UserLocation) => void;
+  addLocation: (loc: Omit<UserLocation, 'id'>) => void;
+  deleteLocation: (id: string) => void;
   addToast: (title: string, message: string, type?: 'success' | 'error' | 'info') => void;
   removeToast: (id: string) => void;
 
@@ -100,7 +102,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [wishlistProductIds, setWishlistProductIds] = useState<string[]>(['prod-1', 'prod-6']);
   const [recentlyViewedIds, setRecentlyViewedIds] = useState<string[]>(['prod-1', 'prod-7']);
-  const [locations] = useState<UserLocation[]>(MOCK_LOCATIONS);
+  const [locations, setLocations] = useState<UserLocation[]>(MOCK_LOCATIONS);
   const [currentLocation, setCurrentLocation] = useState<UserLocation>(MOCK_LOCATIONS[0]);
   const [userProfile, setUserProfile] = useState<UserProfile>(MOCK_USER_PROFILE);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -166,6 +168,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const removeToast = (id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  // Saved Delivery Address Management
+  const addLocation = (loc: Omit<UserLocation, 'id'>) => {
+    const newLoc: UserLocation = { ...loc, id: `loc-${Date.now()}` };
+    setLocations((prev) => [...prev, newLoc]);
+    addToast('Address Saved', `${newLoc.label} address saved to your profile.`, 'success');
+  };
+
+  const deleteLocation = (id: string) => {
+    setLocations((prev) => prev.filter((l) => l.id !== id));
+    addToast('Address Removed', 'Saved address deleted.', 'info');
   };
 
   // Cart Management
@@ -482,6 +496,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createOrder,
         updateUserProfile,
         setCurrentLocation,
+        addLocation,
+        deleteLocation,
         addToast,
         removeToast,
         loginAdmin,
