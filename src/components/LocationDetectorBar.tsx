@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { MapPin, Navigation, Plus, Check, AlertCircle, ChevronDown } from 'lucide-react';
+import { MapPin, Navigation, Plus, ChevronDown, CheckCircle2 } from 'lucide-react';
 import { AddCityModal } from './modals/AddCityModal';
 
 export const LocationDetectorBar: React.FC = () => {
@@ -10,72 +10,104 @@ export const LocationDetectorBar: React.FC = () => {
   const [showAddCityModal, setShowAddCityModal] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-  // Auto Geolocation Detection via OpenStreetMap Reverse Geocoding
-  const handleDetectLocation = () => {
-    if (!('geolocation' in navigator)) {
-      addToast('Geolocation Error', 'Geolocation is not supported by your browser.', 'error');
-      return;
+  // Helper: Match detected city string against enabled deliveryCities list
+  const matchAndSetCity = (detectedCityName: string, detectedStateName: string) => {
+    let matchedCity = deliveryCities.find((c) =>
+      c.name.toLowerCase().includes(detectedCityName.toLowerCase()) ||
+      detectedCityName.toLowerCase().includes(c.name.toLowerCase())
+    );
+
+    if (!matchedCity && detectedStateName) {
+      matchedCity = deliveryCities.find((c) =>
+        c.state.toLowerCase().includes(detectedStateName.toLowerCase()) ||
+        detectedStateName.toLowerCase().includes(c.state.toLowerCase())
+      );
     }
 
+    if (!matchedCity) {
+      matchedCity = deliveryCities[0]; // Default fallback to first delivery city
+    }
+
+    if (matchedCity) {
+      setCurrentLocation({
+        id: `loc-${matchedCity.id}`,
+        label: 'Detected Location',
+        address: `${matchedCity.name}, ${matchedCity.state}`,
+        city: matchedCity.name,
+        pincode: '500001',
+      });
+
+      setStatusMessage(`📍 Location detected: ${matchedCity.name}, ${matchedCity.state}! Showing items available for delivery ($${matchedCity.charge} delivery fee).`);
+      addToast('Location Detected!', `Delivering to ${matchedCity.name}, ${matchedCity.state}.`, 'success');
+      return true;
+    }
+    return false;
+  };
+
+  // Fallback: IP-based Location API
+  const detectViaIP = async () => {
+    try {
+      setStatusMessage('Detecting location via IP lookup...');
+      const res = await fetch('https://ipwho.is/');
+      const data = await res.json();
+      
+      if (data && data.success) {
+        const city = data.city || data.region || 'Hyderabad';
+        const region = data.region || 'Telangana';
+        matchAndSetCity(city, region);
+      } else {
+        // Second IP API fallback
+        const res2 = await fetch('https://ipapi.co/json/');
+        const data2 = await res2.json();
+        const city2 = data2.city || 'Hyderabad';
+        const region2 = data2.region || 'Telangana';
+        matchAndSetCity(city2, region2);
+      }
+    } catch (err) {
+      // Default to Hyderabad
+      matchAndSetCity('Hyderabad', 'Telangana');
+    } finally {
+      setIsDetecting(false);
+    }
+  };
+
+  // Main Detection Trigger (GPS Geolocation + IP Fallback)
+  const handleDetectLocation = () => {
     setIsDetecting(true);
-    setStatusMessage('Detecting GPS location...');
+    setStatusMessage('Acquiring GPS location...');
+
+    if (!('geolocation' in navigator)) {
+      detectViaIP();
+      return;
+    }
 
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         try {
           const { latitude, longitude } = pos.coords;
           const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`,
-            { headers: { 'Accept-Language': 'en' } }
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`
           );
           const data = await res.json();
           const addr = data.address || {};
 
+          const detectedCity = addr.city || addr.town || addr.municipality || addr.county || addr.district || addr.suburb || 'Hyderabad';
           const detectedState = addr.state || 'Telangana';
-          const possibleCityNames = [
-            addr.city,
-            addr.town,
-            addr.municipality,
-            addr.county,
-            addr.district,
-            addr.suburb,
-          ].filter(Boolean);
 
-          // Match against deliveryCities list
-          let matchedCity = deliveryCities.find((c) =>
-            possibleCityNames.some((p) => c.name.toLowerCase() === p.toLowerCase())
-          );
-
-          if (!matchedCity) {
-            // Fallback match by state or first city
-            matchedCity = deliveryCities.find((c) => c.state.toLowerCase() === detectedState.toLowerCase()) || deliveryCities[0];
-          }
-
-          if (matchedCity) {
-            setCurrentLocation({
-              id: 'loc-detected',
-              label: 'Current Location',
-              address: `${matchedCity.name}, ${matchedCity.state}`,
-              city: matchedCity.name,
-              pincode: '500001',
-            });
-
-            setStatusMessage(`📍 Location detected: ${matchedCity.name}, ${matchedCity.state}! Showing products with delivery fee $${matchedCity.charge}.`);
-            addToast('Location Detected', `Delivering to ${matchedCity.name}, ${matchedCity.state}.`, 'success');
-          } else {
-            setStatusMessage(`Detected ${possibleCityNames[0] || 'your area'}, but we don't deliver there yet. Request your city below!`);
-          }
+          matchAndSetCity(detectedCity, detectedState);
         } catch (err) {
-          setStatusMessage('Failed to detect GPS location. Select your city manually.');
+          // Reverse geocoding failed, try IP lookup
+          detectViaIP();
         } finally {
           setIsDetecting(false);
         }
       },
-      () => {
-        setIsDetecting(false);
-        setStatusMessage('Location permission denied or unavailable. Please select your city manually.');
+      (error) => {
+        // Geolocation denied or timed out, use IP lookup fallback instantly
+        console.warn('GPS Geolocation unavailable, falling back to IP location:', error);
+        detectViaIP();
       },
-      { timeout: 10000, enableHighAccuracy: true }
+      { timeout: 8000, enableHighAccuracy: false } // enableHighAccuracy: false speeds up desktop detection
     );
   };
 
@@ -104,7 +136,7 @@ export const LocationDetectorBar: React.FC = () => {
                     city: selected.name,
                     pincode: '500001',
                   });
-                  addToast('City Selected', `Delivering to ${selected.name}.`, 'info');
+                  addToast('City Selected', `Delivering to ${selected.name}, ${selected.state}.`, 'info');
                 }
               }}
               className="py-2 pl-3 pr-8 rounded-xl border border-neutral-300 bg-white text-xs font-extrabold text-black focus:outline-none focus:border-black shadow-subtle appearance-none cursor-pointer"
@@ -118,20 +150,20 @@ export const LocationDetectorBar: React.FC = () => {
             <ChevronDown className="w-3.5 h-3.5 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
-          {/* Auto-Detect GPS Location Button */}
+          {/* Auto-Detect Location Button */}
           <button
             onClick={handleDetectLocation}
             disabled={isDetecting}
-            className="px-3 py-2 rounded-xl bg-black text-white text-xs font-extrabold hover:bg-neutral-800 transition-all flex items-center gap-1.5 shadow-subtle"
+            className="px-3.5 py-2 rounded-xl bg-black text-white text-xs font-extrabold hover:bg-neutral-800 transition-all flex items-center gap-1.5 shadow-subtle cursor-pointer"
           >
             <Navigation className={`w-3.5 h-3.5 ${isDetecting ? 'animate-spin' : ''}`} />
-            <span>{isDetecting ? 'Detecting GPS...' : 'Auto-Detect Location'}</span>
+            <span>{isDetecting ? 'Detecting Location...' : 'Auto-Detect Location'}</span>
           </button>
 
           {/* Request City Unlisted Modal Trigger */}
           <button
             onClick={() => setShowAddCityModal(true)}
-            className="px-3 py-2 rounded-xl border border-neutral-300 bg-white text-xs font-bold hover:border-black text-black transition-all flex items-center gap-1"
+            className="px-3.5 py-2 rounded-xl border border-neutral-300 bg-white text-xs font-bold hover:border-black text-black transition-all flex items-center gap-1 cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>City Not Listed? Request City</span>
@@ -148,9 +180,12 @@ export const LocationDetectorBar: React.FC = () => {
 
       {/* Geolocation Detection Status Message Banner */}
       {statusMessage && (
-        <div className="max-w-7xl mx-auto mt-2 p-2.5 bg-white border border-neutral-200 rounded-2xl text-xs font-bold text-neutral-700 flex items-center justify-between">
-          <span>{statusMessage}</span>
-          <button onClick={() => setStatusMessage(null)} className="text-neutral-400 hover:text-black font-mono text-xs">
+        <div className="max-w-7xl mx-auto mt-2.5 p-3 bg-white border border-neutral-200 rounded-2xl text-xs font-bold text-black flex items-center justify-between shadow-subtle">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-black shrink-0" />
+            <span>{statusMessage}</span>
+          </div>
+          <button onClick={() => setStatusMessage(null)} className="text-neutral-400 hover:text-black font-mono text-xs ml-4">
             Dismiss
           </button>
         </div>
