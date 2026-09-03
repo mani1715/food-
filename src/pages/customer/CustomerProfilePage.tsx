@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingBag, Heart, MapPin, Edit2, LogOut, X, Plus, Trash2, Home, Briefcase, CheckCircle2, Check } from 'lucide-react';
+import { ShoppingBag, Heart, MapPin, Edit2, LogOut, X, Plus, Trash2, Home, Briefcase, Check, Navigation } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const CustomerProfilePage: React.FC = () => {
@@ -32,11 +32,69 @@ export const CustomerProfilePage: React.FC = () => {
   const [newAddress, setNewAddress] = useState('');
   const [newCity, setNewCity] = useState('Hyderabad');
   const [newPincode, setNewPincode] = useState('500033');
+  const [isDetecting, setIsDetecting] = useState(false);
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
     updateUserProfile({ name, email, phone });
     setIsEditing(false);
+  };
+
+  // Auto-Detect GPS Location for Add Address Form
+  const handleAutoDetectLocation = () => {
+    if (!('geolocation' in navigator)) {
+      addToast('GPS Error', 'Geolocation is not supported by your browser.', 'error');
+      return;
+    }
+
+    setIsDetecting(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`
+          );
+          const data = await res.json();
+          const addr = data.address || {};
+
+          const detectedCity =
+            addr.city ||
+            addr.town ||
+            addr.village ||
+            addr.municipality ||
+            addr.suburb ||
+            addr.district ||
+            'Hyderabad';
+
+          const detectedPincode = addr.postcode || '500001';
+
+          const detectedStreet = [
+            addr.road,
+            addr.suburb,
+            addr.neighbourhood,
+            addr.residential,
+          ]
+            .filter(Boolean)
+            .join(', ') || data.display_name?.split(',').slice(0, 2).join(',') || 'Current Location';
+
+          setNewAddress(detectedStreet);
+          setNewCity(detectedCity);
+          setNewPincode(detectedPincode);
+
+          addToast('Location Detected!', `Auto-filled details for ${detectedCity}, ${detectedPincode}.`, 'success');
+        } catch (err) {
+          addToast('Detection Failed', 'Please enter your address details manually.', 'error');
+        } finally {
+          setIsDetecting(false);
+        }
+      },
+      () => {
+        setIsDetecting(false);
+        addToast('Permission Denied', 'Please allow GPS location or enter details manually.', 'info');
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
   };
 
   const handleAddAddressSubmit = (e: React.FormEvent) => {
@@ -160,7 +218,7 @@ export const CustomerProfilePage: React.FC = () => {
 
                     <button
                       onClick={() => deleteLocation(loc.id)}
-                      className="p-1 text-neutral-400 hover:text-rose-600 rounded-lg"
+                      className="p-1 text-neutral-400 hover:text-rose-600 rounded-lg cursor-pointer"
                       title="Delete Address"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -179,7 +237,7 @@ export const CustomerProfilePage: React.FC = () => {
                       setCurrentLocation(loc);
                       addToast('Default Location Set', `Set ${loc.label} as active delivery address.`, 'info');
                     }}
-                    className="w-full py-2 bg-neutral-50 border border-neutral-200 hover:border-black text-black text-xs font-bold rounded-xl transition-all"
+                    className="w-full py-2 bg-neutral-50 border border-neutral-200 hover:border-black text-black text-xs font-bold rounded-xl transition-all cursor-pointer"
                   >
                     Set as Active Delivery Location
                   </button>
@@ -258,7 +316,7 @@ export const CustomerProfilePage: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Add New Address Modal */}
+      {/* Add New Address Modal with Detect Location Option */}
       <AnimatePresence>
         {showAddAddressModal && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -269,9 +327,26 @@ export const CustomerProfilePage: React.FC = () => {
               className="bg-white border border-neutral-200 rounded-3xl max-w-md w-full p-6 shadow-modal space-y-6 text-left"
             >
               <div className="flex items-center justify-between border-b pb-3">
-                <h3 className="text-lg font-extrabold text-black">Add Saved Address</h3>
+                <h3 className="text-lg font-extrabold text-black">Add Delivery Address</h3>
                 <button onClick={() => setShowAddAddressModal(false)} className="text-neutral-400">
                   <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Detect Location Trigger Bar */}
+              <div className="p-3.5 bg-neutral-50 rounded-2xl border border-neutral-200 flex items-center justify-between gap-3">
+                <div className="text-xs">
+                  <span className="font-extrabold text-black block">📍 Auto-Fill via GPS</span>
+                  <span className="text-[11px] text-neutral-500">Detect current location & fill fields automatically</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAutoDetectLocation}
+                  disabled={isDetecting}
+                  className="px-3 py-2 bg-black text-white text-xs font-extrabold rounded-xl hover:bg-neutral-800 transition-all flex items-center gap-1.5 shadow-subtle cursor-pointer shrink-0"
+                >
+                  <Navigation className={`w-3.5 h-3.5 ${isDetecting ? 'animate-spin' : ''}`} />
+                  <span>{isDetecting ? 'Detecting...' : 'Detect Location'}</span>
                 </button>
               </div>
 
@@ -286,7 +361,7 @@ export const CustomerProfilePage: React.FC = () => {
                         type="button"
                         key={lbl}
                         onClick={() => setNewLabel(lbl)}
-                        className={`flex-1 py-2.5 rounded-2xl border text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 ${
+                        className={`flex-1 py-2.5 rounded-2xl border text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                           newLabel === lbl ? 'bg-black text-white border-black shadow-subtle' : 'bg-neutral-50 text-neutral-600 border-neutral-200'
                         }`}
                       >

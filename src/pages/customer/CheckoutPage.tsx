@@ -1,19 +1,100 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, CreditCard, Smartphone, DollarSign, Check, ShieldCheck, ArrowRight } from 'lucide-react';
+import { MapPin, CreditCard, Smartphone, DollarSign, Check, ShieldCheck, ArrowRight, Navigation, Plus, X, Home, Briefcase } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export const CheckoutPage: React.FC = () => {
-  const { cartItems, locations, currentLocation, setCurrentLocation, createOrder, addToast } = useApp();
+  const { cartItems, locations, addLocation, currentLocation, setCurrentLocation, createOrder, addToast } = useApp();
   const navigate = useNavigate();
 
   const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'Card' | 'COD'>('UPI');
   const [upiId, setUpiId] = useState('user@okaxis');
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // New Address Modal in Checkout
+  const [showAddAddressModal, setShowAddAddressModal] = useState(false);
+  const [newLabel, setNewLabel] = useState<'Home' | 'Work' | 'Other'>('Home');
+  const [newAddress, setNewAddress] = useState('');
+  const [newCity, setNewCity] = useState('Hyderabad');
+  const [newPincode, setNewPincode] = useState('500033');
+  const [isDetecting, setIsDetecting] = useState(false);
+
   const subtotal = cartItems.reduce((acc, i) => acc + i.unitPrice * i.quantity, 0);
   const deliveryFee = subtotal > 35 ? 0 : 3.50;
   const grandTotal = subtotal + deliveryFee;
+
+  // Auto-Detect GPS Location for Checkout Form
+  const handleAutoDetectLocation = () => {
+    if (!('geolocation' in navigator)) {
+      addToast('GPS Error', 'Geolocation is not supported by your browser.', 'error');
+      return;
+    }
+
+    setIsDetecting(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`
+          );
+          const data = await res.json();
+          const addr = data.address || {};
+
+          const detectedCity =
+            addr.city ||
+            addr.town ||
+            addr.village ||
+            addr.municipality ||
+            addr.suburb ||
+            addr.district ||
+            'Hyderabad';
+
+          const detectedPincode = addr.postcode || '500001';
+
+          const detectedStreet = [
+            addr.road,
+            addr.suburb,
+            addr.neighbourhood,
+            addr.residential,
+          ]
+            .filter(Boolean)
+            .join(', ') || data.display_name?.split(',').slice(0, 2).join(',') || 'Current Location';
+
+          setNewAddress(detectedStreet);
+          setNewCity(detectedCity);
+          setNewPincode(detectedPincode);
+
+          addToast('Location Detected!', `Auto-filled details for ${detectedCity}, ${detectedPincode}.`, 'success');
+        } catch (err) {
+          addToast('Detection Failed', 'Please enter your address details manually.', 'error');
+        } finally {
+          setIsDetecting(false);
+        }
+      },
+      () => {
+        setIsDetecting(false);
+        addToast('Permission Denied', 'Please allow GPS location or enter details manually.', 'info');
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  };
+
+  const handleAddAddressSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAddress.trim() || !newCity.trim() || !newPincode.trim()) return;
+
+    addLocation({
+      label: newLabel,
+      address: newAddress,
+      city: newCity,
+      pincode: newPincode,
+    });
+
+    setShowAddAddressModal(false);
+    setNewAddress('');
+  };
 
   const handlePlaceOrder = (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,10 +126,21 @@ export const CheckoutPage: React.FC = () => {
           
           {/* Section 1: Address Selector */}
           <div className="p-6 rounded-3xl border border-neutral-200 bg-white space-y-4 shadow-subtle">
-            <h3 className="text-base font-extrabold text-black flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-black" />
-              <span>1. Delivery Address</span>
-            </h3>
+            <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
+              <h3 className="text-base font-extrabold text-black flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-black" />
+                <span>1. Delivery Address</span>
+              </h3>
+
+              <button
+                type="button"
+                onClick={() => setShowAddAddressModal(true)}
+                className="px-3 py-1.5 bg-black text-white text-xs font-bold rounded-xl flex items-center gap-1 shadow-subtle cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add / Detect Address</span>
+              </button>
+            </div>
 
             <div className="space-y-3">
               {locations.map((loc) => {
@@ -94,7 +186,7 @@ export const CheckoutPage: React.FC = () => {
                   key={pm.id}
                   type="button"
                   onClick={() => setPaymentMethod(pm.id as any)}
-                  className={`p-3.5 rounded-2xl border text-xs font-bold transition-all flex flex-col items-center gap-1.5 ${
+                  className={`p-3.5 rounded-2xl border text-xs font-bold transition-all flex flex-col items-center gap-1.5 cursor-pointer ${
                     paymentMethod === pm.id ? 'bg-black text-white border-black shadow-subtle' : 'bg-neutral-50 text-black border-neutral-200 hover:border-black'
                   }`}
                 >
@@ -149,7 +241,7 @@ export const CheckoutPage: React.FC = () => {
             <button
               type="submit"
               disabled={isProcessing}
-              className="w-full py-4 bg-black text-white text-xs font-extrabold rounded-2xl hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 shadow-subtle"
+              className="w-full py-4 bg-black text-white text-xs font-extrabold rounded-2xl hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 shadow-subtle cursor-pointer"
             >
               {isProcessing ? (
                 <span>Processing Order...</span>
@@ -169,6 +261,109 @@ export const CheckoutPage: React.FC = () => {
         </div>
 
       </form>
+
+      {/* Add New Address Modal with GPS Detect Option */}
+      <AnimatePresence>
+        {showAddAddressModal && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white border border-neutral-200 rounded-3xl max-w-md w-full p-6 shadow-modal space-y-6 text-left"
+            >
+              <div className="flex items-center justify-between border-b pb-3">
+                <h3 className="text-lg font-extrabold text-black">Add Delivery Address</h3>
+                <button onClick={() => setShowAddAddressModal(false)} className="text-neutral-400">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Detect Location Trigger Bar */}
+              <div className="p-3.5 bg-neutral-50 rounded-2xl border border-neutral-200 flex items-center justify-between gap-3">
+                <div className="text-xs">
+                  <span className="font-extrabold text-black block">📍 Auto-Fill via GPS</span>
+                  <span className="text-[11px] text-neutral-500">Detect current location & fill fields automatically</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAutoDetectLocation}
+                  disabled={isDetecting}
+                  className="px-3 py-2 bg-black text-white text-xs font-extrabold rounded-xl hover:bg-neutral-800 transition-all flex items-center gap-1.5 shadow-subtle cursor-pointer shrink-0"
+                >
+                  <Navigation className={`w-3.5 h-3.5 ${isDetecting ? 'animate-spin' : ''}`} />
+                  <span>{isDetecting ? 'Detecting...' : 'Detect Location'}</span>
+                </button>
+              </div>
+
+              <form onSubmit={handleAddAddressSubmit} className="space-y-4 text-xs font-bold">
+                
+                {/* Address Label Pills */}
+                <div>
+                  <label className="block text-neutral-500 mb-1">Address Label</label>
+                  <div className="flex gap-2">
+                    {(['Home', 'Work', 'Other'] as const).map((lbl) => (
+                      <button
+                        type="button"
+                        key={lbl}
+                        onClick={() => setNewLabel(lbl)}
+                        className={`flex-1 py-2.5 rounded-2xl border text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                          newLabel === lbl ? 'bg-black text-white border-black shadow-subtle' : 'bg-neutral-50 text-neutral-600 border-neutral-200'
+                        }`}
+                      >
+                        {lbl === 'Home' ? <Home className="w-3.5 h-3.5" /> : lbl === 'Work' ? <Briefcase className="w-3.5 h-3.5" /> : <MapPin className="w-3.5 h-3.5" />}
+                        <span>{lbl}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-neutral-500 mb-1">Street Address / Flat / Door No.</label>
+                  <input
+                    type="text"
+                    required
+                    value={newAddress}
+                    onChange={(e) => setNewAddress(e.target.value)}
+                    placeholder="e.g. Flat 302, Royal Palms, Road No 10"
+                    className="w-full p-3 rounded-2xl border border-neutral-300"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-neutral-500 mb-1">City</label>
+                    <input
+                      type="text"
+                      required
+                      value={newCity}
+                      onChange={(e) => setNewCity(e.target.value)}
+                      placeholder="e.g. Hyderabad"
+                      className="w-full p-3 rounded-2xl border border-neutral-300"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-neutral-500 mb-1">Pincode</label>
+                    <input
+                      type="text"
+                      required
+                      value={newPincode}
+                      onChange={(e) => setNewPincode(e.target.value)}
+                      placeholder="500033"
+                      className="w-full p-3 rounded-2xl border border-neutral-300 font-mono"
+                    />
+                  </div>
+                </div>
+
+                <button type="submit" className="w-full py-3.5 bg-black text-white text-xs font-extrabold rounded-2xl shadow-subtle cursor-pointer">
+                  Save Delivery Address
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );
