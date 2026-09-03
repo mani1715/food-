@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { ProductCard } from '../../components/ProductCard';
+import { BuyAlsoSection } from '../../components/BuyAlsoSection';
 import { Heart, Plus, Minus, Star, ShieldCheck, ShoppingBag, ArrowLeft, Check, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -39,7 +40,7 @@ export const ProductDetailsPage: React.FC = () => {
       <div className="flex items-center justify-between">
         <button
           onClick={() => navigate('/products')}
-          className="inline-flex items-center gap-2 text-xs font-bold text-neutral-600 hover:text-black transition-colors"
+          className="inline-flex items-center gap-2 text-xs font-bold text-neutral-600 hover:text-black transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Products</span>
@@ -164,7 +165,7 @@ export const ProductDetailsPage: React.FC = () => {
             <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={() => addToCart(product, selectedWeight, quantity)}
-                className="flex-1 py-4 bg-black text-white text-xs font-extrabold rounded-2xl hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 shadow-subtle"
+                className="flex-1 py-4 bg-black text-white text-xs font-extrabold rounded-2xl hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 shadow-subtle cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>Add To Cart • ${(currentPrice * quantity).toFixed(2)}</span>
@@ -172,14 +173,14 @@ export const ProductDetailsPage: React.FC = () => {
 
               <button
                 onClick={handleBuyNow}
-                className="flex-1 py-4 bg-white border-2 border-black text-black text-xs font-extrabold rounded-2xl hover:bg-neutral-100 transition-all"
+                className="flex-1 py-4 bg-white border-2 border-black text-black text-xs font-extrabold rounded-2xl hover:bg-neutral-100 transition-all cursor-pointer"
               >
                 Buy Now
               </button>
 
               <button
                 onClick={() => toggleWishlist(product.id)}
-                className={`p-4 rounded-2xl border transition-all ${
+                className={`p-4 rounded-2xl border transition-all cursor-pointer ${
                   isWishlisted ? 'bg-black text-white border-black' : 'border-neutral-200 text-black hover:border-black'
                 }`}
                 title="Wishlist"
@@ -197,6 +198,9 @@ export const ProductDetailsPage: React.FC = () => {
         </div>
 
       </div>
+
+      {/* Buy These Products Also Section (Frequently Bought Together Bundle) */}
+      <BuyAlsoSection currentProduct={product} />
 
       {/* Related Products */}
       {relatedProducts.length > 0 && (
@@ -239,7 +243,7 @@ export const ProductDetailsPage: React.FC = () => {
         </div>
         <button
           onClick={() => addToCart(product, selectedWeight, quantity)}
-          className="px-6 py-3 bg-black text-white text-xs font-bold rounded-xl shadow-subtle flex items-center gap-1.5"
+          className="px-6 py-3 bg-black text-white text-xs font-bold rounded-xl shadow-subtle flex items-center gap-1.5 cursor-pointer"
         >
           <ShoppingBag className="w-4 h-4" />
           <span>Add To Cart</span>
