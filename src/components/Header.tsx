@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Heart, ShoppingBag, User, MapPin } from 'lucide-react';
+import { Search, Heart, ShoppingBag, User } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 
@@ -10,7 +10,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { cartItems, wishlistProductIds, currentLocation } = useApp();
+  const { cartItems, wishlistProductIds } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
 
   const cartCount = cartItems.reduce((acc, i) => acc + i.quantity, 0);
@@ -68,12 +68,6 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
         {/* Right Nav Actions */}
         <div className="flex items-center gap-3 shrink-0">
           
-          {/* Location Indicator */}
-          <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-neutral-200 text-xs text-neutral-600 font-medium">
-            <MapPin className="w-3.5 h-3.5 text-black" />
-            <span className="font-bold text-black">{currentLocation.city}</span>
-          </div>
-
           {/* Search Trigger Button */}
           <button
             onClick={() => onOpenSearch ? onOpenSearch() : navigate('/products')}

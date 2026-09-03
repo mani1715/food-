@@ -6,7 +6,6 @@ import { AppProvider, useApp } from './context/AppContext';
 import { AnnouncementBar } from './components/AnnouncementBar';
 import { Header } from './components/Header';
 import { SecondaryCategoryBar } from './components/SecondaryCategoryBar';
-import { LocationDetectorBar } from './components/LocationDetectorBar';
 import { Footer } from './components/Footer';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { Toast } from './components/Toast';
@@ -42,9 +41,6 @@ const MainLayout: React.FC = () => {
 
       {/* 3. Secondary Category Bar */}
       <SecondaryCategoryBar />
-
-      {/* 4. Top Location Detector & City Switcher Bar */}
-      <LocationDetectorBar />
 
       {/* Main Content Router */}
       <main>
