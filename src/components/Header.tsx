@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Heart, ShoppingBag, User, MapPin } from 'lucide-react';
+import { Search, Heart, ShoppingBag, User, MapPin, Sparkles } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 
@@ -26,6 +26,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
 
   const navLinks = [
     { label: 'Home', path: '/' },
+    { label: 'New Arrivals ✨', path: '/products?filter=new-arrivals', isSpecial: true },
     { label: 'Categories', path: '/categories' },
     { label: 'Pickles', path: '/products?category=Pickles' },
     { label: 'Sweets', path: '/products?category=Sweets' },
@@ -34,7 +35,6 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
     { label: 'Veg', path: '/products?dietary=Veg' },
     { label: 'Non-Veg', path: '/products?dietary=Non-Veg' },
     { label: 'Gift Boxes', path: '/products?category=Gift%20Boxes' },
-    { label: 'Festival Specials', path: '/products?category=Gift%20Boxes' },
   ];
 
   return (
@@ -78,7 +78,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
           {/* Search Trigger Button */}
           <button
             onClick={() => onOpenSearch ? onOpenSearch() : navigate('/products')}
-            className="p-2.5 rounded-2xl border border-neutral-200 hover:border-black transition-all text-black lg:hidden"
+            className="p-2.5 rounded-2xl border border-neutral-200 hover:border-black transition-all text-black lg:hidden cursor-pointer"
             title="Search"
           >
             <Search className="w-5 h-5" />
@@ -87,7 +87,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
           {/* Wishlist Icon */}
           <button
             onClick={() => navigate('/wishlist')}
-            className="relative p-2.5 rounded-2xl border border-neutral-200 hover:border-black transition-all group"
+            className="relative p-2.5 rounded-2xl border border-neutral-200 hover:border-black transition-all group cursor-pointer"
             title="Wishlist"
           >
             <Heart className="w-5 h-5 text-black group-hover:scale-110 transition-transform" />
@@ -101,7 +101,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
           {/* Cart Icon */}
           <button
             onClick={() => navigate('/cart')}
-            className="relative p-2.5 rounded-2xl bg-black text-white hover:bg-neutral-800 transition-all flex items-center gap-2 px-4 shadow-subtle"
+            className="relative p-2.5 rounded-2xl bg-black text-white hover:bg-neutral-800 transition-all flex items-center gap-2 px-4 shadow-subtle cursor-pointer"
           >
             <ShoppingBag className="w-5 h-5" />
             <span className="text-xs font-bold hidden sm:inline">Cart</span>
@@ -115,7 +115,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
           {/* Profile Icon */}
           <button
             onClick={() => navigate('/profile')}
-            className="p-2.5 rounded-2xl border border-neutral-200 hover:border-black transition-all"
+            className="p-2.5 rounded-2xl border border-neutral-200 hover:border-black transition-all cursor-pointer"
             title="Account Profile"
           >
             <User className="w-5 h-5 text-black" />
@@ -133,9 +133,11 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
               <button
                 key={link.label}
                 onClick={() => navigate(link.path)}
-                className={`px-3.5 py-1.5 rounded-xl transition-all whitespace-nowrap ${
+                className={`px-3.5 py-1.5 rounded-xl transition-all whitespace-nowrap cursor-pointer ${
                   isActive
                     ? 'bg-black text-white shadow-subtle'
+                    : link.isSpecial
+                    ? 'bg-neutral-900 text-white font-extrabold hover:bg-black'
                     : 'hover:text-black hover:bg-neutral-100'
                 }`}
               >

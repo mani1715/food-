@@ -11,6 +11,7 @@ import { Footer } from './components/Footer';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { Toast } from './components/Toast';
 import { SearchModal } from './components/SearchModal';
+import { WelcomeOfferNotificationModal } from './components/modals/WelcomeOfferNotificationModal';
 
 // Pages
 import { HomePage } from './pages/customer/HomePage';
@@ -68,6 +69,9 @@ const MainLayout: React.FC = () => {
 
       {/* Mobile Bottom Navigation Bar (Home, Categories, Wishlist, Cart, Profile) */}
       <MobileBottomNav />
+
+      {/* Welcome Specials & New Arrivals Notification Popup */}
+      <WelcomeOfferNotificationModal />
 
       {/* Search Experience Modal */}
       <SearchModal

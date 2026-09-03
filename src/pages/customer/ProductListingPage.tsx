@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { ProductCard } from '../../components/ProductCard';
 import { useSearchParams } from 'react-router-dom';
-import { Filter, SlidersHorizontal, Search, X } from 'lucide-react';
+import { Filter, SlidersHorizontal, Search, X, Sparkles } from 'lucide-react';
 import { EmptyState } from '../../components/EmptyState';
 
 export const ProductListingPage: React.FC = () => {
@@ -12,19 +12,25 @@ export const ProductListingPage: React.FC = () => {
   const categoryParam = searchParams.get('category') || 'All';
   const dietaryParam = searchParams.get('dietary') || 'All';
   const queryParam = searchParams.get('search') || '';
+  const filterParam = searchParams.get('filter') || '';
 
   const [selectedCategory, setSelectedCategory] = useState<string>(categoryParam);
   const [selectedDietary, setSelectedDietary] = useState<string>(dietaryParam);
   const [searchQuery, setSearchQuery] = useState<string>(queryParam);
   const [maxPrice, setMaxPrice] = useState<number>(60);
   const [minRating, setMinRating] = useState<number>(0);
-  const [sortBy, setSortBy] = useState<'popular' | 'newest' | 'price-low' | 'price-high'>('popular');
+  const [sortBy, setSortBy] = useState<'popular' | 'newest' | 'price-low' | 'price-high'>(
+    filterParam === 'new-arrivals' ? 'newest' : 'popular'
+  );
   const [showMobileFilter, setShowMobileFilter] = useState(false);
 
   useEffect(() => {
     setSelectedCategory(searchParams.get('category') || 'All');
     setSelectedDietary(searchParams.get('dietary') || 'All');
     setSearchQuery(searchParams.get('search') || '');
+    if (searchParams.get('filter') === 'new-arrivals') {
+      setSortBy('newest');
+    }
   }, [searchParams]);
 
   const filteredProducts = useMemo(() => {
@@ -44,10 +50,13 @@ export const ProductListingPage: React.FC = () => {
           p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
           p.category.toLowerCase().includes(searchQuery.toLowerCase());
 
+        const matchesFilter =
+          filterParam !== 'new-arrivals' || p.isNewArrival || p.isBestSeller;
+
         const matchesPrice = p.price <= maxPrice;
         const matchesRating = p.rating >= minRating;
 
-        return matchesCategory && matchesDietary && matchesQuery && matchesPrice && matchesRating;
+        return matchesCategory && matchesDietary && matchesQuery && matchesFilter && matchesPrice && matchesRating;
       })
       .sort((a, b) => {
         if (sortBy === 'newest') return (b.isNewArrival ? 1 : 0) - (a.isNewArrival ? 1 : 0);
@@ -55,7 +64,7 @@ export const ProductListingPage: React.FC = () => {
         if (sortBy === 'price-high') return b.price - a.price;
         return b.reviewsCount - a.reviewsCount; // popular
       });
-  }, [products, selectedCategory, selectedDietary, searchQuery, maxPrice, minRating, sortBy]);
+  }, [products, selectedCategory, selectedDietary, searchQuery, filterParam, maxPrice, minRating, sortBy]);
 
   const resetFilters = () => {
     setSelectedCategory('All');
@@ -73,9 +82,16 @@ export const ProductListingPage: React.FC = () => {
       {/* Title & Page Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-neutral-200 pb-6">
         <div>
-          <span className="text-xs font-bold uppercase tracking-widest text-neutral-400">Products Catalog</span>
+          <span className="text-xs font-bold uppercase tracking-widest text-neutral-400 flex items-center gap-1">
+            {filterParam === 'new-arrivals' && <Sparkles className="w-3.5 h-3.5 text-black" />}
+            <span>{filterParam === 'new-arrivals' ? 'Fresh Batch Additions' : 'Products Catalog'}</span>
+          </span>
           <h1 className="text-3xl font-extrabold text-black tracking-tight mt-1">
-            {selectedCategory === 'All' ? 'All Homemade Products' : `${selectedCategory} Collection`}
+            {filterParam === 'new-arrivals'
+              ? 'New Product Arrivals ✨'
+              : selectedCategory === 'All'
+              ? 'All Homemade Products'
+              : `${selectedCategory} Collection`}
           </h1>
           <p className="text-xs text-neutral-500 mt-1">Showing {filteredProducts.length} handcrafted products</p>
         </div>
@@ -113,7 +129,7 @@ export const ProductListingPage: React.FC = () => {
           <button
             key={diet}
             onClick={() => setSelectedDietary(diet)}
-            className={`px-4 py-2 rounded-2xl border text-xs font-bold transition-all flex items-center gap-1.5 ${
+            className={`px-4 py-2 rounded-2xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
               selectedDietary === diet
                 ? 'bg-black text-white border-black shadow-subtle'
                 : 'bg-neutral-50 text-neutral-700 border-neutral-200 hover:border-black'
@@ -136,7 +152,7 @@ export const ProductListingPage: React.FC = () => {
               <Filter className="w-4 h-4" />
               <span>Filters</span>
             </h3>
-            <button onClick={resetFilters} className="text-[11px] font-bold text-neutral-400 hover:text-black underline">
+            <button onClick={resetFilters} className="text-[11px] font-bold text-neutral-400 hover:text-black underline cursor-pointer">
               Reset
             </button>
           </div>
@@ -162,7 +178,7 @@ export const ProductListingPage: React.FC = () => {
             <div className="space-y-1 max-h-48 overflow-y-auto pr-1 text-xs">
               <button
                 onClick={() => setSelectedCategory('All')}
-                className={`w-full text-left py-1.5 px-3 rounded-xl font-bold transition-all ${
+                className={`w-full text-left py-1.5 px-3 rounded-xl font-bold transition-all cursor-pointer ${
                   selectedCategory === 'All' ? 'bg-black text-white' : 'text-neutral-600 hover:bg-neutral-200'
                 }`}
               >
@@ -172,7 +188,7 @@ export const ProductListingPage: React.FC = () => {
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.name)}
-                  className={`w-full text-left py-1.5 px-3 rounded-xl font-bold transition-all ${
+                  className={`w-full text-left py-1.5 px-3 rounded-xl font-bold transition-all cursor-pointer ${
                     selectedCategory.toLowerCase() === cat.name.toLowerCase() ? 'bg-black text-white' : 'text-neutral-600 hover:bg-neutral-200'
                   }`}
                 >

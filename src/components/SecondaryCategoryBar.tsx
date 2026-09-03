@@ -7,9 +7,11 @@ export const SecondaryCategoryBar: React.FC = () => {
 
   const currentCategory = searchParams.get('category') || 'All';
   const currentDietary = searchParams.get('dietary') || 'All';
+  const currentFilter = searchParams.get('filter') || '';
 
   const categoryChips = [
     { label: 'All', path: '/products' },
+    { label: 'New Arrivals ✨', path: '/products?filter=new-arrivals', isFilter: true, value: 'new-arrivals' },
     { label: 'Veg', path: '/products?dietary=Veg', isDietary: true, value: 'Veg' },
     { label: 'Non-Veg', path: '/products?dietary=Non-Veg', isDietary: true, value: 'Non-Veg' },
     { label: 'Pickles', path: '/products?category=Pickles', value: 'Pickles' },
@@ -17,7 +19,6 @@ export const SecondaryCategoryBar: React.FC = () => {
     { label: 'Snacks', path: '/products?category=Snacks', value: 'Snacks' },
     { label: 'Bakery', path: '/products?category=Bakery', value: 'Bakery' },
     { label: 'Gift Boxes', path: '/products?category=Gift%20Boxes', value: 'Gift Boxes' },
-    { label: 'Festival Specials', path: '/products?category=Gift%20Boxes', value: 'Gift Boxes' },
   ];
 
   return (
@@ -29,8 +30,10 @@ export const SecondaryCategoryBar: React.FC = () => {
 
         {categoryChips.map((chip, idx) => {
           let isSelected = false;
-          if (chip.label === 'All') {
-            isSelected = currentCategory === 'All' && currentDietary === 'All';
+          if (chip.isFilter) {
+            isSelected = currentFilter === chip.value;
+          } else if (chip.label === 'All') {
+            isSelected = currentCategory === 'All' && currentDietary === 'All' && !currentFilter;
           } else if (chip.isDietary) {
             isSelected = currentDietary.toLowerCase() === chip.value?.toLowerCase();
           } else {
@@ -41,9 +44,11 @@ export const SecondaryCategoryBar: React.FC = () => {
             <button
               key={`${chip.label}-${idx}`}
               onClick={() => navigate(chip.path)}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap border shrink-0 ${
+              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap border shrink-0 cursor-pointer ${
                 isSelected
                   ? 'bg-black text-white border-black shadow-subtle scale-105'
+                  : chip.isFilter
+                  ? 'bg-neutral-900 text-white border-black font-extrabold hover:bg-black'
                   : 'bg-white text-neutral-700 border-neutral-200 hover:border-black hover:bg-neutral-100'
               }`}
             >
