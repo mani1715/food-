@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Product } from '../types';
 import { useApp } from '../context/AppContext';
-import { Heart, Star, Plus, Zap } from 'lucide-react';
+import { Heart, Star, Plus, Zap, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface ProductCardProps {
@@ -13,8 +13,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const navigate = useNavigate();
 
   const isWishlisted = wishlistProductIds.includes(product.id);
-  const selectedWeight = product.defaultWeight || product.weightOptions[0]?.weight || '500g';
-  const selectedOption = product.weightOptions.find((w) => w.weight === selectedWeight) || product.weightOptions[0];
+
+  // Selected weight tier state (defaults to 500g or first weight option)
+  const [selectedWeight, setSelectedWeight] = useState(
+    product.defaultWeight || product.weightOptions[0]?.weight || '500g'
+  );
+
+  const selectedOption =
+    product.weightOptions.find((w) => w.weight === selectedWeight) || product.weightOptions[0];
   const currentPrice = selectedOption ? selectedOption.price : product.price;
 
   const handleCardClick = () => {
@@ -94,10 +100,29 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           <p className="text-xs text-neutral-500 line-clamp-1 mt-0.5">{product.description}</p>
         </div>
 
+        {/* Gram Package Weight Selector (e.g. 250g, 400g, 500g, 1kg) */}
+        <div className="space-y-1">
+          <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">Package Weight & Price</span>
+          <div className="relative">
+            <select
+              value={selectedWeight}
+              onChange={(e) => setSelectedWeight(e.target.value)}
+              className="w-full py-1.5 pl-2.5 pr-7 rounded-xl border border-neutral-300 bg-neutral-50 text-xs font-extrabold text-black focus:outline-none focus:border-black appearance-none cursor-pointer"
+            >
+              {product.weightOptions.map((opt) => (
+                <option key={opt.weight} value={opt.weight}>
+                  {opt.weight} — ${opt.price.toFixed(2)}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="w-3.5 h-3.5 text-neutral-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+        </div>
+
         {/* Price & Action Buttons (Quick Add + Buy Now) */}
         <div className="pt-3 border-t border-neutral-100 flex items-center justify-between gap-1.5">
           <div>
-            <span className="text-[9px] text-neutral-400 font-bold block uppercase">Price ({selectedWeight})</span>
+            <span className="text-[9px] text-neutral-400 font-bold block uppercase">{selectedWeight} Price</span>
             <span className="text-sm font-extrabold font-mono text-black">${currentPrice.toFixed(2)}</span>
           </div>
 

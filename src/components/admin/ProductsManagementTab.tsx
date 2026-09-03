@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Product, WeightOption } from '../../types';
-import { Plus, Edit2, Trash2, Search, X, Check, Star, Tag } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, X, Check, Star, Tag, Scale } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const ProductsManagementTab: React.FC = () => {
@@ -20,6 +20,7 @@ export const ProductsManagementTab: React.FC = () => {
   const [newIsVeg, setNewIsVeg] = useState(true);
   const [newWeightOptions, setNewWeightOptions] = useState<WeightOption[]>([
     { weight: '250g', price: 5.99 },
+    { weight: '400g', price: 8.49 },
     { weight: '500g', price: 9.99 },
     { weight: '1kg', price: 17.99 },
   ]);
@@ -29,6 +30,29 @@ export const ProductsManagementTab: React.FC = () => {
     const matchesSearch = !searchQuery.trim() || p.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCat && matchesSearch;
   });
+
+  // Weight Option Helpers for Add Form
+  const handleAddWeightRow = (setWeightOpts: React.Dispatch<React.SetStateAction<WeightOption[]>>) => {
+    setWeightOpts((prev) => [...prev, { weight: '300g', price: 6.99 }]);
+  };
+
+  const handleUpdateWeightRow = (
+    setWeightOpts: React.Dispatch<React.SetStateAction<WeightOption[]>>,
+    index: number,
+    field: 'weight' | 'price',
+    value: any
+  ) => {
+    setWeightOpts((prev) =>
+      prev.map((opt, i) => (i === index ? { ...opt, [field]: value } : opt))
+    );
+  };
+
+  const handleDeleteWeightRow = (
+    setWeightOpts: React.Dispatch<React.SetStateAction<WeightOption[]>>,
+    index: number
+  ) => {
+    setWeightOpts((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,6 +90,7 @@ export const ProductsManagementTab: React.FC = () => {
       description: editingProduct.description,
       isVeg: editingProduct.isVeg,
       weightOptions: editingProduct.weightOptions,
+      price: editingProduct.weightOptions[0]?.price || editingProduct.price,
       inventoryCount: editingProduct.inventoryCount,
       outOfStock: editingProduct.outOfStock,
     });
@@ -79,13 +104,13 @@ export const ProductsManagementTab: React.FC = () => {
       {/* Top Action Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-200 pb-4">
         <div>
-          <h2 className="text-xl font-extrabold text-black tracking-tight">Product Catalog Management</h2>
-          <p className="text-xs text-neutral-500">Manage catalog products, weights, prices & inventory counts.</p>
+          <h2 className="text-xl font-extrabold text-black tracking-tight">Product Catalog & Weight Pricing</h2>
+          <p className="text-xs text-neutral-500">Configure products, custom gram weight tiers (250g, 400g, 500g, 1kg) and prices.</p>
         </div>
 
         <button
           onClick={() => setShowAddModal(true)}
-          className="px-4 py-2.5 bg-black text-white text-xs font-bold rounded-2xl hover:bg-neutral-800 transition-all flex items-center gap-2 shadow-subtle shrink-0"
+          className="px-4 py-2.5 bg-black text-white text-xs font-bold rounded-2xl hover:bg-neutral-800 transition-all flex items-center gap-2 shadow-subtle shrink-0 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>Add New Product</span>
@@ -108,7 +133,7 @@ export const ProductsManagementTab: React.FC = () => {
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto">
           <button
             onClick={() => setCategoryFilter('All')}
-            className={`px-3 py-2 rounded-xl text-xs font-bold border whitespace-nowrap ${
+            className={`px-3 py-2 rounded-xl text-xs font-bold border whitespace-nowrap cursor-pointer ${
               categoryFilter === 'All' ? 'bg-black text-white border-black' : 'bg-white text-neutral-600 border-neutral-200'
             }`}
           >
@@ -118,7 +143,7 @@ export const ProductsManagementTab: React.FC = () => {
             <button
               key={c.id}
               onClick={() => setCategoryFilter(c.name)}
-              className={`px-3 py-2 rounded-xl text-xs font-bold border whitespace-nowrap ${
+              className={`px-3 py-2 rounded-xl text-xs font-bold border whitespace-nowrap cursor-pointer ${
                 categoryFilter === c.name ? 'bg-black text-white border-black' : 'bg-white text-neutral-600 border-neutral-200'
               }`}
             >
@@ -137,7 +162,7 @@ export const ProductsManagementTab: React.FC = () => {
                 <th className="py-3.5 px-4">Product Info</th>
                 <th className="py-3.5 px-4">Category</th>
                 <th className="py-3.5 px-4">Dietary</th>
-                <th className="py-3.5 px-4">Weight & Prices</th>
+                <th className="py-3.5 px-4">Gram Weights & Cost</th>
                 <th className="py-3.5 px-4">Stock</th>
                 <th className="py-3.5 px-4 text-right">Actions</th>
               </tr>
@@ -197,7 +222,7 @@ export const ProductsManagementTab: React.FC = () => {
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => toggleProductBestSeller(prod.id)}
-                        className={`p-2 rounded-xl border transition-all ${
+                        className={`p-2 rounded-xl border transition-all cursor-pointer ${
                           prod.isBestSeller ? 'bg-black text-white border-black' : 'border-neutral-200 text-neutral-400 hover:text-black'
                         }`}
                         title="Toggle Best Seller"
@@ -206,7 +231,7 @@ export const ProductsManagementTab: React.FC = () => {
                       </button>
                       <button
                         onClick={() => toggleProductFestival(prod.id)}
-                        className={`p-2 rounded-xl border transition-all ${
+                        className={`p-2 rounded-xl border transition-all cursor-pointer ${
                           prod.isFestival ? 'bg-black text-white border-black' : 'border-neutral-200 text-neutral-400 hover:text-black'
                         }`}
                         title="Toggle Festival Special"
@@ -215,14 +240,14 @@ export const ProductsManagementTab: React.FC = () => {
                       </button>
                       <button
                         onClick={() => setEditingProduct(prod)}
-                        className="p-2 rounded-xl border border-neutral-200 hover:border-black text-black"
-                        title="Edit Product"
+                        className="p-2 rounded-xl border border-neutral-200 hover:border-black text-black cursor-pointer"
+                        title="Edit Product & Weights"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => deleteProduct(prod.id)}
-                        className="p-2 rounded-xl border border-neutral-200 hover:border-red-600 hover:text-red-600 text-neutral-400"
+                        className="p-2 rounded-xl border border-neutral-200 hover:border-red-600 hover:text-red-600 text-neutral-400 cursor-pointer"
                         title="Delete Product"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -240,9 +265,9 @@ export const ProductsManagementTab: React.FC = () => {
       {/* Add Product Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-modal">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl max-w-xl w-full p-6 space-y-4 shadow-modal text-left max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b pb-3">
-              <h3 className="text-base font-extrabold text-black">Create New Product</h3>
+              <h3 className="text-base font-extrabold text-black">Create Product & Set Gram Pricing</h3>
               <button onClick={() => setShowAddModal(false)}><X className="w-5 h-5 text-neutral-400" /></button>
             </div>
 
@@ -269,12 +294,61 @@ export const ProductsManagementTab: React.FC = () => {
                 </div>
               </div>
 
+              {/* Weight & Price Tier Editor */}
+              <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-extrabold text-black flex items-center gap-1.5">
+                    <Scale className="w-4 h-4 text-black" />
+                    <span>Package Gram Weights & Cost Tiers</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleAddWeightRow(setNewWeightOptions)}
+                    className="px-2.5 py-1 bg-black text-white text-[10px] font-bold rounded-xl flex items-center gap-1"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Add Gram Tier</span>
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {newWeightOptions.map((opt, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={opt.weight}
+                        onChange={(e) => handleUpdateWeightRow(setNewWeightOptions, idx, 'weight', e.target.value)}
+                        placeholder="e.g. 500g, 400g, 250g, 1kg"
+                        className="w-1/2 p-2.5 rounded-xl border border-neutral-300 bg-white text-xs font-bold"
+                      />
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={opt.price}
+                        onChange={(e) => handleUpdateWeightRow(setNewWeightOptions, idx, 'price', Number(e.target.value))}
+                        placeholder="Cost ($)"
+                        className="w-1/2 p-2.5 rounded-xl border border-neutral-300 bg-white text-xs font-mono font-bold"
+                      />
+                      {newWeightOptions.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteWeightRow(setNewWeightOptions, idx)}
+                          className="p-2 text-neutral-400 hover:text-rose-600"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <div>
                 <label className="block text-neutral-500 mb-1">Description</label>
                 <textarea rows={2} value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Brief product description..." className="w-full p-3 rounded-2xl border border-neutral-300" />
               </div>
 
-              <button type="submit" className="w-full py-3.5 bg-black text-white text-xs font-extrabold rounded-2xl">
+              <button type="submit" className="w-full py-3.5 bg-black text-white text-xs font-extrabold rounded-2xl cursor-pointer">
                 Create & Publish Product
               </button>
             </form>
@@ -285,9 +359,9 @@ export const ProductsManagementTab: React.FC = () => {
       {/* Edit Product Modal */}
       {editingProduct && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-modal">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl max-w-xl w-full p-6 space-y-4 shadow-modal text-left max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b pb-3">
-              <h3 className="text-base font-extrabold text-black">Edit Product: {editingProduct.name}</h3>
+              <h3 className="text-base font-extrabold text-black">Edit Product & Gram Pricing: {editingProduct.name}</h3>
               <button onClick={() => setEditingProduct(null)}><X className="w-5 h-5 text-neutral-400" /></button>
             </div>
 
@@ -312,8 +386,83 @@ export const ProductsManagementTab: React.FC = () => {
                 </div>
               </div>
 
-              <button type="submit" className="w-full py-3.5 bg-black text-white text-xs font-extrabold rounded-2xl">
-                Save Changes
+              {/* Edit Package Gram Weights & Price Tiers */}
+              <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-extrabold text-black flex items-center gap-1.5">
+                    <Scale className="w-4 h-4 text-black" />
+                    <span>Edit Package Gram Weights & Cost</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingProduct({
+                        ...editingProduct,
+                        weightOptions: [...editingProduct.weightOptions, { weight: '400g', price: 8.49 }],
+                      });
+                    }}
+                    className="px-2.5 py-1 bg-black text-white text-[10px] font-bold rounded-xl flex items-center gap-1"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Add Tier</span>
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {editingProduct.weightOptions.map((opt, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={opt.weight}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEditingProduct({
+                            ...editingProduct,
+                            weightOptions: editingProduct.weightOptions.map((o, i) =>
+                              i === idx ? { ...o, weight: val } : o
+                            ),
+                          });
+                        }}
+                        placeholder="Weight (e.g. 500g, 400g)"
+                        className="w-1/2 p-2.5 rounded-xl border border-neutral-300 bg-white text-xs font-bold"
+                      />
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={opt.price}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          setEditingProduct({
+                            ...editingProduct,
+                            weightOptions: editingProduct.weightOptions.map((o, i) =>
+                              i === idx ? { ...o, price: val } : o
+                            ),
+                          });
+                        }}
+                        placeholder="Cost ($)"
+                        className="w-1/2 p-2.5 rounded-xl border border-neutral-300 bg-white text-xs font-mono font-bold"
+                      />
+                      {editingProduct.weightOptions.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingProduct({
+                              ...editingProduct,
+                              weightOptions: editingProduct.weightOptions.filter((_, i) => i !== idx),
+                            });
+                          }}
+                          className="p-2 text-neutral-400 hover:text-rose-600"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <button type="submit" className="w-full py-3.5 bg-black text-white text-xs font-extrabold rounded-2xl cursor-pointer">
+                Save Changes & Publish
               </button>
             </form>
           </motion.div>
