@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Product, WeightOption } from '../../types';
-import { Plus, Edit2, Trash2, Search, X, Check, Star, Tag, Scale } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Plus, Edit2, Trash2, Search, X, Check, Star, Tag, Scale, Image as ImageIcon } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export const ProductsManagementTab: React.FC = () => {
   const { products, categories, addProduct, updateProduct, deleteProduct, toggleProductBestSeller, toggleProductFestival } = useApp();
@@ -16,7 +16,11 @@ export const ProductsManagementTab: React.FC = () => {
   const [newName, setNewName] = useState('');
   const [newCategory, setNewCategory] = useState('Pickles');
   const [newDescription, setNewDescription] = useState('');
-  const [newImage, setNewImage] = useState('https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=800&auto=format&fit=crop');
+  const [newImageInput, setNewImageInput] = useState('');
+  const [newGallery, setNewGallery] = useState<string[]>([
+    'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=800&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?q=80&w=800&auto=format&fit=crop',
+  ]);
   const [newIsVeg, setNewIsVeg] = useState(true);
   const [newWeightOptions, setNewWeightOptions] = useState<WeightOption[]>([
     { weight: '250g', price: 5.99 },
@@ -25,13 +29,16 @@ export const ProductsManagementTab: React.FC = () => {
     { weight: '1kg', price: 17.99 },
   ]);
 
+  // Gallery URL input for editing product
+  const [editGalleryInput, setEditGalleryInput] = useState('');
+
   const filteredProducts = products.filter((p) => {
     const matchesCat = categoryFilter === 'All' || p.category === categoryFilter;
     const matchesSearch = !searchQuery.trim() || p.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCat && matchesSearch;
   });
 
-  // Weight Option Helpers for Add Form
+  // Weight Option Helpers
   const handleAddWeightRow = (setWeightOpts: React.Dispatch<React.SetStateAction<WeightOption[]>>) => {
     setWeightOpts((prev) => [...prev, { weight: '300g', price: 6.99 }]);
   };
@@ -54,9 +61,12 @@ export const ProductsManagementTab: React.FC = () => {
     setWeightOpts((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // Add Product Submit
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim()) return;
+
+    const primaryImg = newGallery[0] || 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=800&auto=format&fit=crop';
 
     addProduct({
       name: newName,
@@ -64,7 +74,8 @@ export const ProductsManagementTab: React.FC = () => {
       price: newWeightOptions[0]?.price || 9.99,
       rating: 5.0,
       reviewsCount: 1,
-      image: newImage,
+      image: primaryImg,
+      gallery: newGallery,
       description: newDescription || 'Fresh handcrafted homemade food item prepared with traditional ingredients.',
       weightOptions: newWeightOptions,
       defaultWeight: newWeightOptions[0]?.weight || '500g',
@@ -80,14 +91,19 @@ export const ProductsManagementTab: React.FC = () => {
     setNewDescription('');
   };
 
+  // Update Product Submit
   const handleUpdateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingProduct) return;
+
+    const primaryImg = editingProduct.gallery?.[0] || editingProduct.image;
 
     updateProduct(editingProduct.id, {
       name: editingProduct.name,
       category: editingProduct.category,
       description: editingProduct.description,
+      image: primaryImg,
+      gallery: editingProduct.gallery || [primaryImg],
       isVeg: editingProduct.isVeg,
       weightOptions: editingProduct.weightOptions,
       price: editingProduct.weightOptions[0]?.price || editingProduct.price,
@@ -104,8 +120,8 @@ export const ProductsManagementTab: React.FC = () => {
       {/* Top Action Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-200 pb-4">
         <div>
-          <h2 className="text-xl font-extrabold text-black tracking-tight">Product Catalog & Weight Pricing</h2>
-          <p className="text-xs text-neutral-500">Configure products, custom gram weight tiers (250g, 400g, 500g, 1kg) and prices.</p>
+          <h2 className="text-xl font-extrabold text-black tracking-tight">Product Catalog & Multi-Image Gallery</h2>
+          <p className="text-xs text-neutral-500">Configure products, add multiple photos/images, custom gram weights and prices.</p>
         </div>
 
         <button
@@ -159,7 +175,7 @@ export const ProductsManagementTab: React.FC = () => {
           <table className="w-full text-xs text-left">
             <thead className="bg-neutral-50 border-b border-neutral-200 text-neutral-500 font-extrabold uppercase tracking-wider">
               <tr>
-                <th className="py-3.5 px-4">Product Info</th>
+                <th className="py-3.5 px-4">Product Info & Photos</th>
                 <th className="py-3.5 px-4">Category</th>
                 <th className="py-3.5 px-4">Dietary</th>
                 <th className="py-3.5 px-4">Gram Weights & Cost</th>
@@ -168,106 +184,114 @@ export const ProductsManagementTab: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
-              {filteredProducts.map((prod) => (
-                <tr key={prod.id} className="hover:bg-neutral-50/80 transition-colors">
-                  
-                  {/* Product Info */}
-                  <td className="py-3.5 px-4">
-                    <div className="flex items-center gap-3">
-                      <img src={prod.image} alt={prod.name} className="w-12 h-12 rounded-xl object-cover border border-neutral-200 shrink-0" />
-                      <div>
-                        <p className="font-bold text-black">{prod.name}</p>
-                        <div className="flex items-center gap-1 mt-0.5">
-                          {prod.isBestSeller && <span className="bg-black text-white text-[9px] font-bold px-2 py-0.5 rounded-full">Best Seller</span>}
-                          {prod.isFestival && <span className="bg-neutral-200 text-black text-[9px] font-bold px-2 py-0.5 rounded-full">Festival Special</span>}
+              {filteredProducts.map((prod) => {
+                const photosCount = prod.gallery?.length || 1;
+                return (
+                  <tr key={prod.id} className="hover:bg-neutral-50/80 transition-colors">
+                    
+                    {/* Product Info & Photos Badge */}
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-3">
+                        <div className="relative shrink-0">
+                          <img src={prod.image} alt={prod.name} className="w-12 h-12 rounded-xl object-cover border border-neutral-200" />
+                          <span className="absolute -top-1.5 -right-1.5 bg-black text-white text-[9px] font-black px-1.5 py-0.5 rounded-full border border-white" title={`${photosCount} Photos`}>
+                            📷 {photosCount}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-bold text-black">{prod.name}</p>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            {prod.isBestSeller && <span className="bg-black text-white text-[9px] font-bold px-2 py-0.5 rounded-full">Best Seller</span>}
+                            {prod.isFestival && <span className="bg-neutral-200 text-black text-[9px] font-bold px-2 py-0.5 rounded-full">Festival Special</span>}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </td>
+                    </td>
 
-                  {/* Category */}
-                  <td className="py-3.5 px-4 font-semibold text-neutral-700">{prod.category}</td>
+                    {/* Category */}
+                    <td className="py-3.5 px-4 font-semibold text-neutral-700">{prod.category}</td>
 
-                  {/* Dietary */}
-                  <td className="py-3.5 px-4">
-                    {prod.isVeg ? (
-                      <span className="text-[10px] font-black uppercase text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">● Veg</span>
-                    ) : (
-                      <span className="text-[10px] font-black uppercase text-rose-800 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-200">▲ Non-Veg</span>
-                    )}
-                  </td>
+                    {/* Dietary */}
+                    <td className="py-3.5 px-4">
+                      {prod.isVeg ? (
+                        <span className="text-[10px] font-black uppercase text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">● Veg</span>
+                      ) : (
+                        <span className="text-[10px] font-black uppercase text-rose-800 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-200">▲ Non-Veg</span>
+                      )}
+                    </td>
 
-                  {/* Weight Options */}
-                  <td className="py-3.5 px-4">
-                    <div className="flex flex-wrap gap-1 font-mono text-[11px]">
-                      {prod.weightOptions.map((w) => (
-                        <span key={w.weight} className="bg-neutral-100 border border-neutral-200 px-2 py-0.5 rounded-md font-bold text-neutral-800">
-                          {w.weight}: ${w.price.toFixed(2)}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
+                    {/* Weight Options */}
+                    <td className="py-3.5 px-4">
+                      <div className="flex flex-wrap gap-1 font-mono text-[11px]">
+                        {prod.weightOptions.map((w) => (
+                          <span key={w.weight} className="bg-neutral-100 border border-neutral-200 px-2 py-0.5 rounded-md font-bold text-neutral-800">
+                            {w.weight}: ${w.price.toFixed(2)}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
 
-                  {/* Stock */}
-                  <td className="py-3.5 px-4">
-                    {prod.outOfStock ? (
-                      <span className="text-[10px] font-extrabold uppercase text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">Out of Stock</span>
-                    ) : (
-                      <span className="text-xs font-bold text-black">{prod.inventoryCount || 100} units</span>
-                    )}
-                  </td>
+                    {/* Stock */}
+                    <td className="py-3.5 px-4">
+                      {prod.outOfStock ? (
+                        <span className="text-[10px] font-extrabold uppercase text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">Out of Stock</span>
+                      ) : (
+                        <span className="text-xs font-bold text-black">{prod.inventoryCount || 100} units</span>
+                      )}
+                    </td>
 
-                  {/* Actions */}
-                  <td className="py-3.5 px-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => toggleProductBestSeller(prod.id)}
-                        className={`p-2 rounded-xl border transition-all cursor-pointer ${
-                          prod.isBestSeller ? 'bg-black text-white border-black' : 'border-neutral-200 text-neutral-400 hover:text-black'
-                        }`}
-                        title="Toggle Best Seller"
-                      >
-                        <Star className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => toggleProductFestival(prod.id)}
-                        className={`p-2 rounded-xl border transition-all cursor-pointer ${
-                          prod.isFestival ? 'bg-black text-white border-black' : 'border-neutral-200 text-neutral-400 hover:text-black'
-                        }`}
-                        title="Toggle Festival Special"
-                      >
-                        <Tag className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => setEditingProduct(prod)}
-                        className="p-2 rounded-xl border border-neutral-200 hover:border-black text-black cursor-pointer"
-                        title="Edit Product & Weights"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => deleteProduct(prod.id)}
-                        className="p-2 rounded-xl border border-neutral-200 hover:border-red-600 hover:text-red-600 text-neutral-400 cursor-pointer"
-                        title="Delete Product"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </td>
+                    {/* Actions */}
+                    <td className="py-3.5 px-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => toggleProductBestSeller(prod.id)}
+                          className={`p-2 rounded-xl border transition-all cursor-pointer ${
+                            prod.isBestSeller ? 'bg-black text-white border-black' : 'border-neutral-200 text-neutral-400 hover:text-black'
+                          }`}
+                          title="Toggle Best Seller"
+                        >
+                          <Star className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => toggleProductFestival(prod.id)}
+                          className={`p-2 rounded-xl border transition-all cursor-pointer ${
+                            prod.isFestival ? 'bg-black text-white border-black' : 'border-neutral-200 text-neutral-400 hover:text-black'
+                          }`}
+                          title="Toggle Festival Special"
+                        >
+                          <Tag className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setEditingProduct(prod)}
+                          className="p-2 rounded-xl border border-neutral-200 hover:border-black text-black cursor-pointer"
+                          title="Edit Product & Photos"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => deleteProduct(prod.id)}
+                          className="p-2 rounded-xl border border-neutral-200 hover:border-red-600 hover:text-red-600 text-neutral-400 cursor-pointer"
+                          title="Delete Product"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
 
-                </tr>
-              ))}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Add Product Modal */}
+      {/* Add Product Modal (With Multiple Photos Gallery Manager) */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl max-w-xl w-full p-6 space-y-4 shadow-modal text-left max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b pb-3">
-              <h3 className="text-base font-extrabold text-black">Create Product & Set Gram Pricing</h3>
+              <h3 className="text-base font-extrabold text-black">Create Product & Add Multiple Photos</h3>
               <button onClick={() => setShowAddModal(false)}><X className="w-5 h-5 text-neutral-400" /></button>
             </div>
 
@@ -294,6 +318,62 @@ export const ProductsManagementTab: React.FC = () => {
                 </div>
               </div>
 
+              {/* MULTIPLE PRODUCT PHOTOS MANAGER */}
+              <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-extrabold text-black flex items-center gap-1.5">
+                    <ImageIcon className="w-4 h-4 text-black" />
+                    <span>Product Photo Gallery ({newGallery.length} Photos)</span>
+                  </span>
+                </div>
+
+                {/* Thumbnail Previews Grid */}
+                <div className="grid grid-cols-4 gap-2">
+                  {newGallery.map((imgUrl, idx) => (
+                    <div key={idx} className="relative group rounded-xl overflow-hidden aspect-square border border-neutral-300 bg-white">
+                      <img src={imgUrl} alt={`Preview ${idx + 1}`} className="w-full h-full object-cover" />
+                      {idx === 0 && (
+                        <span className="absolute top-1 left-1 bg-black text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded-md">
+                          Main
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setNewGallery(newGallery.filter((_, i) => i !== idx))}
+                        className="absolute top-1 right-1 bg-black/80 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Remove Photo"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Add Photo Input Field */}
+                <div className="flex gap-2 pt-1">
+                  <input
+                    type="url"
+                    value={newImageInput}
+                    onChange={(e) => setNewImageInput(e.target.value)}
+                    placeholder="Paste Photo URL (e.g. https://...)"
+                    className="flex-1 p-2.5 rounded-xl border border-neutral-300 bg-white text-xs font-bold"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (newImageInput.trim()) {
+                        setNewGallery([...newGallery, newImageInput.trim()]);
+                        setNewImageInput('');
+                      }
+                    }}
+                    className="px-3 py-2 bg-black text-white text-xs font-extrabold rounded-xl flex items-center gap-1 shrink-0 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add Photo</span>
+                  </button>
+                </div>
+              </div>
+
               {/* Weight & Price Tier Editor */}
               <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-200 space-y-3">
                 <div className="flex items-center justify-between">
@@ -304,7 +384,7 @@ export const ProductsManagementTab: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => handleAddWeightRow(setNewWeightOptions)}
-                    className="px-2.5 py-1 bg-black text-white text-[10px] font-bold rounded-xl flex items-center gap-1"
+                    className="px-2.5 py-1 bg-black text-white text-[10px] font-bold rounded-xl flex items-center gap-1 cursor-pointer"
                   >
                     <Plus className="w-3 h-3" />
                     <span>Add Gram Tier</span>
@@ -333,7 +413,7 @@ export const ProductsManagementTab: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleDeleteWeightRow(setNewWeightOptions, idx)}
-                          className="p-2 text-neutral-400 hover:text-rose-600"
+                          className="p-2 text-neutral-400 hover:text-rose-600 cursor-pointer"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -356,12 +436,12 @@ export const ProductsManagementTab: React.FC = () => {
         </div>
       )}
 
-      {/* Edit Product Modal */}
+      {/* Edit Product Modal (With Multiple Photos Gallery Manager) */}
       {editingProduct && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl max-w-xl w-full p-6 space-y-4 shadow-modal text-left max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b pb-3">
-              <h3 className="text-base font-extrabold text-black">Edit Product & Gram Pricing: {editingProduct.name}</h3>
+              <h3 className="text-base font-extrabold text-black">Edit Product Photos & Details: {editingProduct.name}</h3>
               <button onClick={() => setEditingProduct(null)}><X className="w-5 h-5 text-neutral-400" /></button>
             </div>
 
@@ -386,6 +466,74 @@ export const ProductsManagementTab: React.FC = () => {
                 </div>
               </div>
 
+              {/* EDIT MULTIPLE PRODUCT PHOTOS MANAGER */}
+              <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-extrabold text-black flex items-center gap-1.5">
+                    <ImageIcon className="w-4 h-4 text-black" />
+                    <span>Product Photo Gallery ({(editingProduct.gallery || [editingProduct.image]).length} Photos)</span>
+                  </span>
+                </div>
+
+                {/* Thumbnail Previews Grid */}
+                <div className="grid grid-cols-4 gap-2">
+                  {(editingProduct.gallery || [editingProduct.image]).map((imgUrl, idx) => (
+                    <div key={idx} className="relative group rounded-xl overflow-hidden aspect-square border border-neutral-300 bg-white">
+                      <img src={imgUrl} alt={`Preview ${idx + 1}`} className="w-full h-full object-cover" />
+                      {idx === 0 && (
+                        <span className="absolute top-1 left-1 bg-black text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded-md">
+                          Main
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const currentGal = editingProduct.gallery || [editingProduct.image];
+                          const updatedGal = currentGal.filter((_, i) => i !== idx);
+                          setEditingProduct({
+                            ...editingProduct,
+                            image: updatedGal[0] || editingProduct.image,
+                            gallery: updatedGal.length > 0 ? updatedGal : [editingProduct.image],
+                          });
+                        }}
+                        className="absolute top-1 right-1 bg-black/80 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                        title="Remove Photo"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Add Photo Input Field */}
+                <div className="flex gap-2 pt-1">
+                  <input
+                    type="url"
+                    value={editGalleryInput}
+                    onChange={(e) => setEditGalleryInput(e.target.value)}
+                    placeholder="Paste Photo URL (e.g. https://...)"
+                    className="flex-1 p-2.5 rounded-xl border border-neutral-300 bg-white text-xs font-bold"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (editGalleryInput.trim()) {
+                        const currentGal = editingProduct.gallery || [editingProduct.image];
+                        setEditingProduct({
+                          ...editingProduct,
+                          gallery: [...currentGal, editGalleryInput.trim()],
+                        });
+                        setEditGalleryInput('');
+                      }
+                    }}
+                    className="px-3 py-2 bg-black text-white text-xs font-extrabold rounded-xl flex items-center gap-1 shrink-0 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add Photo</span>
+                  </button>
+                </div>
+              </div>
+
               {/* Edit Package Gram Weights & Price Tiers */}
               <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-200 space-y-3">
                 <div className="flex items-center justify-between">
@@ -401,7 +549,7 @@ export const ProductsManagementTab: React.FC = () => {
                         weightOptions: [...editingProduct.weightOptions, { weight: '400g', price: 8.49 }],
                       });
                     }}
-                    className="px-2.5 py-1 bg-black text-white text-[10px] font-bold rounded-xl flex items-center gap-1"
+                    className="px-2.5 py-1 bg-black text-white text-[10px] font-bold rounded-xl flex items-center gap-1 cursor-pointer"
                   >
                     <Plus className="w-3 h-3" />
                     <span>Add Tier</span>
@@ -451,7 +599,7 @@ export const ProductsManagementTab: React.FC = () => {
                               weightOptions: editingProduct.weightOptions.filter((_, i) => i !== idx),
                             });
                           }}
-                          className="p-2 text-neutral-400 hover:text-rose-600"
+                          className="p-2 text-neutral-400 hover:text-rose-600 cursor-pointer"
                         >
                           <X className="w-4 h-4" />
                         </button>
