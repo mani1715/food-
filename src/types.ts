@@ -21,6 +21,12 @@ export interface Product {
   isNewArrival?: boolean;
   isPickleSpecial?: boolean;
   isSweetSpecial?: boolean;
+  isFestival?: boolean;
+  discountPercentage?: number;
+  discountExpiryDate?: string;
+  inventoryCount?: number;
+  outOfStock?: boolean;
+  availableCities?: string[];
   inStock?: boolean;
 }
 
@@ -48,6 +54,33 @@ export interface UserLocation {
   pincode: string;
 }
 
+export interface DeliveryCity {
+  id: string;
+  name: string;
+  state: string;
+  charge: number;
+  freeDeliveryThreshold?: number | null;
+  enabled: boolean;
+}
+
+export interface CitySuggestion {
+  id: string;
+  city: string;
+  state: string;
+  customerName: string;
+  phone: string;
+  email: string;
+  status: 'pending' | 'approved' | 'rejected';
+  suggestedAt: string;
+}
+
+export interface WhatsAppContact {
+  id: string;
+  name: string;
+  phone: string;
+  enabled: boolean;
+}
+
 export interface UserProfile {
   name: string;
   email: string;
@@ -66,8 +99,13 @@ export interface Order {
   discount: number;
   total: number;
   status: 'Active' | 'Delivered' | 'Cancelled';
+  orderStatus: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'out for delivery' | 'delivered';
+  paymentStatus: 'pending' | 'completed' | 'failed';
   deliveryAddress: UserLocation;
   paymentMethod: string;
+  adminNotes?: string;
+  deliveryDays?: number;
+  cancelReason?: string;
 }
 
 export interface ToastMessage {
@@ -77,4 +115,12 @@ export interface ToastMessage {
   type?: 'success' | 'error' | 'info';
 }
 
-export type ModalType = 'location' | 'cart' | 'wishlist' | 'search' | 'login' | 'quickView' | null;
+export type AdminTab =
+  | 'products'
+  | 'orders'
+  | 'locations'
+  | 'bestsellers'
+  | 'discounts'
+  | 'settings'
+  | 'newsletter'
+  | 'profile';

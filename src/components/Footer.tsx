@@ -62,12 +62,20 @@ export const Footer: React.FC = () => {
 
         {/* Legal Column */}
         <div className="space-y-3">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400">Company & Legal</h4>
+          <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400">Company & Admin</h4>
           <ul className="space-y-2 text-xs text-neutral-300 font-medium">
             <li><span className="text-neutral-500">About Aura Foods</span></li>
             <li><span className="text-neutral-500">Privacy Policy</span></li>
             <li><span className="text-neutral-500">Terms & Conditions</span></li>
-            <li><span className="text-neutral-500">Refund Policy</span></li>
+            <li>
+              <button
+                onClick={() => navigate('/admin')}
+                className="text-white hover:underline flex items-center gap-1 font-bold pt-1"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Admin Portal</span>
+              </button>
+            </li>
           </ul>
         </div>
 

@@ -1,4 +1,57 @@
-import { Product, ProductCategory, UserLocation } from '../types';
+import { Product, ProductCategory, UserLocation, DeliveryCity, CitySuggestion, WhatsAppContact } from '../types';
+
+export const MOCK_DELIVERY_CITIES: DeliveryCity[] = [
+  { id: 'city-1', name: 'Hyderabad', state: 'Telangana', charge: 49, freeDeliveryThreshold: 500, enabled: true },
+  { id: 'city-2', name: 'Vijayawada', state: 'Andhra Pradesh', charge: 59, freeDeliveryThreshold: 750, enabled: true },
+  { id: 'city-3', name: 'Visakhapatnam', state: 'Andhra Pradesh', charge: 69, freeDeliveryThreshold: 750, enabled: true },
+  { id: 'city-4', name: 'Bengaluru', state: 'Karnataka', charge: 79, freeDeliveryThreshold: 1000, enabled: true },
+  { id: 'city-5', name: 'Chennai', state: 'Tamil Nadu', charge: 79, freeDeliveryThreshold: 1000, enabled: true },
+];
+
+export const MOCK_CITY_SUGGESTIONS: CitySuggestion[] = [
+  {
+    id: 'sug-1',
+    city: 'Tirupati',
+    state: 'Andhra Pradesh',
+    customerName: 'Ramesh Babu',
+    phone: '+91 98480 12345',
+    email: 'ramesh.b@gmail.com',
+    status: 'pending',
+    suggestedAt: '2026-09-01T10:30:00Z',
+  },
+  {
+    id: 'sug-2',
+    city: 'Warangal',
+    state: 'Telangana',
+    customerName: 'Sravani Rao',
+    phone: '+91 99590 67890',
+    email: 'sravani.r@gmail.com',
+    status: 'pending',
+    suggestedAt: '2026-08-28T14:15:00Z',
+  },
+  {
+    id: 'sug-3',
+    city: 'Kakinada',
+    state: 'Andhra Pradesh',
+    customerName: 'Venkat Reddy',
+    phone: '+91 94401 54321',
+    email: 'venkat.k@gmail.com',
+    status: 'approved',
+    suggestedAt: '2026-08-20T09:00:00Z',
+  },
+];
+
+export const MOCK_WHATSAPP_CONTACTS: WhatsAppContact[] = [
+  { id: 'wa-1', name: 'Main Concierge Support', phone: '+91 98765 43210', enabled: true },
+  { id: 'wa-2', name: 'Bulk Gift Box Orders', phone: '+91 98765 43211', enabled: true },
+];
+
+export const MOCK_SUBSCRIBERS: string[] = [
+  'customer1@example.com',
+  'foodie.lakshmi@gmail.com',
+  'andhra.pickles.fan@yahoo.com',
+  'sweets.lover@gmail.com',
+];
 
 export const MOCK_CATEGORIES: ProductCategory[] = [
   {
@@ -77,10 +130,6 @@ export const MOCK_PRODUCTS: Product[] = [
     rating: 4.9,
     reviewsCount: 342,
     image: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=800&auto=format&fit=crop',
-    gallery: [
-      'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?q=80&w=800&auto=format&fit=crop',
-    ],
     description: 'Authentic Andhra style cut raw mango pickle aged with Guntur red chili powder, mustard seeds, and pure cold-pressed sesame oil.',
     ingredients: ['Raw Mangoes', 'Guntur Red Chili', 'Mustard Powder', 'Garlic', 'Cold-Pressed Sesame Oil', 'Sea Salt'],
     weightOptions: [
@@ -92,6 +141,10 @@ export const MOCK_PRODUCTS: Product[] = [
     isVeg: true,
     isBestSeller: true,
     isPickleSpecial: true,
+    isFestival: true,
+    inventoryCount: 150,
+    outOfStock: false,
+    availableCities: ['Hyderabad', 'Vijayawada', 'Bengaluru'],
     inStock: true,
   },
   {
@@ -113,6 +166,9 @@ export const MOCK_PRODUCTS: Product[] = [
     isVeg: true,
     isBestSeller: true,
     isPickleSpecial: true,
+    inventoryCount: 80,
+    outOfStock: false,
+    availableCities: ['Hyderabad', 'Vijayawada'],
     inStock: true,
   },
   {
@@ -133,6 +189,8 @@ export const MOCK_PRODUCTS: Product[] = [
     defaultWeight: '500g',
     isVeg: true,
     isPickleSpecial: true,
+    inventoryCount: 60,
+    outOfStock: false,
     inStock: true,
   },
   {
@@ -151,9 +209,11 @@ export const MOCK_PRODUCTS: Product[] = [
       { weight: '1kg', price: 27.99 },
     ],
     defaultWeight: '500g',
-    isVeg: false, // Non-Veg
+    isVeg: false,
     isBestSeller: true,
     isPickleSpecial: true,
+    inventoryCount: 120,
+    outOfStock: false,
     inStock: true,
   },
   {
@@ -172,8 +232,10 @@ export const MOCK_PRODUCTS: Product[] = [
       { weight: '1kg', price: 34.99 },
     ],
     defaultWeight: '500g',
-    isVeg: false, // Non-Veg
+    isVeg: false,
     isPickleSpecial: true,
+    inventoryCount: 45,
+    outOfStock: false,
     inStock: true,
   },
   {
@@ -194,6 +256,8 @@ export const MOCK_PRODUCTS: Product[] = [
     defaultWeight: '500g',
     isVeg: true,
     isPickleSpecial: true,
+    inventoryCount: 90,
+    outOfStock: false,
     inStock: true,
   },
 
@@ -217,6 +281,11 @@ export const MOCK_PRODUCTS: Product[] = [
     isVeg: true,
     isBestSeller: true,
     isSweetSpecial: true,
+    isFestival: true,
+    discountPercentage: 10,
+    discountExpiryDate: '2026-10-31',
+    inventoryCount: 200,
+    outOfStock: false,
     inStock: true,
   },
   {
@@ -238,6 +307,9 @@ export const MOCK_PRODUCTS: Product[] = [
     isVeg: true,
     isBestSeller: true,
     isSweetSpecial: true,
+    isFestival: true,
+    inventoryCount: 180,
+    outOfStock: false,
     inStock: true,
   },
   {
@@ -258,6 +330,9 @@ export const MOCK_PRODUCTS: Product[] = [
     defaultWeight: '500g',
     isVeg: true,
     isSweetSpecial: true,
+    isFestival: true,
+    inventoryCount: 110,
+    outOfStock: false,
     inStock: true,
   },
   {
@@ -279,91 +354,8 @@ export const MOCK_PRODUCTS: Product[] = [
     isVeg: true,
     isBestSeller: true,
     isSweetSpecial: true,
-    inStock: true,
-  },
-
-  // Snacks
-  {
-    id: 'prod-10',
-    name: 'Crunchy Butter Murukku',
-    category: 'Snacks',
-    price: 6.99,
-    rating: 4.8,
-    reviewsCount: 230,
-    image: 'https://images.unsplash.com/photo-1626132647523-66f5bf380027?q=80&w=800&auto=format&fit=crop',
-    description: 'Crispy spiral savories fried to golden perfection using rice flour, butter, and cumin seeds.',
-    ingredients: ['Rice Flour', 'Gram Flour', 'Fresh Butter', 'Cumin Seeds', 'Asafoetida', 'Salt'],
-    weightOptions: [
-      { weight: '250g', price: 3.99 },
-      { weight: '500g', price: 6.99 },
-      { weight: '1kg', price: 12.49 },
-    ],
-    defaultWeight: '500g',
-    isVeg: true,
-    isNewArrival: true,
-    inStock: true,
-  },
-  {
-    id: 'prod-11',
-    name: 'Andhra Ring Chekodilu',
-    category: 'Snacks',
-    price: 7.49,
-    rating: 4.9,
-    reviewsCount: 290,
-    image: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?q=80&w=800&auto=format&fit=crop',
-    description: 'Hand-rolled crispy ring snacks seasoned with ajwain, chili flakes, and sesame seeds.',
-    ingredients: ['Rice Flour', 'Butter', 'Ajwain', 'Chili Flakes', 'Sesame Seeds', 'Groundnut Oil'],
-    weightOptions: [
-      { weight: '250g', price: 4.19 },
-      { weight: '500g', price: 7.49 },
-      { weight: '1kg', price: 13.49 },
-    ],
-    defaultWeight: '500g',
-    isVeg: true,
-    isNewArrival: true,
-    inStock: true,
-  },
-
-  // Bakery
-  {
-    id: 'prod-12',
-    name: 'Homemade Rich Plum Cake',
-    category: 'Bakery',
-    price: 16.99,
-    rating: 4.9,
-    reviewsCount: 165,
-    image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?q=80&w=800&auto=format&fit=crop',
-    description: 'Oven-baked traditional plum cake packed with rum-soaked raisins, candied orange peel, and toasted walnuts.',
-    ingredients: ['Soaked Dry Fruits', 'Butter', 'Brown Sugar', 'Cinnamon Spice', 'Walnuts'],
-    weightOptions: [
-      { weight: '500g', price: 16.99 },
-      { weight: '1kg', price: 29.99 },
-    ],
-    defaultWeight: '500g',
-    isVeg: true,
-    isNewArrival: true,
-    inStock: true,
-  },
-
-  // Powders
-  {
-    id: 'prod-13',
-    name: 'Homemade Kandi Podi (Gunpowder)',
-    category: 'Powders',
-    price: 6.49,
-    rating: 4.9,
-    reviewsCount: 380,
-    image: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?q=80&w=800&auto=format&fit=crop',
-    description: 'Slow-roasted toor dal and chana dal ground with dried red chilies, cumin, and sea salt. Perfect with hot rice and ghee.',
-    ingredients: ['Toor Dal', 'Chana Dal', 'Red Chili', 'Cumin', 'Hing', 'Sea Salt'],
-    weightOptions: [
-      { weight: '250g', price: 3.49 },
-      { weight: '500g', price: 6.49 },
-      { weight: '1kg', price: 11.99 },
-    ],
-    defaultWeight: '500g',
-    isVeg: true,
-    isBestSeller: true,
+    inventoryCount: 130,
+    outOfStock: false,
     inStock: true,
   },
 
@@ -385,24 +377,9 @@ export const MOCK_PRODUCTS: Product[] = [
     defaultWeight: '1kg Box',
     isVeg: true,
     isBestSeller: true,
-    inStock: true,
-  },
-  {
-    id: 'prod-15',
-    name: 'Grand Wedding Return Gift Box',
-    category: 'Gift Boxes',
-    price: 28.99,
-    rating: 4.9,
-    reviewsCount: 76,
-    image: 'https://images.unsplash.com/photo-1513201099705-a9746e1e201f?q=80&w=800&auto=format&fit=crop',
-    description: 'Elegantly packaged handcrafted box featuring traditional sweets and savories for return gifts.',
-    ingredients: ['Motichoor Laddu', 'Ariselu', 'Ring Chekodilu', 'Dry Fruit Mix'],
-    weightOptions: [
-      { weight: '750g Box', price: 28.99 },
-      { weight: '1.5kg Box', price: 49.99 },
-    ],
-    defaultWeight: '750g Box',
-    isVeg: true,
+    isFestival: true,
+    inventoryCount: 50,
+    outOfStock: false,
     inStock: true,
   },
 ];

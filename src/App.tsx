@@ -23,6 +23,7 @@ import { OrdersPage } from './pages/customer/OrdersPage';
 import { CustomerProfilePage } from './pages/customer/CustomerProfilePage';
 import { CategoriesPage } from './pages/customer/CategoriesPage';
 import { HelpSupportPage } from './pages/customer/HelpSupportPage';
+import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
 
 const MainLayout: React.FC = () => {
   const { toasts, removeToast } = useApp();
@@ -54,6 +55,7 @@ const MainLayout: React.FC = () => {
           <Route path="/profile" element={<CustomerProfilePage />} />
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/help" element={<HelpSupportPage />} />
+          <Route path="/admin" element={<AdminDashboardPage />} />
         </Routes>
       </main>
 
