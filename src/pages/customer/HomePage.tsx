@@ -4,7 +4,6 @@ import { useApp } from '../../context/AppContext';
 import { WeeklyHighlightsShowcase } from '../../components/WeeklyHighlightsShowcase';
 import { ShopByCategory } from '../../components/ShopByCategory';
 import { BestSellers } from '../../components/BestSellers';
-import { FestivalCollections } from '../../components/FestivalCollections';
 import { NewArrivals } from '../../components/NewArrivals';
 import { PicklesCollection } from '../../components/PicklesCollection';
 import { SweetsCollection } from '../../components/SweetsCollection';
@@ -16,7 +15,7 @@ export const HomePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white text-black font-sans">
-      {/* 3. Weekly Highlights & Special Offers Showcase (Replaces static Hero Banner) */}
+      {/* 3. Weekly Highlights & Special Offers Showcase */}
       <WeeklyHighlightsShowcase />
 
       {/* 4. Shop By Category */}
@@ -25,22 +24,19 @@ export const HomePage: React.FC = () => {
       {/* 5. Best Sellers */}
       <BestSellers products={products} />
 
-      {/* 6. Festival Collections & Gift Boxes */}
-      <FestivalCollections />
-
-      {/* 7. New Arrivals */}
+      {/* 6. New Arrivals */}
       <NewArrivals products={products} />
 
-      {/* 8. Pickles Collection Showcase */}
+      {/* 7. Pickles Collection Showcase */}
       <PicklesCollection products={products} />
 
-      {/* 9. Sweets Collection Showcase */}
+      {/* 8. Sweets Collection Showcase */}
       <SweetsCollection products={products} />
 
-      {/* 10. Recently Viewed */}
+      {/* 9. Recently Viewed */}
       <RecentlyViewed />
 
-      {/* 11. Newsletter */}
+      {/* 10. Newsletter */}
       <NewsletterSection />
     </div>
   );
