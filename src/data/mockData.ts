@@ -20,9 +20,9 @@ export const MOCK_WEEKLY_HIGHLIGHTS: WeeklyHighlights = {
   festivalSpecial: {
     type: 'festival',
     badgeText: 'FESTIVAL SPECIAL HAMPER',
-    title: 'Royal Sweets & Snacks Gift Hamper',
-    subtitle: 'Luxury handcrafted rigid box featuring sweets, Andhra pickles & crunchy snacks.',
-    productId: 'prod-14',
+    title: 'Silver Leaf Kaju Katli',
+    subtitle: 'Luxury handcrafted sweets, Andhra pickles & crunchy snacks.',
+    productId: 'prod-7',
     discountPercentage: 20,
   },
 };
@@ -79,7 +79,7 @@ export const MOCK_CITY_SUGGESTIONS: CitySuggestion[] = [
 
 export const MOCK_WHATSAPP_CONTACTS: WhatsAppContact[] = [
   { id: 'wa-1', name: 'Main Concierge Support', phone: '+91 98765 43210', enabled: true },
-  { id: 'wa-2', name: 'Bulk Gift Box Orders', phone: '+91 98765 43211', enabled: true },
+  { id: 'wa-2', name: 'Bulk Orders Concierge', phone: '+91 98765 43211', enabled: true },
 ];
 
 export const MOCK_SUBSCRIBERS: string[] = [
@@ -145,14 +145,6 @@ export const MOCK_CATEGORIES: ProductCategory[] = [
     itemCount: 15,
     image: 'https://images.unsplash.com/photo-1596560548464-f010549b84d7?q=80&w=800&auto=format&fit=crop',
     description: 'Handpicked premium cashews, almonds, pistachios, dates & stuffed fig sweets.',
-  },
-  {
-    id: 'cat-8',
-    name: 'Gift Boxes',
-    slug: 'gift-boxes',
-    itemCount: 16,
-    image: 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?q=80&w=800&auto=format&fit=crop',
-    description: 'Luxury handcrafted hampers for Weddings, Diwali, Sankranti & Corporate gifts.',
   },
 ];
 
@@ -391,30 +383,6 @@ export const MOCK_PRODUCTS: Product[] = [
     isBestSeller: true,
     isSweetSpecial: true,
     inventoryCount: 130,
-    outOfStock: false,
-    inStock: true,
-  },
-
-  // Gift Boxes
-  {
-    id: 'prod-14',
-    name: 'Royal Festival Sweets & Snacks Gift Hamper',
-    category: 'Gift Boxes',
-    price: 34.99,
-    rating: 5.0,
-    reviewsCount: 94,
-    image: 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?q=80&w=800&auto=format&fit=crop',
-    description: 'Exclusive luxury rigid box containing Mysore Pak (250g), Kaju Katli (250g), Avakaya Pickle (250g), and Butter Murukku (250g).',
-    ingredients: ['Assorted Pure Ghee Sweets', 'Homestyle Pickle Jar', 'Handcrafted Savories'],
-    weightOptions: [
-      { weight: '1kg Box', price: 34.99 },
-      { weight: '2kg Luxury Box', price: 64.99 },
-    ],
-    defaultWeight: '1kg Box',
-    isVeg: true,
-    isBestSeller: true,
-    isFestival: true,
-    inventoryCount: 50,
     outOfStock: false,
     inStock: true,
   },

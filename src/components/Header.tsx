@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Heart, ShoppingBag, User, MapPin, Sparkles } from 'lucide-react';
+import { Search, Heart, ShoppingBag, User, MapPin } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 
@@ -34,7 +34,6 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
     { label: 'Bakery', path: '/products?category=Bakery' },
     { label: 'Veg', path: '/products?dietary=Veg' },
     { label: 'Non-Veg', path: '/products?dietary=Non-Veg' },
-    { label: 'Gift Boxes', path: '/products?category=Gift%20Boxes' },
   ];
 
   return (
@@ -61,7 +60,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
             value={searchQuery}
             onClick={() => onOpenSearch && onOpenSearch()}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search pickles, sweets, snacks, gift hampers..."
+            placeholder="Search pickles, sweets, snacks..."
             className="w-full pl-11 pr-4 py-2.5 rounded-2xl border border-neutral-200 text-xs font-medium focus:outline-none focus:border-black bg-neutral-50 transition-colors"
           />
         </form>

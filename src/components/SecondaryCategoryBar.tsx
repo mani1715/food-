@@ -18,7 +18,6 @@ export const SecondaryCategoryBar: React.FC = () => {
     { label: 'Sweets', path: '/products?category=Sweets', value: 'Sweets' },
     { label: 'Snacks', path: '/products?category=Snacks', value: 'Snacks' },
     { label: 'Bakery', path: '/products?category=Bakery', value: 'Bakery' },
-    { label: 'Gift Boxes', path: '/products?category=Gift%20Boxes', value: 'Gift Boxes' },
   ];
 
   return (
