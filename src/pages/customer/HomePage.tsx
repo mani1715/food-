@@ -122,16 +122,16 @@ export const HomePage: React.FC = () => {
           </button>
         </div>
 
-        {/* Animated Larger Category Cards Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6 py-2">
+        {/* Horizontal Scrollable Row of Large Animated Circular Photos (Matching User Screenshot) */}
+        <div className="flex items-center gap-6 sm:gap-8 overflow-x-auto no-scrollbar py-4 px-1">
           {categories.map((cat) => (
             <div
               key={cat.id}
               onClick={() => navigate(`/products?category=${encodeURIComponent(cat.name)}`)}
-              className="group flex flex-col items-center text-center gap-3 p-3.5 sm:p-4 rounded-3xl bg-neutral-50 hover:bg-white border border-neutral-200 hover:border-black shadow-subtle hover:shadow-modal transition-all duration-300 cursor-pointer"
+              className="group flex flex-col items-center cursor-pointer shrink-0 space-y-3"
             >
-              {/* Large 1:1 Aspect-Square Animated Circle Photo */}
-              <div className="w-24 h-24 sm:w-28 sm:h-28 aspect-square rounded-full overflow-hidden border-2 border-neutral-300 group-hover:border-black shadow-subtle group-hover:scale-105 transition-all duration-500 bg-neutral-100 p-1">
+              {/* Very Large 1:1 Aspect-Square Circle Photo Container */}
+              <div className="w-28 h-28 sm:w-36 sm:h-36 md:w-40 md:h-40 aspect-square rounded-full overflow-hidden border-4 border-neutral-100 group-hover:border-black shadow-modal group-hover:scale-105 transition-all duration-500 bg-neutral-100 p-0.5">
                 <img
                   src={cat.image}
                   alt={cat.name}
@@ -139,14 +139,10 @@ export const HomePage: React.FC = () => {
                 />
               </div>
 
-              <div className="space-y-1">
-                <h3 className="text-sm sm:text-base font-extrabold text-black group-hover:underline">
-                  {cat.name}
-                </h3>
-                <span className="inline-block text-[10px] font-mono font-bold bg-neutral-200 text-neutral-800 px-2.5 py-0.5 rounded-full">
-                  {cat.itemCount || 10}+ Items
-                </span>
-              </div>
+              {/* Bold Title Underneath */}
+              <span className="text-sm sm:text-base font-extrabold text-black group-hover:underline text-center">
+                {cat.name}
+              </span>
             </div>
           ))}
         </div>
