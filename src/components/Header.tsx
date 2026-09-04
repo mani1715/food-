@@ -33,8 +33,28 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
     { label: 'Bakery', path: '/products?category=Bakery' },
     { label: 'Veg ●', path: '/products?dietary=Veg' },
     { label: 'Non-Veg ▲', path: '/products?dietary=Non-Veg' },
-    { label: 'All Categories', path: '/categories' },
+    { label: 'Our Process 📜', path: '/#our-process' },
+    { label: 'Regional Sourcing 🗺️', path: '/#sourcing' },
+    { label: 'Quality Promise 🛡️', path: '/#quality' },
   ];
+
+  const handleNavClick = (path: string) => {
+    if (path.startsWith('/#')) {
+      const elementId = path.substring(2);
+      if (location.pathname !== '/') {
+        navigate('/');
+        setTimeout(() => {
+          const el = document.getElementById(elementId);
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      } else {
+        const el = document.getElementById(elementId);
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }
+    } else {
+      navigate(path);
+    }
+  };
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-neutral-200 transition-all shadow-subtle">
@@ -117,7 +137,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
 
       </div>
 
-      {/* Single-Line Clean Category Navigation Links */}
+      {/* Single-Line Clean Category & Process Navigation Links */}
       <nav className="hidden md:block border-t border-neutral-100 bg-neutral-50/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-center gap-2 overflow-x-auto no-scrollbar py-2.5 text-xs font-extrabold">
           {navLinks.map((link) => {
@@ -125,8 +145,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
             return (
               <button
                 key={link.label}
-                onClick={() => navigate(link.path)}
-                className={`px-4 py-1.5 rounded-full transition-all whitespace-nowrap cursor-pointer border ${
+                onClick={() => handleNavClick(link.path)}
+                className={`px-3.5 py-1.5 rounded-full transition-all whitespace-nowrap cursor-pointer border ${
                   isActive
                     ? 'bg-black text-white border-black shadow-subtle'
                     : link.isSpecial
