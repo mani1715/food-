@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Product, WeightOption } from '../../types';
-import { Plus, Edit2, Trash2, Search, X, Star, Tag, Scale, Image as ImageIcon, LayoutGrid, Check } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, X, Star, Tag, Scale, Image as ImageIcon, LayoutGrid, Check, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export const ProductsManagementTab: React.FC = () => {
@@ -13,6 +13,7 @@ export const ProductsManagementTab: React.FC = () => {
     updateProduct,
     deleteProduct,
     toggleProductBestSeller,
+    toggleProductNewArrival,
     toggleProductFestival,
     homeSections,
     updateHomeSection,
@@ -34,6 +35,7 @@ export const ProductsManagementTab: React.FC = () => {
   ]);
   const [newIsVeg, setNewIsVeg] = useState(true);
   const [newIsBestSeller, setNewIsBestSeller] = useState(false);
+  const [newIsNewArrival, setNewIsNewArrival] = useState(true);
   const [newIsFestival, setNewIsFestival] = useState(false);
   const [newSelectedSectionIds, setNewSelectedSectionIds] = useState<string[]>([]);
 
@@ -66,6 +68,7 @@ export const ProductsManagementTab: React.FC = () => {
     setNewName('');
     setNewDescription('');
     setNewIsBestSeller(false);
+    setNewIsNewArrival(true); // Default to New Arrival for freshly added products!
     setNewIsFestival(false);
     setNewCategory(categories[0]?.name || 'Pickles');
     setNewSelectedSectionIds(homeSections.map((s) => s.id));
@@ -145,6 +148,7 @@ export const ProductsManagementTab: React.FC = () => {
       defaultWeight: newWeightOptions[0]?.weight || '500g',
       isVeg: newIsVeg,
       isBestSeller: newIsBestSeller,
+      isNewArrival: newIsNewArrival,
       isFestival: newIsFestival,
       inventoryCount: 100,
       outOfStock: false,
@@ -179,6 +183,7 @@ export const ProductsManagementTab: React.FC = () => {
       gallery: editingProduct.gallery || [primaryImg],
       isVeg: editingProduct.isVeg,
       isBestSeller: editingProduct.isBestSeller,
+      isNewArrival: editingProduct.isNewArrival,
       isFestival: editingProduct.isFestival,
       weightOptions: editingProduct.weightOptions,
       price: editingProduct.weightOptions[0]?.price || editingProduct.price,
@@ -212,7 +217,7 @@ export const ProductsManagementTab: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-200 pb-4">
         <div>
           <h2 className="text-xl font-extrabold text-black tracking-tight">Product Catalog & Categories</h2>
-          <p className="text-xs text-neutral-500">Configure products, create new categories, choose homepage showcase collections, add photos, gram weights and prices (₹).</p>
+          <p className="text-xs text-neutral-500">Configure products, create new categories, choose homepage showcase collections & New Arrival flags.</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -306,6 +311,7 @@ export const ProductsManagementTab: React.FC = () => {
                           <p className="font-bold text-black">{prod.name}</p>
                           <div className="flex items-center gap-1 mt-0.5">
                             {prod.isBestSeller && <span className="bg-black text-white text-[9px] font-bold px-2 py-0.5 rounded-full">⭐ Best Seller</span>}
+                            {prod.isNewArrival && <span className="bg-neutral-900 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">✨ New Arrival</span>}
                             {prod.isFestival && <span className="bg-neutral-200 text-black text-[9px] font-bold px-2 py-0.5 rounded-full">🎉 Festival</span>}
                           </div>
                         </div>
@@ -346,7 +352,7 @@ export const ProductsManagementTab: React.FC = () => {
 
                     {/* Actions */}
                     <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => toggleProductBestSeller(prod.id)}
                           className={`p-2 rounded-xl border transition-all cursor-pointer ${
@@ -355,6 +361,15 @@ export const ProductsManagementTab: React.FC = () => {
                           title="Toggle Best Seller"
                         >
                           <Star className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => toggleProductNewArrival(prod.id)}
+                          className={`p-2 rounded-xl border transition-all cursor-pointer ${
+                            prod.isNewArrival ? 'bg-black text-white border-black' : 'border-neutral-200 text-neutral-400 hover:text-black'
+                          }`}
+                          title="Toggle New Arrival"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => toggleProductFestival(prod.id)}
@@ -454,14 +469,15 @@ export const ProductsManagementTab: React.FC = () => {
                 </div>
               </div>
 
-              {/* SHOWCASE COLLECTIONS & FESTIVAL SELECTION */}
+              {/* SHOWCASE COLLECTIONS & FEATURE FLAGS SELECTION */}
               <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-200 space-y-3">
                 <span className="text-xs font-extrabold text-black flex items-center gap-1.5">
                   <LayoutGrid className="w-4 h-4 text-black" />
-                  <span>Choose Homepage Showcase Collections & Features</span>
+                  <span>Product Feature Flags & Homepage Showcases</span>
                 </span>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {/* 3 Checkboxes: Best Seller, New Arrival, Festival */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <label className="flex items-center gap-2 p-2.5 bg-white border border-neutral-200 rounded-xl cursor-pointer hover:border-black">
                     <input
                       type="checkbox"
@@ -469,7 +485,17 @@ export const ProductsManagementTab: React.FC = () => {
                       onChange={(e) => setNewIsBestSeller(e.target.checked)}
                       className="accent-black w-4 h-4"
                     />
-                    <span>⭐ Best Seller Item</span>
+                    <span>⭐ Best Seller</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 p-2.5 bg-white border border-neutral-200 rounded-xl cursor-pointer hover:border-black">
+                    <input
+                      type="checkbox"
+                      checked={newIsNewArrival}
+                      onChange={(e) => setNewIsNewArrival(e.target.checked)}
+                      className="accent-black w-4 h-4"
+                    />
+                    <span>✨ New Arrival</span>
                   </label>
 
                   <label className="flex items-center gap-2 p-2.5 bg-white border border-neutral-200 rounded-xl cursor-pointer hover:border-black">
@@ -479,14 +505,14 @@ export const ProductsManagementTab: React.FC = () => {
                       onChange={(e) => setNewIsFestival(e.target.checked)}
                       className="accent-black w-4 h-4"
                     />
-                    <span>🎉 Festival / Seasonal Item</span>
+                    <span>🎉 Festival Item</span>
                   </label>
                 </div>
 
                 {homeSections.length > 0 && (
                   <div className="pt-2 border-t border-neutral-200 space-y-2">
                     <span className="text-[10px] font-extrabold uppercase tracking-wider text-neutral-400 block">
-                      Assign to Homepage Sections (Select All That Apply)
+                      Assign to Homepage Showcase Collections (Select All That Apply)
                     </span>
 
                     <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
@@ -702,14 +728,14 @@ export const ProductsManagementTab: React.FC = () => {
                 </div>
               </div>
 
-              {/* EDIT SHOWCASE COLLECTIONS & FESTIVAL ASSIGNMENTS */}
+              {/* EDIT SHOWCASE COLLECTIONS & FEATURE FLAGS */}
               <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-200 space-y-3">
                 <span className="text-xs font-extrabold text-black flex items-center gap-1.5">
                   <LayoutGrid className="w-4 h-4 text-black" />
-                  <span>Homepage Showcase Collections & Features</span>
+                  <span>Homepage Showcase Collections & Feature Flags</span>
                 </span>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <label className="flex items-center gap-2 p-2.5 bg-white border border-neutral-200 rounded-xl cursor-pointer hover:border-black">
                     <input
                       type="checkbox"
@@ -717,7 +743,17 @@ export const ProductsManagementTab: React.FC = () => {
                       onChange={(e) => setEditingProduct({ ...editingProduct, isBestSeller: e.target.checked })}
                       className="accent-black w-4 h-4"
                     />
-                    <span>⭐ Best Seller Item</span>
+                    <span>⭐ Best Seller</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 p-2.5 bg-white border border-neutral-200 rounded-xl cursor-pointer hover:border-black">
+                    <input
+                      type="checkbox"
+                      checked={editingProduct.isNewArrival || false}
+                      onChange={(e) => setEditingProduct({ ...editingProduct, isNewArrival: e.target.checked })}
+                      className="accent-black w-4 h-4"
+                    />
+                    <span>✨ New Arrival</span>
                   </label>
 
                   <label className="flex items-center gap-2 p-2.5 bg-white border border-neutral-200 rounded-xl cursor-pointer hover:border-black">
@@ -727,7 +763,7 @@ export const ProductsManagementTab: React.FC = () => {
                       onChange={(e) => setEditingProduct({ ...editingProduct, isFestival: e.target.checked })}
                       className="accent-black w-4 h-4"
                     />
-                    <span>🎉 Festival / Seasonal Item</span>
+                    <span>🎉 Festival Item</span>
                   </label>
                 </div>
 

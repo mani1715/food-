@@ -75,6 +75,7 @@ interface AppContextType {
   updateProduct: (id: string, updated: Partial<Product>) => void;
   deleteProduct: (id: string) => void;
   toggleProductBestSeller: (id: string) => void;
+  toggleProductNewArrival: (id: string) => void;
   toggleProductFestival: (id: string) => void;
   updateProductDiscount: (id: string, percentage: number, expiryDate: string) => void;
   removeProductDiscount: (id: string) => void;
@@ -419,6 +420,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast('Best Seller Toggled', 'Best seller status updated.', 'success');
   };
 
+  const toggleProductNewArrival = (id: string) => {
+    setProducts((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, isNewArrival: !p.isNewArrival } : p))
+    );
+    addToast('New Arrival Toggled', 'New arrival status updated.', 'success');
+  };
+
   const toggleProductFestival = (id: string) => {
     setProducts((prev) =>
       prev.map((p) => (p.id === id ? { ...p, isFestival: !p.isFestival } : p))
@@ -641,6 +649,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateProduct,
         deleteProduct,
         toggleProductBestSeller,
+        toggleProductNewArrival,
         toggleProductFestival,
         updateProductDiscount,
         removeProductDiscount,
