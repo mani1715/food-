@@ -26,6 +26,7 @@ import { OrdersPage } from './pages/customer/OrdersPage';
 import { CustomerProfilePage } from './pages/customer/CustomerProfilePage';
 import { CategoriesPage } from './pages/customer/CategoriesPage';
 import { HelpSupportPage } from './pages/customer/HelpSupportPage';
+import { TrackOrderPage } from './pages/customer/TrackOrderPage';
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
 
 const MainLayout: React.FC = () => {
@@ -55,6 +56,7 @@ const MainLayout: React.FC = () => {
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/order-success/:id" element={<OrderSuccessPage />} />
           <Route path="/orders" element={<OrdersPage />} />
+          <Route path="/track-order" element={<TrackOrderPage />} />
           <Route path="/profile" element={<CustomerProfilePage />} />
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/help" element={<HelpSupportPage />} />

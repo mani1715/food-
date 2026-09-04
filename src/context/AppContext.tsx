@@ -123,6 +123,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     {
       id: 'ord-1001',
       orderNumber: 'AURA-98214',
+      trackingCode: 'TRK-883921',
       date: '2026-09-01',
       items: [
         { product: MOCK_PRODUCTS[0], selectedWeight: '500g', unitPrice: 9.99, quantity: 2 },
@@ -137,11 +138,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       paymentStatus: 'completed',
       deliveryAddress: MOCK_LOCATIONS[0],
       paymentMethod: 'UPI / GPay',
+      customerName: 'Anantha Lakshmi',
+      customerPhone: '9876543210',
+      customerEmail: 'anantha@example.com',
       deliveryDays: 2,
     },
     {
       id: 'ord-1002',
       orderNumber: 'AURA-97410',
+      trackingCode: 'TRK-554109',
       date: '2026-08-25',
       items: [{ product: MOCK_PRODUCTS[6], selectedWeight: '500g', unitPrice: 15.99, quantity: 1 }],
       subtotal: 15.99,
@@ -153,6 +158,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       paymentStatus: 'completed',
       deliveryAddress: MOCK_LOCATIONS[1],
       paymentMethod: 'Credit Card',
+      customerName: 'Anantha Lakshmi',
+      customerPhone: '9876543210',
+      customerEmail: 'anantha@example.com',
       deliveryDays: 3,
     },
   ]);
@@ -253,6 +261,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newOrder: Order = {
       id: `ord-${Date.now()}`,
       orderNumber: `AURA-${Math.floor(10000 + Math.random() * 90000)}`,
+      trackingCode: `TRK-${Math.floor(100000 + Math.random() * 900000)}`,
       date: new Date().toISOString().split('T')[0],
       items: [...cartItems],
       subtotal,
@@ -264,6 +273,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       paymentStatus: 'completed',
       deliveryAddress,
       paymentMethod,
+      customerName: userProfile.name,
+      customerPhone: userProfile.phone,
+      customerEmail: userProfile.email,
       deliveryDays: 3,
     };
 

@@ -92,6 +92,7 @@ export interface UserProfile {
 export interface Order {
   id: string;
   orderNumber: string;
+  trackingCode?: string;
   date: string;
   items: CartItem[];
   subtotal: number;
@@ -99,10 +100,13 @@ export interface Order {
   discount: number;
   total: number;
   status: 'Active' | 'Delivered' | 'Cancelled';
-  orderStatus: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'out for delivery' | 'delivered';
+  orderStatus: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'out for delivery' | 'delivered' | 'cancelled';
   paymentStatus: 'pending' | 'completed' | 'failed';
   deliveryAddress: UserLocation;
   paymentMethod: string;
+  customerName?: string;
+  customerPhone?: string;
+  customerEmail?: string;
   adminNotes?: string;
   deliveryDays?: number;
   cancelReason?: string;

@@ -56,7 +56,7 @@ export const Footer: React.FC = () => {
             <li><button onClick={() => navigate('/help')} className="hover:text-white transition-colors">Help Center</button></li>
             <li><button onClick={() => navigate('/help')} className="hover:text-white transition-colors">Shipping & Delivery</button></li>
             <li><button onClick={() => navigate('/help')} className="hover:text-white transition-colors">Freshness Guarantee</button></li>
-            <li><button onClick={() => navigate('/orders')} className="hover:text-white transition-colors">Track Your Order</button></li>
+            <li><button onClick={() => navigate('/track-order')} className="hover:text-white transition-colors">Track Your Order</button></li>
           </ul>
         </div>
 

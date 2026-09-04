@@ -26,6 +26,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
 
   const navLinks = [
     { label: 'Home', path: '/' },
+    { label: 'Track Order 📦', path: '/track-order', isSpecial: true },
     { label: 'New Arrivals ✨', path: '/products?filter=new-arrivals', isSpecial: true },
     { label: 'Pickles', path: '/products?category=Pickles' },
     { label: 'Sweets', path: '/products?category=Sweets' },
@@ -70,6 +71,18 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
 
         {/* Center/Right Group: Compact Process Option Buttons (Right of Search Bar) */}
         <div className="hidden lg:flex items-center gap-1.5 shrink-0">
+          <button
+            onClick={() => navigate('/track-order')}
+            className={`px-3 py-1 rounded-full text-[11px] font-extrabold transition-all whitespace-nowrap cursor-pointer border shadow-subtle flex items-center gap-1 ${
+              location.pathname === '/track-order'
+                ? 'bg-black text-white border-black'
+                : 'bg-neutral-900 text-white border-black hover:bg-black'
+            }`}
+          >
+            <span>Track Order</span>
+            <span>📦</span>
+          </button>
+
           <button
             onClick={() => navigate('/our-process')}
             className={`px-3 py-1 rounded-full text-[11px] font-extrabold transition-all whitespace-nowrap cursor-pointer border shadow-subtle flex items-center gap-1 ${
