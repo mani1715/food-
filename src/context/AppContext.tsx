@@ -70,6 +70,7 @@ interface AppContextType {
   // Actions - Admin
   loginAdmin: (email: string, pass: string) => boolean;
   logoutAdmin: () => void;
+  addCategory: (name: string, image?: string, description?: string) => ProductCategory;
   addProduct: (product: Omit<Product, 'id'>) => void;
   updateProduct: (id: string, updated: Partial<Product>) => void;
   deleteProduct: (id: string) => void;
@@ -108,7 +109,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
-  const [categories] = useState<ProductCategory[]>(MOCK_CATEGORIES);
+  const [categories, setCategories] = useState<ProductCategory[]>(MOCK_CATEGORIES);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [wishlistProductIds, setWishlistProductIds] = useState<string[]>(['prod-1', 'prod-6']);
   const [recentlyViewedIds, setRecentlyViewedIds] = useState<string[]>(['prod-1', 'prod-7']);
@@ -373,6 +374,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast('Signed Out', 'Logged out of Admin Portal.', 'info');
   };
 
+  const addCategory = (name: string, image?: string, description?: string): ProductCategory => {
+    const trimmedName = name.trim();
+    const slug = trimmedName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const newCat: ProductCategory = {
+      id: `cat-${Date.now()}`,
+      name: trimmedName,
+      slug,
+      itemCount: 0,
+      image: image || 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=800&auto=format&fit=crop',
+      description: description || `Authentic handcrafted homemade ${trimmedName}.`,
+    };
+
+    setCategories((prev) => {
+      const exists = prev.some((c) => c.name.toLowerCase() === trimmedName.toLowerCase());
+      if (exists) return prev;
+      return [...prev, newCat];
+    });
+
+    addToast('Category Created', `Category "${trimmedName}" added to catalog.`, 'success');
+    return newCat;
+  };
+
   const addProduct = (product: Omit<Product, 'id'>) => {
     const newProd: Product = { ...product, id: `prod-${Date.now()}` };
     setProducts((prev) => [newProd, ...prev]);
@@ -613,6 +636,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         removeToast,
         loginAdmin,
         logoutAdmin,
+        addCategory,
         addProduct,
         updateProduct,
         deleteProduct,
