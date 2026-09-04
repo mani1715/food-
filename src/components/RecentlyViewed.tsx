@@ -16,7 +16,7 @@ export const RecentlyViewed: React.FC = () => {
         <h2 className="text-2xl font-extrabold text-black tracking-tight mt-1">Recently Viewed Products</h2>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {recentProducts.slice(0, 4).map((prod) => (
           <ProductCard key={prod.id} product={prod} />
         ))}

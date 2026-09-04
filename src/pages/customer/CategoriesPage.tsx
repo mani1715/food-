@@ -20,7 +20,7 @@ export const CategoriesPage: React.FC = () => {
           <div
             key={cat.id}
             onClick={() => navigate(`/products?category=${encodeURIComponent(cat.name)}`)}
-            className="group relative rounded-3xl overflow-hidden border border-neutral-200 bg-neutral-100 aspect-[4/5] cursor-pointer shadow-subtle hover:border-black transition-all"
+            className="group relative rounded-3xl overflow-hidden border border-neutral-200 bg-neutral-100 aspect-square cursor-pointer shadow-subtle hover:border-black transition-all"
           >
             <img
               src={cat.image}
