@@ -30,18 +30,18 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-neutral-200 transition-all shadow-subtle">
       
       {/* Main Top Header Line */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-3">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4">
         
         {/* Left Side: Brand Logo with Circular Chef Hat Icon */}
-        <div onClick={() => navigate('/')} className="flex items-center gap-3 cursor-pointer group shrink-0">
-          <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-black bg-black flex items-center justify-center shadow-subtle group-hover:scale-105 transition-transform">
+        <div onClick={() => navigate('/')} className="flex items-center gap-3.5 cursor-pointer group shrink-0">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-black bg-black flex items-center justify-center shadow-subtle group-hover:scale-105 transition-transform shrink-0">
             <img src="/aishu-logo.jpg" alt="Aishu Foods Logo" className="w-full h-full object-cover" />
           </div>
           <div>
-            <span className="text-xl sm:text-2xl font-black text-black tracking-tight block leading-none font-serif">
+            <span className="text-2xl sm:text-3xl lg:text-4xl font-black text-black tracking-tight block leading-none font-serif">
               AISHU FOODS
             </span>
-            <span className="text-[10px] font-extrabold tracking-widest text-neutral-500 uppercase block mt-0.5">
+            <span className="text-[11px] sm:text-xs font-extrabold tracking-widest text-neutral-500 uppercase block mt-1">
               Pure Love & Handcrafted Foods
             </span>
           </div>
