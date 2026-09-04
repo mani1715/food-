@@ -28,6 +28,7 @@ export interface Product {
   outOfStock?: boolean;
   availableCities?: string[];
   inStock?: boolean;
+  grandmaStory?: string;
 }
 
 export interface ProductCategory {

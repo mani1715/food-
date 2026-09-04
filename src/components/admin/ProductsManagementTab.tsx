@@ -28,6 +28,7 @@ export const ProductsManagementTab: React.FC = () => {
   const [newName, setNewName] = useState('');
   const [newCategory, setNewCategory] = useState('Pickles');
   const [newDescription, setNewDescription] = useState('');
+  const [newGrandmaStory, setNewGrandmaStory] = useState('');
   const [newImageInput, setNewImageInput] = useState('');
   const [newGallery, setNewGallery] = useState<string[]>([
     'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=800&auto=format&fit=crop',
@@ -144,6 +145,7 @@ export const ProductsManagementTab: React.FC = () => {
       image: primaryImg,
       gallery: newGallery,
       description: newDescription || 'Fresh handcrafted homemade food item prepared with traditional ingredients.',
+      grandmaStory: newGrandmaStory.trim() || undefined,
       weightOptions: newWeightOptions,
       defaultWeight: newWeightOptions[0]?.weight || '500g',
       isVeg: newIsVeg,
@@ -179,6 +181,7 @@ export const ProductsManagementTab: React.FC = () => {
       name: editingProduct.name,
       category: editingProduct.category,
       description: editingProduct.description,
+      grandmaStory: editingProduct.grandmaStory,
       image: primaryImg,
       gallery: editingProduct.gallery || [primaryImg],
       isVeg: editingProduct.isVeg,
@@ -469,6 +472,17 @@ export const ProductsManagementTab: React.FC = () => {
                 </div>
               </div>
 
+              <div>
+                <label className="block text-neutral-500 mb-1">Grandma Says... Story / Memory Text (Optional)</label>
+                <textarea
+                  rows={3}
+                  value={newGrandmaStory}
+                  onChange={(e) => setNewGrandmaStory(e.target.value)}
+                  placeholder="Enter custom heritage memory story for this product..."
+                  className="w-full p-3 rounded-2xl border border-neutral-300 bg-white font-normal"
+                />
+              </div>
+
               {/* SHOWCASE COLLECTIONS & FEATURE FLAGS SELECTION */}
               <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-200 space-y-3">
                 <span className="text-xs font-extrabold text-black flex items-center gap-1.5">
@@ -726,6 +740,17 @@ export const ProductsManagementTab: React.FC = () => {
                     {editingProduct.outOfStock ? 'Marked Out of Stock' : 'In Stock'}
                   </button>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-neutral-500 mb-1">Grandma Says... Story / Memory Text (Optional)</label>
+                <textarea
+                  rows={3}
+                  value={editingProduct.grandmaStory || ''}
+                  onChange={(e) => setEditingProduct({ ...editingProduct, grandmaStory: e.target.value })}
+                  placeholder="Enter custom heritage memory story for this product..."
+                  className="w-full p-3 rounded-2xl border border-neutral-300 bg-white font-normal"
+                />
               </div>
 
               {/* EDIT SHOWCASE COLLECTIONS & FEATURE FLAGS */}

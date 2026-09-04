@@ -199,21 +199,63 @@ export const ProductDetailsPage: React.FC = () => {
 
       </div>
 
-      {/* Buy These Products Also Section (Frequently Bought Together Bundle) */}
+      {/* 2. GRANDMA SAYS... HERITAGE MEMORY STORY BLOCK */}
+      <section className="mt-12 pt-8 border-t border-neutral-200">
+        <div className="bg-neutral-50 border border-neutral-200 rounded-3xl p-6 sm:p-8 shadow-subtle space-y-4 text-left relative overflow-hidden">
+          <div className="flex items-center gap-3 border-b border-neutral-200 pb-3">
+            <div className="w-10 h-10 rounded-2xl bg-black text-white flex items-center justify-center font-bold text-lg shadow-subtle">
+              👵
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-black tracking-tight font-serif">Grandma says...</h3>
+              <span className="text-[10px] font-extrabold uppercase tracking-widest text-neutral-400">Authentic Family Memories & Heritage Taste</span>
+            </div>
+          </div>
+
+          <div className="text-xs sm:text-sm text-neutral-700 font-medium leading-relaxed space-y-3 font-sans italic pt-1">
+            {product.grandmaStory ? (
+              <div className="whitespace-pre-line not-italic">{product.grandmaStory}</div>
+            ) : (
+              <>
+                <p>
+                  "I was about 9 then. I hurriedly finished my lunch with freshly prepared Avakaya and rushed to the river bank behind my house. My friends were waiting for me.<br />
+                  “What took you so long?” asked Adilakshmi.<br />
+                  I said “Avakaya”, with a blissful expression on.<br />
+                  “With Mudda Pappu*?” asked Balli, a lot of happiness with a hint of jealousy was written all over his face.<br />
+                  “Yesss” I said as if I won a prize in school.<br />
+                  Such is the taste of Avakaya that it makes everyone feel excited."
+                </p>
+                <p>
+                  "It is always a moment of celebration during the summer when nanna used to get fresh juicy mangoes from Nuziveedu especially for Avakaya. My grandmother would sit in the courtyard mixing the mango pieces and all other ingredients to prepare the magic. My brother, sister and I used to hover around watching the entire process with total awe."
+                </p>
+                <p className="text-[11px] font-mono font-bold text-neutral-500 not-italic pt-2 border-t border-neutral-200">
+                  * Mudda Pappu - A traditional lentil preparation made with Red Gram.
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* 3. Buy These Products Also Section (Frequently Bought Together Bundle) */}
       <BuyAlsoSection currentProduct={product} />
 
-      {/* Related Products */}
+      {/* 4. RECOMMENDED PRODUCTS FOR YOU */}
       {relatedProducts.length > 0 && (
-        <div className="space-y-6 pt-12 border-t border-neutral-200">
-          <div className="border-b border-neutral-200 pb-3">
-            <h3 className="text-xl font-extrabold text-black">You May Also Like</h3>
+        <section className="space-y-6 pt-10 border-t border-neutral-200 text-left">
+          <div className="flex items-center justify-between border-b border-neutral-200 pb-3">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-widest text-neutral-400">Handcrafted Recommendations</span>
+              <h3 className="text-2xl font-black text-black tracking-tight mt-0.5">Recommended Products For You</h3>
+            </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
             {relatedProducts.map((prod) => (
               <ProductCard key={prod.id} product={prod} />
             ))}
           </div>
-        </div>
+        </section>
       )}
 
       {/* Lightbox Modal */}
