@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Product } from '../types';
-import { ShoppingBag, Check, Plus, Sparkles, Tag } from 'lucide-react';
+import { ShoppingBag, Check, Sparkles, Tag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface BuyAlsoSectionProps {
@@ -107,7 +107,7 @@ export const BuyAlsoSection: React.FC<BuyAlsoSectionProps> = ({ currentProduct }
                     </span>
                   )}
                   <h4 className="text-xs font-bold text-black line-clamp-1">{prod.name}</h4>
-                  <p className="text-xs font-mono font-extrabold text-neutral-800">${prod.price.toFixed(2)}</p>
+                  <p className="text-xs font-mono font-extrabold text-neutral-800">₹{prod.price}</p>
                 </div>
               </div>
             </React.Fragment>
@@ -134,7 +134,7 @@ export const BuyAlsoSection: React.FC<BuyAlsoSectionProps> = ({ currentProduct }
                   className="rounded text-black focus:ring-black accent-black cursor-pointer"
                 />
                 <span className={isSelected ? 'text-black font-extrabold' : 'text-neutral-400 font-normal line-through'}>
-                  {isMain ? 'This Item: ' : ''}<strong>{prod.name}</strong> — ${prod.price.toFixed(2)} ({prod.defaultWeight || '500g'})
+                  {isMain ? 'This Item: ' : ''}<strong>{prod.name}</strong> — ₹{prod.price} ({prod.defaultWeight || '500g'})
                 </span>
               </label>
             );
@@ -146,16 +146,16 @@ export const BuyAlsoSection: React.FC<BuyAlsoSectionProps> = ({ currentProduct }
           <div>
             <span className="text-[10px] font-bold text-neutral-400 uppercase block">Bundle Price ({selectedProducts.length} Items)</span>
             <div className="flex items-baseline gap-2 font-mono">
-              <span className="text-xl font-black text-black">${finalPrice.toFixed(2)}</span>
+              <span className="text-xl font-black text-black">₹{Math.round(finalPrice)}</span>
               {bundleSavings > 0 && (
-                <span className="text-xs text-neutral-400 line-through">${bundleTotal.toFixed(2)}</span>
+                <span className="text-xs text-neutral-400 line-through">₹{Math.round(bundleTotal)}</span>
               )}
             </div>
           </div>
 
           <button
             onClick={handleAddBundleToCart}
-            className="px-6 py-3.5 bg-black text-white text-xs font-extrabold rounded-xl hover:bg-neutral-800 transition-all flex items-center gap-2 shadow-subtle"
+            className="px-6 py-3.5 bg-black text-white text-xs font-extrabold rounded-xl hover:bg-neutral-800 transition-all flex items-center gap-2 shadow-subtle cursor-pointer"
           >
             <ShoppingBag className="w-4 h-4" />
             <span>Add Selected To Cart</span>

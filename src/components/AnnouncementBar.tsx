@@ -5,7 +5,7 @@ const ANNOUNCEMENTS = [
   '🌶️ Fresh Homemade Andhra Pickles Delivered Daily Nationwide',
   '🍯 Pure Ghee Sweets & Authentic Delicacies Crafted with Love',
   '🎁 Festival Gift Boxes & Return Gift Hampers Special Discount',
-  '✨ Free Shipping On Orders Above $35 • Fresh Batch Guarantee',
+  '✨ Free Shipping On Orders Above ₹499 • Fresh Batch Guarantee',
 ];
 
 export const AnnouncementBar: React.FC = () => {

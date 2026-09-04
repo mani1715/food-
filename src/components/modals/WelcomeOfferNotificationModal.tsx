@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, X, ArrowRight, Flame, Star, Tag, ShoppingBag } from 'lucide-react';
+import { Sparkles, X, ArrowRight, Flame, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const WelcomeOfferNotificationModal: React.FC = () => {
@@ -93,7 +93,7 @@ export const WelcomeOfferNotificationModal: React.FC = () => {
                       )}
                     </div>
                     <h4 className="text-xs font-bold text-white truncate group-hover:underline">{weeklyHighlights.specialOfDay.title || dayProduct.name}</h4>
-                    <p className="text-[11px] text-neutral-400 font-mono">${dayProduct.price.toFixed(2)}</p>
+                    <p className="text-[11px] text-neutral-400 font-mono">₹{dayProduct.price}</p>
                   </div>
                 </div>
                 <ArrowRight className="w-4 h-4 text-white shrink-0 group-hover:translate-x-1 transition-transform" />
@@ -119,7 +119,7 @@ export const WelcomeOfferNotificationModal: React.FC = () => {
                       </span>
                     </div>
                     <h4 className="text-xs font-bold text-black truncate group-hover:underline">{weeklyHighlights.specialOfWeek.title || weekProduct.name}</h4>
-                    <p className="text-[11px] text-neutral-500 font-mono">${weekProduct.price.toFixed(2)}</p>
+                    <p className="text-[11px] text-neutral-500 font-mono">₹{weekProduct.price}</p>
                   </div>
                 </div>
                 <ArrowRight className="w-4 h-4 text-black shrink-0 group-hover:translate-x-1 transition-transform" />

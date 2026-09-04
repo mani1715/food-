@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Product, WeightOption } from '../../types';
-import { Plus, Edit2, Trash2, Search, X, Check, Star, Tag, Scale, Image as ImageIcon } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, X, Star, Tag, Scale, Image as ImageIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export const ProductsManagementTab: React.FC = () => {
@@ -23,10 +23,10 @@ export const ProductsManagementTab: React.FC = () => {
   ]);
   const [newIsVeg, setNewIsVeg] = useState(true);
   const [newWeightOptions, setNewWeightOptions] = useState<WeightOption[]>([
-    { weight: '250g', price: 5.99 },
-    { weight: '400g', price: 8.49 },
-    { weight: '500g', price: 9.99 },
-    { weight: '1kg', price: 17.99 },
+    { weight: '250g', price: 169 },
+    { weight: '400g', price: 249 },
+    { weight: '500g', price: 299 },
+    { weight: '1kg', price: 549 },
   ]);
 
   // Gallery URL input for editing product
@@ -40,7 +40,7 @@ export const ProductsManagementTab: React.FC = () => {
 
   // Weight Option Helpers
   const handleAddWeightRow = (setWeightOpts: React.Dispatch<React.SetStateAction<WeightOption[]>>) => {
-    setWeightOpts((prev) => [...prev, { weight: '300g', price: 6.99 }]);
+    setWeightOpts((prev) => [...prev, { weight: '300g', price: 199 }]);
   };
 
   const handleUpdateWeightRow = (
@@ -71,7 +71,7 @@ export const ProductsManagementTab: React.FC = () => {
     addProduct({
       name: newName,
       category: newCategory,
-      price: newWeightOptions[0]?.price || 9.99,
+      price: newWeightOptions[0]?.price || 299,
       rating: 5.0,
       reviewsCount: 1,
       image: primaryImg,
@@ -121,7 +121,7 @@ export const ProductsManagementTab: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-200 pb-4">
         <div>
           <h2 className="text-xl font-extrabold text-black tracking-tight">Product Catalog & Multi-Image Gallery</h2>
-          <p className="text-xs text-neutral-500">Configure products, add multiple photos/images, custom gram weights and prices.</p>
+          <p className="text-xs text-neutral-500">Configure products, add multiple photos/images, custom gram weights and prices in Rupees (₹).</p>
         </div>
 
         <button
@@ -178,7 +178,7 @@ export const ProductsManagementTab: React.FC = () => {
                 <th className="py-3.5 px-4">Product Info & Photos</th>
                 <th className="py-3.5 px-4">Category</th>
                 <th className="py-3.5 px-4">Dietary</th>
-                <th className="py-3.5 px-4">Gram Weights & Cost</th>
+                <th className="py-3.5 px-4">Gram Weights & Cost (₹)</th>
                 <th className="py-3.5 px-4">Stock</th>
                 <th className="py-3.5 px-4 text-right">Actions</th>
               </tr>
@@ -225,7 +225,7 @@ export const ProductsManagementTab: React.FC = () => {
                       <div className="flex flex-wrap gap-1 font-mono text-[11px]">
                         {prod.weightOptions.map((w) => (
                           <span key={w.weight} className="bg-neutral-100 border border-neutral-200 px-2 py-0.5 rounded-md font-bold text-neutral-800">
-                            {w.weight}: ${w.price.toFixed(2)}
+                            {w.weight}: ₹{w.price}
                           </span>
                         ))}
                       </div>
@@ -340,7 +340,7 @@ export const ProductsManagementTab: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setNewGallery(newGallery.filter((_, i) => i !== idx))}
-                        className="absolute top-1 right-1 bg-black/80 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute top-1 right-1 bg-black/80 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                         title="Remove Photo"
                       >
                         <X className="w-3 h-3" />
@@ -379,7 +379,7 @@ export const ProductsManagementTab: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-extrabold text-black flex items-center gap-1.5">
                     <Scale className="w-4 h-4 text-black" />
-                    <span>Package Gram Weights & Cost Tiers</span>
+                    <span>Package Gram Weights & Cost Tiers (₹)</span>
                   </span>
                   <button
                     type="button"
@@ -403,10 +403,9 @@ export const ProductsManagementTab: React.FC = () => {
                       />
                       <input
                         type="number"
-                        step="0.01"
                         value={opt.price}
                         onChange={(e) => handleUpdateWeightRow(setNewWeightOptions, idx, 'price', Number(e.target.value))}
-                        placeholder="Cost ($)"
+                        placeholder="Cost (₹)"
                         className="w-1/2 p-2.5 rounded-xl border border-neutral-300 bg-white text-xs font-mono font-bold"
                       />
                       {newWeightOptions.length > 1 && (
@@ -539,14 +538,14 @@ export const ProductsManagementTab: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-extrabold text-black flex items-center gap-1.5">
                     <Scale className="w-4 h-4 text-black" />
-                    <span>Edit Package Gram Weights & Cost</span>
+                    <span>Edit Package Gram Weights & Cost (₹)</span>
                   </span>
                   <button
                     type="button"
                     onClick={() => {
                       setEditingProduct({
                         ...editingProduct,
-                        weightOptions: [...editingProduct.weightOptions, { weight: '400g', price: 8.49 }],
+                        weightOptions: [...editingProduct.weightOptions, { weight: '400g', price: 249 }],
                       });
                     }}
                     className="px-2.5 py-1 bg-black text-white text-[10px] font-bold rounded-xl flex items-center gap-1 cursor-pointer"
@@ -576,7 +575,6 @@ export const ProductsManagementTab: React.FC = () => {
                       />
                       <input
                         type="number"
-                        step="0.01"
                         value={opt.price}
                         onChange={(e) => {
                           const val = Number(e.target.value);
@@ -587,7 +585,7 @@ export const ProductsManagementTab: React.FC = () => {
                             ),
                           });
                         }}
-                        placeholder="Cost ($)"
+                        placeholder="Cost (₹)"
                         className="w-1/2 p-2.5 rounded-xl border border-neutral-300 bg-white text-xs font-mono font-bold"
                       />
                       {editingProduct.weightOptions.length > 1 && (

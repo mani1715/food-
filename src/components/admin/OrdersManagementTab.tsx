@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Order } from '../../types';
-import { Search, Filter, Clock, CheckCircle, XCircle, TrendingUp, Package, MapPin, Edit2, Save, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Search, Edit2, Save, XCircle } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export const OrdersManagementTab: React.FC = () => {
   const { orders, updateOrderStatus, updatePaymentStatus, cancelOrder } = useApp();
@@ -83,7 +83,7 @@ export const OrdersManagementTab: React.FC = () => {
 
         <div className="bg-neutral-50 border border-neutral-200 rounded-3xl p-5 shadow-subtle space-y-1">
           <span className="text-[10px] font-extrabold uppercase tracking-widest text-neutral-400">Filtered Sales Revenue</span>
-          <p className="text-2xl font-extrabold text-black font-mono">${totalRevenue.toFixed(2)}</p>
+          <p className="text-2xl font-extrabold text-black font-mono">₹{totalRevenue}</p>
           <p className="text-xs text-neutral-500">Excludes cancelled orders</p>
         </div>
 
@@ -115,7 +115,7 @@ export const OrdersManagementTab: React.FC = () => {
             <button
               key={tab}
               onClick={() => setStatusFilter(tab as any)}
-              className={`px-3 py-2 rounded-xl text-xs font-bold uppercase transition-all ${
+              className={`px-3 py-2 rounded-xl text-xs font-bold uppercase transition-all cursor-pointer ${
                 statusFilter === tab ? 'bg-black text-white' : 'bg-white text-neutral-600 border border-neutral-200'
               }`}
             >
@@ -128,7 +128,7 @@ export const OrdersManagementTab: React.FC = () => {
       {/* Orders List */}
       <div className="space-y-4">
         {filteredOrders.map((ord) => (
-          <div key={ord.id} className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-subtle space-y-4">
+          <div key={ord.id} className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-subtle hover:border-black transition-all space-y-4">
             
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-100 pb-3">
               <div>
@@ -143,7 +143,7 @@ export const OrdersManagementTab: React.FC = () => {
                 <span className="text-[10px] font-extrabold uppercase px-3 py-1 rounded-full border border-neutral-300 text-black">
                   Payment: {ord.paymentStatus || 'completed'}
                 </span>
-                <span className="text-base font-extrabold font-mono text-black">${ord.total.toFixed(2)}</span>
+                <span className="text-base font-extrabold font-mono text-black">₹{ord.total}</span>
               </div>
             </div>
 
@@ -159,7 +159,7 @@ export const OrdersManagementTab: React.FC = () => {
                 <p className="text-[10px] font-extrabold uppercase text-neutral-400">Items Ordered</p>
                 {ord.items.map((i, idx) => (
                   <p key={idx} className="text-neutral-700 font-medium">
-                    {i.quantity}x {i.product.name} ({i.selectedWeight}) — ${(i.unitPrice * i.quantity).toFixed(2)}
+                    {i.quantity}x {i.product.name} ({i.selectedWeight}) — ₹{i.unitPrice * i.quantity}
                   </p>
                 ))}
               </div>
@@ -202,14 +202,14 @@ export const OrdersManagementTab: React.FC = () => {
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleSaveEdit(ord.id)}
-                    className="px-4 py-2 bg-black text-white text-xs font-bold rounded-xl flex items-center gap-1.5"
+                    className="px-4 py-2 bg-black text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer"
                   >
                     <Save className="w-3.5 h-3.5" />
                     <span>Save Order Changes</span>
                   </button>
                   <button
                     onClick={() => setEditingOrderId(null)}
-                    className="px-4 py-2 bg-neutral-200 text-black text-xs font-bold rounded-xl"
+                    className="px-4 py-2 bg-neutral-200 text-black text-xs font-bold rounded-xl cursor-pointer"
                   >
                     Cancel
                   </button>
@@ -225,7 +225,7 @@ export const OrdersManagementTab: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleStartEdit(ord)}
-                    className="px-3 py-1.5 border border-neutral-200 hover:border-black text-black font-bold rounded-xl flex items-center gap-1.5"
+                    className="px-3 py-1.5 border border-neutral-200 hover:border-black text-black font-bold rounded-xl flex items-center gap-1.5 cursor-pointer"
                   >
                     <Edit2 className="w-3.5 h-3.5" />
                     <span>Edit Status</span>
@@ -234,7 +234,7 @@ export const OrdersManagementTab: React.FC = () => {
                   {ord.status !== 'Cancelled' && (
                     <button
                       onClick={() => setCancelModalOrderId(ord.id)}
-                      className="px-3 py-1.5 border border-neutral-200 hover:border-rose-600 text-rose-600 font-bold rounded-xl flex items-center gap-1.5"
+                      className="px-3 py-1.5 border border-neutral-200 hover:border-rose-600 text-rose-600 font-bold rounded-xl flex items-center gap-1.5 cursor-pointer"
                     >
                       <XCircle className="w-3.5 h-3.5" />
                       <span>Cancel Order</span>
@@ -262,10 +262,10 @@ export const OrdersManagementTab: React.FC = () => {
               className="w-full p-3 rounded-2xl border border-neutral-300 text-xs font-bold"
             />
             <div className="flex gap-2">
-              <button onClick={() => setCancelModalOrderId(null)} className="flex-1 py-3 bg-neutral-100 text-black text-xs font-bold rounded-2xl">
+              <button onClick={() => setCancelModalOrderId(null)} className="flex-1 py-3 bg-neutral-100 text-black text-xs font-bold rounded-2xl cursor-pointer">
                 Close
               </button>
-              <button onClick={handleConfirmCancel} className="flex-1 py-3 bg-black text-white text-xs font-bold rounded-2xl">
+              <button onClick={handleConfirmCancel} className="flex-1 py-3 bg-black text-white text-xs font-bold rounded-2xl cursor-pointer">
                 Confirm Cancel
               </button>
             </div>

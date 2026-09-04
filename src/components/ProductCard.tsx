@@ -111,7 +111,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             >
               {product.weightOptions.map((opt) => (
                 <option key={opt.weight} value={opt.weight}>
-                  {opt.weight} — ${opt.price.toFixed(2)}
+                  {opt.weight} — ₹{opt.price}
                 </option>
               ))}
             </select>
@@ -123,7 +123,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         <div className="pt-3 border-t border-neutral-100 flex items-center justify-between gap-1.5">
           <div>
             <span className="text-[9px] text-neutral-400 font-bold block uppercase">{selectedWeight} Price</span>
-            <span className="text-sm font-extrabold font-mono text-black">${currentPrice.toFixed(2)}</span>
+            <span className="text-sm font-extrabold font-mono text-black">₹{currentPrice}</span>
           </div>
 
           <div className="flex items-center gap-1.5">

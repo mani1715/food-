@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, CreditCard, Smartphone, DollarSign, Check, ShieldCheck, ArrowRight, Navigation, User, Phone, Mail, FileText, Home, Briefcase } from 'lucide-react';
+import { MapPin, CreditCard, Smartphone, DollarSign, ShieldCheck, ArrowRight, Navigation, User, Phone, Mail, FileText, Home, Briefcase } from 'lucide-react';
 
 export const CheckoutPage: React.FC = () => {
   const { cartItems, userProfile, locations, currentLocation, setCurrentLocation, createOrder, addToast } = useApp();
@@ -23,7 +23,7 @@ export const CheckoutPage: React.FC = () => {
   const [isDetecting, setIsDetecting] = useState(false);
 
   const subtotal = cartItems.reduce((acc, i) => acc + i.unitPrice * i.quantity, 0);
-  const deliveryFee = subtotal > 35 ? 0 : 3.50;
+  const deliveryFee = subtotal > 499 ? 0 : 49;
   const grandTotal = subtotal + deliveryFee;
 
   // Auto-Detect GPS Location directly into Checkout Fields
@@ -341,17 +341,17 @@ export const CheckoutPage: React.FC = () => {
                     <p className="font-bold text-black">{item.product.name}</p>
                     <p className="text-[10px] text-neutral-500">Qty: {item.quantity} • Weight: {item.selectedWeight}</p>
                   </div>
-                  <span className="font-mono font-bold text-black">${(item.unitPrice * item.quantity).toFixed(2)}</span>
+                  <span className="font-mono font-bold text-black">₹{item.unitPrice * item.quantity}</span>
                 </div>
               ))}
             </div>
 
             <div className="space-y-1.5 text-xs text-neutral-600 font-mono pt-2">
-              <div className="flex justify-between"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
-              <div className="flex justify-between"><span>Shipping</span><span>{deliveryFee === 0 ? 'FREE' : `$${deliveryFee.toFixed(2)}`}</span></div>
+              <div className="flex justify-between"><span>Subtotal</span><span>₹{subtotal}</span></div>
+              <div className="flex justify-between"><span>Shipping</span><span>{deliveryFee === 0 ? 'FREE' : `₹${deliveryFee}`}</span></div>
               <div className="flex justify-between text-black font-extrabold text-base pt-3 border-t border-neutral-200 font-sans">
                 <span>Total Amount</span>
-                <span className="font-mono">${grandTotal.toFixed(2)}</span>
+                <span className="font-mono">₹{grandTotal}</span>
               </div>
             </div>
 
@@ -364,7 +364,7 @@ export const CheckoutPage: React.FC = () => {
                 <span>Confirming Order...</span>
               ) : (
                 <>
-                  <span>Place Order • ${grandTotal.toFixed(2)}</span>
+                  <span>Place Order • ₹{grandTotal}</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}

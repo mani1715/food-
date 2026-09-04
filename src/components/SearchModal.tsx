@@ -89,7 +89,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
                           <span className="text-[10px] text-neutral-400 font-mono">{prod.category} • {prod.defaultWeight}</span>
                         </div>
                       </div>
-                      <span className="text-xs font-extrabold font-mono text-black">${prod.price.toFixed(2)}</span>
+                      <span className="text-xs font-extrabold font-mono text-black">₹{prod.price}</span>
                     </div>
                   ))}
                 </div>
@@ -108,7 +108,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
                     <button
                       key={term}
                       onClick={() => handleSelectSearch(term)}
-                      className="px-3 py-1.5 rounded-xl border border-neutral-200 bg-neutral-50 hover:border-black text-xs font-bold text-black transition-all"
+                      className="px-3 py-1.5 rounded-xl border border-neutral-200 bg-neutral-50 hover:border-black text-xs font-bold text-black transition-all cursor-pointer"
                     >
                       {term}
                     </button>
@@ -127,7 +127,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
                     <button
                       key={term}
                       onClick={() => handleSelectSearch(term)}
-                      className="w-full text-left py-2 px-3 rounded-xl hover:bg-neutral-100 text-xs font-semibold text-neutral-700 flex items-center justify-between"
+                      className="w-full text-left py-2 px-3 rounded-xl hover:bg-neutral-100 text-xs font-semibold text-neutral-700 flex items-center justify-between cursor-pointer"
                     >
                       <span>{term}</span>
                       <ArrowRight className="w-3.5 h-3.5 text-neutral-400" />

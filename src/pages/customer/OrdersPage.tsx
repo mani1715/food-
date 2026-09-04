@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingBag, ArrowRight, RotateCcw, Clock, ShieldCheck } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import { EmptyState } from '../../components/EmptyState';
 
 export const OrdersPage: React.FC = () => {
@@ -31,7 +31,7 @@ export const OrdersPage: React.FC = () => {
           <button
             key={tab}
             onClick={() => setActiveTab(tab as any)}
-            className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
+            className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
               activeTab === tab ? 'bg-black text-white shadow-subtle' : 'text-neutral-600 hover:text-black'
             }`}
           >
@@ -65,7 +65,7 @@ export const OrdersPage: React.FC = () => {
                   }`}>
                     ● {ord.status}
                   </span>
-                  <span className="text-base font-extrabold font-mono text-black">${ord.total.toFixed(2)}</span>
+                  <span className="text-base font-extrabold font-mono text-black">₹{ord.total}</span>
                 </div>
               </div>
 
@@ -76,7 +76,7 @@ export const OrdersPage: React.FC = () => {
                       <span className="font-mono font-bold text-black">{item.quantity}x</span>
                       <span className="font-semibold text-black">{item.product.name} ({item.selectedWeight})</span>
                     </div>
-                    <span className="font-mono text-neutral-500">${(item.unitPrice * item.quantity).toFixed(2)}</span>
+                    <span className="font-mono text-neutral-500">₹{item.unitPrice * item.quantity}</span>
                   </div>
                 ))}
               </div>
@@ -88,7 +88,7 @@ export const OrdersPage: React.FC = () => {
                     ord.items.forEach((i) => addToCart(i.product, i.selectedWeight, i.quantity));
                     navigate('/cart');
                   }}
-                  className="py-2.5 px-4 bg-white border border-neutral-300 hover:border-black text-black text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
+                  className="py-2.5 px-4 bg-white border border-neutral-300 hover:border-black text-black text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span>Reorder All</span>

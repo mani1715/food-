@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { ProductCard } from '../../components/ProductCard';
 import { BuyAlsoSection } from '../../components/BuyAlsoSection';
-import { Heart, Plus, Minus, Star, ShieldCheck, ShoppingBag, ArrowLeft, Check, Sparkles } from 'lucide-react';
+import { Heart, Plus, Minus, Star, ShieldCheck, ShoppingBag, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const ProductDetailsPage: React.FC = () => {
@@ -71,7 +71,7 @@ export const ProductDetailsPage: React.FC = () => {
                 <button
                   key={idx}
                   onClick={() => setActiveImage(img)}
-                  className={`w-16 h-16 rounded-2xl overflow-hidden border-2 transition-all ${
+                  className={`w-16 h-16 rounded-2xl overflow-hidden border-2 transition-all cursor-pointer ${
                     activeImage === img ? 'border-black shadow-subtle' : 'border-neutral-200 opacity-60'
                   }`}
                 >
@@ -96,7 +96,7 @@ export const ProductDetailsPage: React.FC = () => {
             </div>
 
             <h1 className="text-3xl sm:text-4xl font-extrabold text-black tracking-tight">{product.name}</h1>
-            <p className="text-2xl font-black font-mono text-black">${(currentPrice * quantity).toFixed(2)}</p>
+            <p className="text-2xl font-black font-mono text-black">₹{currentPrice * quantity}</p>
           </div>
 
           <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed">{product.description}</p>
@@ -111,14 +111,14 @@ export const ProductDetailsPage: React.FC = () => {
                 <button
                   key={opt.weight}
                   onClick={() => setSelectedWeight(opt.weight)}
-                  className={`px-4 py-2.5 rounded-2xl border text-xs font-bold transition-all flex items-center justify-between gap-3 ${
+                  className={`px-4 py-2.5 rounded-2xl border text-xs font-bold transition-all flex items-center justify-between gap-3 cursor-pointer ${
                     selectedWeight === opt.weight
                       ? 'bg-black text-white border-black shadow-subtle'
                       : 'bg-white text-black border-neutral-200 hover:border-black'
                   }`}
                 >
                   <span>{opt.weight}</span>
-                  <span className="font-mono text-[11px] opacity-80">${opt.price.toFixed(2)}</span>
+                  <span className="font-mono text-[11px] opacity-80">₹{opt.price}</span>
                 </button>
               ))}
             </div>
@@ -147,14 +147,14 @@ export const ProductDetailsPage: React.FC = () => {
               <div className="flex items-center border border-neutral-300 rounded-2xl p-1 bg-neutral-50">
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="p-2 text-black hover:bg-neutral-200 rounded-xl"
+                  className="p-2 text-black hover:bg-neutral-200 rounded-xl cursor-pointer"
                 >
                   <Minus className="w-4 h-4" />
                 </button>
                 <span className="w-10 text-center text-xs font-mono font-bold">{quantity}</span>
                 <button
                   onClick={() => setQuantity(quantity + 1)}
-                  className="p-2 text-black hover:bg-neutral-200 rounded-xl"
+                  className="p-2 text-black hover:bg-neutral-200 rounded-xl cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                 </button>
@@ -168,7 +168,7 @@ export const ProductDetailsPage: React.FC = () => {
                 className="flex-1 py-4 bg-black text-white text-xs font-extrabold rounded-2xl hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 shadow-subtle cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>Add To Cart • ${(currentPrice * quantity).toFixed(2)}</span>
+                <span>Add To Cart • ₹{currentPrice * quantity}</span>
               </button>
 
               <button
@@ -239,7 +239,7 @@ export const ProductDetailsPage: React.FC = () => {
       <div className="fixed bottom-14 left-0 right-0 z-40 bg-white border-t border-neutral-200 p-3 lg:hidden flex items-center justify-between shadow-modal">
         <div>
           <p className="text-[10px] text-neutral-400 font-bold uppercase">{selectedWeight}</p>
-          <p className="text-base font-extrabold font-mono text-black">${(currentPrice * quantity).toFixed(2)}</p>
+          <p className="text-base font-extrabold font-mono text-black">₹{currentPrice * quantity}</p>
         </div>
         <button
           onClick={() => addToCart(product, selectedWeight, quantity)}

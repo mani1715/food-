@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Percent, Calendar, Check, Trash2 } from 'lucide-react';
+import { Percent, Trash2 } from 'lucide-react';
 
 export const DiscountsManagementTab: React.FC = () => {
   const { products, updateProductDiscount, removeProductDiscount } = useApp();
@@ -42,7 +42,7 @@ export const DiscountsManagementTab: React.FC = () => {
             >
               {products.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.name} (${p.price.toFixed(2)})
+                  {p.name} (₹{p.price})
                 </option>
               ))}
             </select>
@@ -70,7 +70,7 @@ export const DiscountsManagementTab: React.FC = () => {
             />
           </div>
 
-          <button type="submit" className="w-full py-3.5 bg-black text-white text-xs font-extrabold rounded-2xl shadow-subtle">
+          <button type="submit" className="w-full py-3.5 bg-black text-white text-xs font-extrabold rounded-2xl shadow-subtle cursor-pointer">
             Apply Discount to Product
           </button>
         </form>
@@ -99,7 +99,7 @@ export const DiscountsManagementTab: React.FC = () => {
 
                   <button
                     onClick={() => removeProductDiscount(p.id)}
-                    className="p-2 border border-neutral-200 hover:border-rose-600 text-neutral-400 hover:text-rose-600 rounded-xl"
+                    className="p-2 border border-neutral-200 hover:border-rose-600 text-neutral-400 hover:text-rose-600 rounded-xl cursor-pointer"
                     title="Remove Discount"
                   >
                     <Trash2 className="w-4 h-4" />

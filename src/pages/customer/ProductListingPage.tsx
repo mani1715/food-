@@ -17,7 +17,7 @@ export const ProductListingPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>(categoryParam);
   const [selectedDietary, setSelectedDietary] = useState<string>(dietaryParam);
   const [searchQuery, setSearchQuery] = useState<string>(queryParam);
-  const [maxPrice, setMaxPrice] = useState<number>(60);
+  const [maxPrice, setMaxPrice] = useState<number>(1000);
   const [minRating, setMinRating] = useState<number>(0);
   const [sortBy, setSortBy] = useState<'popular' | 'newest' | 'price-low' | 'price-high'>(
     filterParam === 'new-arrivals' ? 'newest' : 'popular'
@@ -70,7 +70,7 @@ export const ProductListingPage: React.FC = () => {
     setSelectedCategory('All');
     setSelectedDietary('All');
     setSearchQuery('');
-    setMaxPrice(60);
+    setMaxPrice(1000);
     setMinRating(0);
     setSortBy('popular');
     setSearchParams({});
@@ -100,7 +100,7 @@ export const ProductListingPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowMobileFilter(true)}
-            className="md:hidden px-4 py-2.5 bg-neutral-100 border border-neutral-200 rounded-2xl text-xs font-bold flex items-center gap-2"
+            className="md:hidden px-4 py-2.5 bg-neutral-100 border border-neutral-200 rounded-2xl text-xs font-bold flex items-center gap-2 cursor-pointer"
           >
             <SlidersHorizontal className="w-4 h-4" />
             <span>Filters</span>
@@ -111,7 +111,7 @@ export const ProductListingPage: React.FC = () => {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="px-3 py-2 bg-white border border-neutral-200 rounded-2xl text-xs font-bold focus:outline-none focus:border-black"
+              className="px-3 py-2 bg-white border border-neutral-200 rounded-2xl text-xs font-bold focus:outline-none focus:border-black cursor-pointer"
             >
               <option value="popular">Most Popular</option>
               <option value="newest">Newest Arrivals</option>
@@ -202,13 +202,13 @@ export const ProductListingPage: React.FC = () => {
           <div className="space-y-2">
             <div className="flex justify-between text-xs font-bold">
               <label className="uppercase text-neutral-500">Max Price</label>
-              <span className="font-mono text-black">${maxPrice}</span>
+              <span className="font-mono text-black">₹{maxPrice}</span>
             </div>
             <input
               type="range"
-              min="5"
-              max="60"
-              step="1"
+              min="100"
+              max="2000"
+              step="50"
               value={maxPrice}
               onChange={(e) => setMaxPrice(Number(e.target.value))}
               className="w-full accent-black cursor-pointer"
@@ -256,7 +256,7 @@ export const ProductListingPage: React.FC = () => {
                     <button
                       key={d}
                       onClick={() => setSelectedDietary(d)}
-                      className={`flex-1 py-2 rounded-xl text-xs font-bold border ${
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold border cursor-pointer ${
                         selectedDietary === d ? 'bg-black text-white border-black' : 'bg-neutral-50 text-black border-neutral-200'
                       }`}
                     >
@@ -271,7 +271,7 @@ export const ProductListingPage: React.FC = () => {
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => setSelectedCategory('All')}
-                    className={`px-3 py-1.5 rounded-xl border text-xs font-bold ${
+                    className={`px-3 py-1.5 rounded-xl border text-xs font-bold cursor-pointer ${
                       selectedCategory === 'All' ? 'bg-black text-white border-black' : 'bg-neutral-50 text-black border-neutral-200'
                     }`}
                   >
@@ -281,7 +281,7 @@ export const ProductListingPage: React.FC = () => {
                     <button
                       key={c.id}
                       onClick={() => setSelectedCategory(c.name)}
-                      className={`px-3 py-1.5 rounded-xl border text-xs font-bold ${
+                      className={`px-3 py-1.5 rounded-xl border text-xs font-bold cursor-pointer ${
                         selectedCategory === c.name ? 'bg-black text-white border-black' : 'bg-neutral-50 text-black border-neutral-200'
                       }`}
                     >
@@ -294,7 +294,7 @@ export const ProductListingPage: React.FC = () => {
 
             <button
               onClick={() => setShowMobileFilter(false)}
-              className="w-full py-3.5 bg-black text-white text-xs font-bold rounded-2xl"
+              className="w-full py-3.5 bg-black text-white text-xs font-bold rounded-2xl cursor-pointer"
             >
               Apply Filters ({filteredProducts.length} Results)
             </button>

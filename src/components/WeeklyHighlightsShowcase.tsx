@@ -84,7 +84,7 @@ export const WeeklyHighlightsShowcase: React.FC = () => {
             <div className="relative z-10 pt-4 border-t border-neutral-800 flex items-center justify-between">
               <div>
                 <span className="text-[9px] text-neutral-400 font-bold block uppercase">Special Price</span>
-                <span className="text-lg font-black font-mono text-white">${dayProduct.price.toFixed(2)}</span>
+                <span className="text-lg font-black font-mono text-white">₹{dayProduct.price}</span>
               </div>
 
               <div className="flex items-center gap-2">
@@ -154,7 +154,7 @@ export const WeeklyHighlightsShowcase: React.FC = () => {
             <div className="relative z-10 pt-4 border-t border-neutral-200 flex items-center justify-between">
               <div>
                 <span className="text-[9px] text-neutral-400 font-bold block uppercase">Weekly Price</span>
-                <span className="text-lg font-black font-mono text-black">${weekProduct.price.toFixed(2)}</span>
+                <span className="text-lg font-black font-mono text-black">₹{weekProduct.price}</span>
               </div>
 
               <div className="flex items-center gap-2">
@@ -224,7 +224,7 @@ export const WeeklyHighlightsShowcase: React.FC = () => {
             <div className="relative z-10 pt-4 border-t border-neutral-800 flex items-center justify-between">
               <div>
                 <span className="text-[9px] text-neutral-400 font-bold block uppercase">Hamper Price</span>
-                <span className="text-lg font-black font-mono text-white">${festivalProduct.price.toFixed(2)}</span>
+                <span className="text-lg font-black font-mono text-white">₹{festivalProduct.price}</span>
               </div>
 
               <div className="flex items-center gap-2">

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { CheckCircle2, ShoppingBag, ArrowRight, ShieldCheck, Clock } from 'lucide-react';
+import { CheckCircle2, ShoppingBag, ArrowRight, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export const OrderSuccessPage: React.FC = () => {
@@ -44,7 +44,7 @@ export const OrderSuccessPage: React.FC = () => {
           </div>
           <div className="text-right">
             <p className="text-[10px] text-neutral-400 font-bold uppercase">Total Paid</p>
-            <p className="text-sm font-extrabold font-mono text-black">${order.total.toFixed(2)} ({order.paymentMethod})</p>
+            <p className="text-sm font-extrabold font-mono text-black">₹{order.total} ({order.paymentMethod})</p>
           </div>
         </div>
 
@@ -53,7 +53,7 @@ export const OrderSuccessPage: React.FC = () => {
           {order.items.map((item, idx) => (
             <div key={idx} className="flex items-center justify-between text-xs text-neutral-700">
               <span>{item.quantity}x {item.product.name} ({item.selectedWeight})</span>
-              <span className="font-mono font-bold">${(item.unitPrice * item.quantity).toFixed(2)}</span>
+              <span className="font-mono font-bold">₹{item.unitPrice * item.quantity}</span>
             </div>
           ))}
         </div>
@@ -63,7 +63,7 @@ export const OrderSuccessPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md">
         <button
           onClick={() => navigate('/orders')}
-          className="flex-1 py-4 bg-black text-white text-xs font-extrabold rounded-2xl hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 shadow-subtle"
+          className="flex-1 py-4 bg-black text-white text-xs font-extrabold rounded-2xl hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 shadow-subtle cursor-pointer"
         >
           <span>View My Orders</span>
           <ArrowRight className="w-4 h-4" />
@@ -71,7 +71,7 @@ export const OrderSuccessPage: React.FC = () => {
 
         <button
           onClick={() => navigate('/products')}
-          className="flex-1 py-4 bg-white border-2 border-black text-black text-xs font-extrabold rounded-2xl hover:bg-neutral-100 transition-all flex items-center justify-center gap-2"
+          className="flex-1 py-4 bg-white border-2 border-black text-black text-xs font-extrabold rounded-2xl hover:bg-neutral-100 transition-all flex items-center justify-center gap-2 cursor-pointer"
         >
           <ShoppingBag className="w-4 h-4" />
           <span>Continue Shopping</span>

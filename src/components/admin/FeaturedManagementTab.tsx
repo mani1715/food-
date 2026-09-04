@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { WeeklyHighlights, HighlightItem } from '../../types';
-import { Sparkles, Star, Tag, Flame, Save, Check } from 'lucide-react';
+import { Star, Tag, Flame, Save } from 'lucide-react';
 
 export const FeaturedManagementTab: React.FC = () => {
   const { products, weeklyHighlights, updateWeeklyHighlights, toggleProductBestSeller, toggleProductFestival } = useApp();
@@ -56,7 +56,7 @@ export const FeaturedManagementTab: React.FC = () => {
               >
                 {products.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name} (${p.price.toFixed(2)})
+                    {p.name} (₹{p.price})
                   </option>
                 ))}
               </select>
@@ -123,7 +123,7 @@ export const FeaturedManagementTab: React.FC = () => {
               >
                 {products.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name} (${p.price.toFixed(2)})
+                    {p.name} (₹{p.price})
                   </option>
                 ))}
               </select>
@@ -190,7 +190,7 @@ export const FeaturedManagementTab: React.FC = () => {
               >
                 {products.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name} (${p.price.toFixed(2)})
+                    {p.name} (₹{p.price})
                   </option>
                 ))}
               </select>
@@ -245,7 +245,7 @@ export const FeaturedManagementTab: React.FC = () => {
 
         <button
           type="submit"
-          className="w-full py-4 bg-black text-white text-xs font-extrabold rounded-2xl hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 shadow-subtle"
+          className="w-full py-4 bg-black text-white text-xs font-extrabold rounded-2xl hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 shadow-subtle cursor-pointer"
         >
           <Save className="w-4 h-4" />
           <span>Save & Publish Weekly Highlights to Homepage</span>
@@ -263,7 +263,7 @@ export const FeaturedManagementTab: React.FC = () => {
                 <img src={prod.image} alt={prod.name} className="w-12 h-12 rounded-xl object-cover border border-neutral-200 shrink-0" />
                 <div className="min-w-0">
                   <h4 className="text-xs font-bold text-black truncate">{prod.name}</h4>
-                  <p className="text-[10px] text-neutral-400 font-mono">{prod.category} • ${prod.price.toFixed(2)}</p>
+                  <p className="text-[10px] text-neutral-400 font-mono">{prod.category} • ₹{prod.price}</p>
                 </div>
               </div>
 
@@ -271,7 +271,7 @@ export const FeaturedManagementTab: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => toggleProductBestSeller(prod.id)}
-                  className={`px-2.5 py-1.5 rounded-xl border text-[10px] font-extrabold transition-all flex items-center gap-1 ${
+                  className={`px-2.5 py-1.5 rounded-xl border text-[10px] font-extrabold transition-all flex items-center gap-1 cursor-pointer ${
                     prod.isBestSeller ? 'bg-black text-white border-black' : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-black'
                   }`}
                 >
@@ -282,7 +282,7 @@ export const FeaturedManagementTab: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => toggleProductFestival(prod.id)}
-                  className={`px-2.5 py-1.5 rounded-xl border text-[10px] font-extrabold transition-all flex items-center gap-1 ${
+                  className={`px-2.5 py-1.5 rounded-xl border text-[10px] font-extrabold transition-all flex items-center gap-1 cursor-pointer ${
                     prod.isFestival ? 'bg-black text-white border-black' : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-black'
                   }`}
                 >
