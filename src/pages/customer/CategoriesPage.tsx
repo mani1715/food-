@@ -15,7 +15,7 @@ export const CategoriesPage: React.FC = () => {
         <h1 className="text-3xl font-extrabold text-black tracking-tight mt-1">Shop By Product Category</h1>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {categories.map((cat) => (
           <div
             key={cat.id}

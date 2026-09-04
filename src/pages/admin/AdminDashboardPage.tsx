@@ -92,12 +92,12 @@ export const AdminDashboardPage: React.FC = () => {
       {/* Top Banner & Header */}
       <div className="bg-neutral-50 border border-neutral-200 rounded-3xl p-6 shadow-subtle flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-black text-white flex items-center justify-center font-black text-xl shadow-subtle">
-            A
+          <div className="w-14 h-14 rounded-2xl overflow-hidden border border-black bg-black flex items-center justify-center font-black text-xl shadow-subtle">
+            <img src="/aishu-logo.jpg" alt="Aishu Foods Logo" className="w-full h-full object-cover" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-extrabold text-black tracking-tight">Aura Admin Console</h1>
+              <h1 className="text-2xl font-extrabold text-black tracking-tight">Aishu Foods Admin Portal</h1>
               <span className="text-[10px] font-bold bg-black text-white px-2.5 py-0.5 rounded-full uppercase">Master</span>
             </div>
             <p className="text-xs text-neutral-500 mt-0.5">Control store catalog, fulfillments, discounts & customer requests.</p>

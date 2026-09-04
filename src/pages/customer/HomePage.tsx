@@ -5,23 +5,151 @@ import { ProductCard } from '../../components/ProductCard';
 import { RecentlyViewed } from '../../components/RecentlyViewed';
 import { NewsletterSection } from '../../components/NewsletterSection';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, ArrowRight, ShieldCheck, MapPin, BookOpen, Flame } from 'lucide-react';
+import { Sparkles, ArrowRight, ShieldCheck, MapPin, BookOpen, Flame, Heart, CheckCircle2, Award, Zap } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
-  const { products, homeSections } = useApp();
+  const { products, categories, homeSections } = useApp();
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-white text-black font-sans space-y-4">
+    <div className="min-h-screen bg-white text-black font-sans space-y-10">
       
-      {/* 1. SPECIAL ITEMS FIRST */}
+      {/* 1. HERO BANNER AT THE VERY TOP */}
+      <section className="relative overflow-hidden bg-black text-white py-12 sm:py-20 px-4 sm:px-6 lg:px-8 border-b border-neutral-800">
+        {/* Background Image Container with Soft Gradient Dark Overlay */}
+        <div className="absolute inset-0 z-0">
+          <img
+            src="https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=1600&auto=format&fit=crop"
+            alt="Aishu Foods Traditional Spices & Pickles"
+            className="w-full h-full object-cover opacity-40 scale-105"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/90 to-black/60" />
+        </div>
+
+        <div className="relative z-10 max-w-7xl mx-auto text-left space-y-8">
+          
+          {/* Top Badge */}
+          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-black uppercase tracking-widest px-4 py-2 rounded-full shadow-subtle">
+            <Heart className="w-4 h-4 text-rose-400 fill-rose-400" />
+            <span>Handcrafted at Home with Pure Love & Energy</span>
+          </div>
+
+          {/* Banner Main Headline & Subtitle */}
+          <div className="space-y-4 max-w-3xl">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-tight font-serif">
+              Authentic Home Flavors Made with Pure Resources & Passion.
+            </h1>
+            <p className="text-sm sm:text-base text-neutral-300 font-medium leading-relaxed">
+              At <strong className="text-white font-black">AISHU FOODS</strong>, every pickle jar, sweet box, and spice powder is prepared at home using 100% natural ingredients, cold-pressed oils, stone-ground spices, and pure A2 cow ghee. <span className="text-amber-400 font-bold">Uncompromising quality & generous quantity at fair, affordable prices.</span>
+            </p>
+          </div>
+
+          {/* 4 Differentiator Cards Grid (What Makes Us Different) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 pt-2">
+            
+            <div className="bg-white/10 backdrop-blur-md border border-white/15 p-3.5 sm:p-4 rounded-2xl space-y-1.5 hover:border-amber-400 transition-all">
+              <div className="flex items-center gap-2 text-amber-400 font-extrabold text-xs">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>100% Pure & Natural</span>
+              </div>
+              <p className="text-[11px] text-neutral-300 font-medium">Zero chemical preservatives, synthetic colors or palm oil.</p>
+            </div>
+
+            <div className="bg-white/10 backdrop-blur-md border border-white/15 p-3.5 sm:p-4 rounded-2xl space-y-1.5 hover:border-amber-400 transition-all">
+              <div className="flex items-center gap-2 text-amber-400 font-extrabold text-xs">
+                <BookOpen className="w-4 h-4" />
+                <span>Grandma's Recipe</span>
+              </div>
+              <p className="text-[11px] text-neutral-300 font-medium">Stone-ground spices & authentic traditional Andhra curing.</p>
+            </div>
+
+            <div className="bg-white/10 backdrop-blur-md border border-white/15 p-3.5 sm:p-4 rounded-2xl space-y-1.5 hover:border-amber-400 transition-all">
+              <div className="flex items-center gap-2 text-amber-400 font-extrabold text-xs">
+                <Award className="w-4 h-4" />
+                <span>Full Quantity & Value</span>
+              </div>
+              <p className="text-[11px] text-neutral-300 font-medium">Generous portion sizes at honest, budget-friendly prices.</p>
+            </div>
+
+            <div className="bg-white/10 backdrop-blur-md border border-white/15 p-3.5 sm:p-4 rounded-2xl space-y-1.5 hover:border-amber-400 transition-all">
+              <div className="flex items-center gap-2 text-amber-400 font-extrabold text-xs">
+                <Zap className="w-4 h-4" />
+                <span>Made Fresh on Order</span>
+              </div>
+              <p className="text-[11px] text-neutral-300 font-medium">Prepared in small hygienic batches with positive energy.</p>
+            </div>
+
+          </div>
+
+          {/* Hero Action Buttons */}
+          <div className="flex items-center flex-wrap gap-3 pt-2">
+            <button
+              onClick={() => navigate('/products')}
+              className="px-7 py-3.5 bg-white text-black text-xs font-black rounded-2xl hover:bg-neutral-200 transition-all flex items-center gap-2 shadow-modal cursor-pointer"
+            >
+              <span>Explore All Products</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => navigate('/our-process')}
+              className="px-6 py-3.5 bg-neutral-900 border border-neutral-700 hover:border-white text-white text-xs font-black rounded-2xl transition-all flex items-center gap-2 cursor-pointer"
+            >
+              <span>How We Do</span>
+              <span>📜</span>
+            </button>
+          </div>
+
+        </div>
+      </section>
+
+      {/* 2. SPECIAL HIGHLIGHTS & OFFERS (SECOND SECTION ON HOMEPAGE) */}
       <WeeklyHighlightsShowcase />
 
-      {/* 2. DYNAMIC HOMEPAGE SHOWCASE SECTIONS (Best Selling, Pickles Collection, Authentic Sweets, etc.) */}
+      {/* 3. CATEGORIES BAR WITH ANIMATED SMALL PHOTOS */}
+      <section className="py-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-left space-y-4">
+        <div className="flex items-center justify-between border-b border-neutral-200 pb-3">
+          <div>
+            <h2 className="text-xl sm:text-2xl font-black text-black tracking-tight">Explore Categories</h2>
+            <p className="text-xs text-neutral-500 font-medium">Tap to view authentic homemade specialties by category.</p>
+          </div>
+          <button
+            onClick={() => navigate('/categories')}
+            className="text-xs font-extrabold text-black hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            <span>View All ({categories.length})</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {/* Animated Category Small Photos Horizontal Grid */}
+        <div className="flex items-center gap-4 overflow-x-auto no-scrollbar py-2">
+          {categories.map((cat) => (
+            <div
+              key={cat.id}
+              onClick={() => navigate(`/products?category=${encodeURIComponent(cat.name)}`)}
+              className="group flex flex-col items-center gap-2 cursor-pointer shrink-0"
+            >
+              {/* Animated Small Circle Photo */}
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-neutral-200 group-hover:border-black shadow-subtle group-hover:scale-110 transition-all duration-300 bg-neutral-100 p-0.5">
+                <img
+                  src={cat.image}
+                  alt={cat.name}
+                  className="w-full h-full object-cover rounded-full group-hover:rotate-3 transition-transform duration-500"
+                />
+              </div>
+              <span className="text-xs font-extrabold text-black group-hover:underline text-center">
+                {cat.name}
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 4. DYNAMIC HOMEPAGE SHOWCASE SECTIONS (Best Selling, Pickles Collection, Authentic Sweets, etc.) */}
       {homeSections
         .filter((sec) => sec.enabled)
         .map((sec) => {
-          // Get products assigned to section
           const sectionProducts = products.filter((p) => {
             if (sec.productIds && sec.productIds.length > 0) {
               return sec.productIds.includes(p.id);
@@ -35,7 +163,7 @@ export const HomePage: React.FC = () => {
           if (sectionProducts.length === 0) return null;
 
           return (
-            <section key={sec.id} className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-left space-y-6">
+            <section key={sec.id} className="py-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-left space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-neutral-200 pb-4">
                 <div>
                   {sec.badge && (
@@ -63,8 +191,8 @@ export const HomePage: React.FC = () => {
                 </button>
               </div>
 
-              {/* Product Card Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* Mobile Friendly Grid: Exactly 2 Items Per Row on Mobile (`grid-cols-2 gap-3`) */}
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
                 {sectionProducts.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
@@ -73,8 +201,8 @@ export const HomePage: React.FC = () => {
           );
         })}
 
-      {/* 3. BRAND PROCESS & QUALITY PROMISE QUICK BANNER (LEADS TO DEDICATED PAGES) */}
-      <section className="py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-left">
+      {/* 5. BRAND PROCESS & QUALITY PROMISE BANNER */}
+      <section className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-left">
         <div className="bg-neutral-50 border border-neutral-200 rounded-3xl p-6 sm:p-8 shadow-subtle space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-200 pb-4">
             <div>
@@ -103,7 +231,7 @@ export const HomePage: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-base font-extrabold text-black group-hover:underline flex items-center justify-between">
-                  <span>Our Heritage Process</span>
+                  <span>How We Do</span>
                   <ArrowRight className="w-4 h-4 text-neutral-400 group-hover:translate-x-1 transition-transform" />
                 </h3>
                 <p className="text-xs text-neutral-500 font-medium mt-1">

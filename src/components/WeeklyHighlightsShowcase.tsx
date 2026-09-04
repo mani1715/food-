@@ -1,19 +1,62 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Sparkles, Tag, ArrowRight, ShoppingBag, Star, Flame } from 'lucide-react';
+import { Sparkles, Tag, ArrowRight, ShoppingBag, Star, Flame, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const WeeklyHighlightsShowcase: React.FC = () => {
   const { products, weeklyHighlights, addToCart } = useApp();
   const navigate = useNavigate();
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
 
   const getProduct = (id: string) => {
     return products.find((p) => p.id === id) || products[0];
   };
 
-  const dayProduct = getProduct(weeklyHighlights.specialOfDay.productId);
-  const weekProduct = getProduct(weeklyHighlights.specialOfWeek.productId);
-  const festivalProduct = getProduct(weeklyHighlights.festivalSpecial.productId);
+  const slides = [
+    {
+      type: 'day',
+      badgeText: weeklyHighlights.specialOfDay.badgeText || "TODAY'S HOT SPECIAL",
+      icon: <Flame className="w-4 h-4 text-amber-400" />,
+      title: weeklyHighlights.specialOfDay.title,
+      subtitle: weeklyHighlights.specialOfDay.subtitle,
+      discount: weeklyHighlights.specialOfDay.discountPercentage,
+      product: getProduct(weeklyHighlights.specialOfDay.productId),
+      bgClass: 'bg-black text-white border-neutral-800',
+    },
+    {
+      type: 'week',
+      badgeText: weeklyHighlights.specialOfWeek.badgeText || "WEEKLY HIGHLIGHT",
+      icon: <Star className="w-4 h-4 text-black" />,
+      title: weeklyHighlights.specialOfWeek.title,
+      subtitle: weeklyHighlights.specialOfWeek.subtitle,
+      discount: weeklyHighlights.specialOfWeek.discountPercentage,
+      product: getProduct(weeklyHighlights.specialOfWeek.productId),
+      bgClass: 'bg-neutral-900 text-white border-neutral-700',
+    },
+    {
+      type: 'festival',
+      badgeText: weeklyHighlights.festivalSpecial.badgeText || "FESTIVAL HAMPER",
+      icon: <Tag className="w-4 h-4 text-amber-400" />,
+      title: weeklyHighlights.festivalSpecial.title,
+      subtitle: weeklyHighlights.festivalSpecial.subtitle,
+      discount: weeklyHighlights.festivalSpecial.discountPercentage,
+      product: getProduct(weeklyHighlights.festivalSpecial.productId),
+      bgClass: 'bg-neutral-950 text-white border-neutral-800',
+    },
+  ];
+
+  // Auto-advance slide every 5 seconds
+  useEffect(() => {
+    if (isPaused) return;
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [isPaused, slides.length]);
+
+  const activeSlide = slides[currentSlide];
+  const activeProduct = activeSlide.product;
 
   return (
     <section className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-left space-y-6">
@@ -30,223 +73,116 @@ export const WeeklyHighlightsShowcase: React.FC = () => {
           </h2>
         </div>
         <p className="text-xs text-neutral-500 max-w-sm font-medium">
-          Handcrafted daily batches, weekly specials, and festival gift hampers delivered fresh.
+          Handcrafted daily batches, weekly specials, and festival gift hampers prepared fresh and delivered fast.
         </p>
       </div>
 
-      {/* 3 Distinct High-Contrast Black & White Highlight Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        
-        {/* CARD 1: Special of the Day — Inverted Jet Black Card */}
-        {dayProduct && (
-          <div className="group relative rounded-3xl overflow-hidden bg-black text-white p-6 shadow-modal border border-neutral-800 hover:border-white transition-all flex flex-col justify-between min-h-[400px]">
-            {/* Background Image with Dark Vignette */}
+      {/* Interactive Sliding Carousel Container */}
+      <div
+        className="relative rounded-3xl overflow-hidden shadow-modal border border-neutral-800 min-h-[380px] sm:min-h-[420px] transition-all duration-500"
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+      >
+        {activeProduct && (
+          <div key={currentSlide} className={`relative p-6 sm:p-10 ${activeSlide.bgClass} min-h-[380px] sm:min-h-[420px] flex flex-col justify-between transition-all duration-700 animate-fadeIn`}>
+            
+            {/* Background Image Overlay */}
             <div className="absolute inset-0 z-0">
               <img
-                src={dayProduct.image}
-                alt={dayProduct.name}
-                className="w-full h-full object-cover opacity-35 group-hover:scale-105 transition-all duration-700"
+                src={activeProduct.image}
+                alt={activeProduct.name}
+                className="w-full h-full object-cover opacity-35 scale-105 transition-all duration-1000"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/85 to-black/30" />
+              <div className="absolute inset-0 bg-gradient-to-r from-black via-black/90 to-black/40" />
             </div>
 
-            {/* Top Badges */}
+            {/* Slide Top Bar: Badge & Discount */}
             <div className="relative z-10 flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-1.5 bg-white text-black text-[10px] font-black uppercase tracking-wider px-3.5 py-1.5 rounded-full shadow-modal">
-                <Flame className="w-3.5 h-3.5 text-black" />
-                <span>{weeklyHighlights.specialOfDay.badgeText || "TODAY'S SPECIAL"}</span>
+              <span className="inline-flex items-center gap-2 bg-white text-black text-xs font-black uppercase tracking-wider px-4 py-1.5 rounded-full shadow-modal">
+                {activeSlide.icon}
+                <span>{activeSlide.badgeText}</span>
               </span>
 
-              {weeklyHighlights.specialOfDay.discountPercentage && weeklyHighlights.specialOfDay.discountPercentage > 0 && (
-                <span className="bg-white text-black font-mono text-[10px] font-black uppercase px-2.5 py-1.5 rounded-full shadow-modal">
-                  {weeklyHighlights.specialOfDay.discountPercentage}% OFF
+              {activeSlide.discount && activeSlide.discount > 0 && (
+                <span className="bg-amber-400 text-black font-mono text-xs font-black uppercase px-3 py-1.5 rounded-full shadow-modal">
+                  {activeSlide.discount}% SPECIAL DISCOUNT
                 </span>
               )}
             </div>
 
-            {/* Middle Content */}
-            <div className="relative z-10 space-y-2 pt-16">
-              <span className="text-[10px] font-black uppercase text-neutral-400 tracking-wider block">
-                {dayProduct.category} • {dayProduct.isVeg ? '● Veg' : '▲ Non-Veg'}
+            {/* Slide Middle Content */}
+            <div className="relative z-10 space-y-3 my-6 max-w-2xl">
+              <span className="text-xs font-extrabold uppercase text-amber-400 tracking-widest block">
+                {activeProduct.category} • {activeProduct.isVeg ? '● 100% Pure Veg' : '▲ Non-Veg Special'}
               </span>
               <h3
-                onClick={() => navigate(`/product/${dayProduct.id}`)}
-                className="text-xl font-extrabold text-white tracking-tight cursor-pointer hover:underline line-clamp-2"
+                onClick={() => navigate(`/product/${activeProduct.id}`)}
+                className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight cursor-pointer hover:underline"
               >
-                {weeklyHighlights.specialOfDay.title || dayProduct.name}
+                {activeSlide.title || activeProduct.name}
               </h3>
-              <p className="text-xs text-neutral-300 line-clamp-2 leading-relaxed font-medium">
-                {weeklyHighlights.specialOfDay.subtitle || dayProduct.description}
+              <p className="text-xs sm:text-sm text-neutral-300 line-clamp-2 leading-relaxed font-medium">
+                {activeSlide.subtitle || activeProduct.description}
               </p>
             </div>
 
-            {/* Bottom Actions */}
-            <div className="relative z-10 pt-4 border-t border-neutral-800 flex items-center justify-between">
-              <div>
-                <span className="text-[9px] text-neutral-400 font-bold block uppercase">Special Price</span>
-                <span className="text-lg font-black font-mono text-white">₹{dayProduct.price}</span>
+            {/* Slide Bottom Bar: Price & CTA Action Buttons */}
+            <div className="relative z-10 pt-4 border-t border-neutral-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-baseline gap-3">
+                <span className="text-2xl sm:text-3xl font-black font-mono text-white">₹{activeProduct.price}</span>
+                <span className="text-xs text-neutral-400 font-bold uppercase tracking-wider">Per {activeProduct.defaultWeight || '500g'} Jar</span>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <button
-                  onClick={() => addToCart(dayProduct, dayProduct.defaultWeight || '500g', 1)}
-                  className="px-4 py-2.5 bg-white text-black text-xs font-black rounded-2xl hover:bg-neutral-200 transition-all flex items-center gap-1.5 shadow-subtle cursor-pointer"
+                  onClick={() => addToCart(activeProduct, activeProduct.defaultWeight || '500g', 1)}
+                  className="px-6 py-3 bg-white text-black text-xs font-black rounded-2xl hover:bg-neutral-200 transition-all flex items-center gap-2 shadow-subtle cursor-pointer"
                 >
-                  <ShoppingBag className="w-3.5 h-3.5 text-black" />
-                  <span>Quick Add</span>
+                  <ShoppingBag className="w-4 h-4 text-black" />
+                  <span>Add to Cart</span>
                 </button>
                 <button
-                  onClick={() => navigate(`/product/${dayProduct.id}`)}
-                  className="p-2.5 bg-neutral-900 border border-neutral-700 hover:border-white text-white rounded-2xl transition-all cursor-pointer"
-                  title="View Details"
+                  onClick={() => navigate(`/product/${activeProduct.id}`)}
+                  className="px-5 py-3 bg-neutral-900 border border-neutral-700 hover:border-white text-white text-xs font-extrabold rounded-2xl transition-all flex items-center gap-1.5 cursor-pointer"
                 >
+                  <span>Explore Offer</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
+
+            {/* Next / Prev Nav Controls */}
+            <button
+              onClick={() => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length)}
+              className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/60 hover:bg-black text-white flex items-center justify-center border border-white/20 transition-all cursor-pointer backdrop-blur-sm"
+              title="Previous Offer"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+
+            <button
+              onClick={() => setCurrentSlide((prev) => (prev + 1) % slides.length)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/60 hover:bg-black text-white flex items-center justify-center border border-white/20 transition-all cursor-pointer backdrop-blur-sm"
+              title="Next Offer"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+
+            {/* Slide Dot Indicators */}
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
+              {slides.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentSlide(idx)}
+                  className={`h-2 rounded-full transition-all cursor-pointer ${
+                    currentSlide === idx ? 'w-8 bg-amber-400' : 'w-2 bg-white/40 hover:bg-white'
+                  }`}
+                />
+              ))}
+            </div>
+
           </div>
         )}
-
-        {/* CARD 2: Special of the Week — Crisp White High-Contrast Card */}
-        {weekProduct && (
-          <div className="group relative rounded-3xl overflow-hidden bg-white text-black p-6 shadow-modal border-2 border-black hover:shadow-2xl transition-all flex flex-col justify-between min-h-[400px]">
-            {/* Background Image Container */}
-            <div className="absolute inset-0 bg-neutral-50 z-0">
-              <img
-                src={weekProduct.image}
-                alt={weekProduct.name}
-                className="w-full h-full object-cover opacity-20 group-hover:scale-105 transition-all duration-700"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-white via-white/90 to-transparent" />
-            </div>
-
-            {/* Top Badges */}
-            <div className="relative z-10 flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-1.5 bg-black text-white text-[10px] font-black uppercase tracking-wider px-3.5 py-1.5 rounded-full shadow-subtle">
-                <Star className="w-3.5 h-3.5 text-white" />
-                <span>{weeklyHighlights.specialOfWeek.badgeText || "WEEKLY HIGHLIGHT"}</span>
-              </span>
-
-              {weeklyHighlights.specialOfWeek.discountPercentage && weeklyHighlights.specialOfWeek.discountPercentage > 0 && (
-                <span className="bg-black text-white font-mono text-[10px] font-black uppercase px-2.5 py-1.5 rounded-full shadow-subtle">
-                  {weeklyHighlights.specialOfWeek.discountPercentage}% OFF
-                </span>
-              )}
-            </div>
-
-            {/* Middle Content */}
-            <div className="relative z-10 space-y-2 pt-16">
-              <span className="text-[10px] font-extrabold uppercase text-neutral-500 tracking-wider block">
-                {weekProduct.category} • {weekProduct.isVeg ? '● Veg' : '▲ Non-Veg'}
-              </span>
-              <h3
-                onClick={() => navigate(`/product/${weekProduct.id}`)}
-                className="text-xl font-extrabold text-black tracking-tight cursor-pointer hover:underline line-clamp-2"
-              >
-                {weeklyHighlights.specialOfWeek.title || weekProduct.name}
-              </h3>
-              <p className="text-xs text-neutral-600 line-clamp-2 leading-relaxed font-medium">
-                {weeklyHighlights.specialOfWeek.subtitle || weekProduct.description}
-              </p>
-            </div>
-
-            {/* Bottom Actions */}
-            <div className="relative z-10 pt-4 border-t border-neutral-200 flex items-center justify-between">
-              <div>
-                <span className="text-[9px] text-neutral-400 font-bold block uppercase">Weekly Price</span>
-                <span className="text-lg font-black font-mono text-black">₹{weekProduct.price}</span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => addToCart(weekProduct, weekProduct.defaultWeight || '500g', 1)}
-                  className="px-4 py-2.5 bg-black text-white text-xs font-black rounded-2xl hover:bg-neutral-800 transition-all flex items-center gap-1.5 shadow-subtle cursor-pointer"
-                >
-                  <ShoppingBag className="w-3.5 h-3.5" />
-                  <span>Quick Add</span>
-                </button>
-                <button
-                  onClick={() => navigate(`/product/${weekProduct.id}`)}
-                  className="p-2.5 bg-neutral-100 border border-neutral-300 hover:border-black text-black rounded-2xl transition-all cursor-pointer"
-                  title="View Details"
-                >
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* CARD 3: Festival Special — Brushed Charcoal Luxury Card */}
-        {festivalProduct && (
-          <div className="group relative rounded-3xl overflow-hidden bg-neutral-900 text-white p-6 shadow-modal border border-neutral-700 hover:border-white transition-all flex flex-col justify-between min-h-[400px]">
-            {/* Background Image Container */}
-            <div className="absolute inset-0 z-0">
-              <img
-                src={festivalProduct.image}
-                alt={festivalProduct.name}
-                className="w-full h-full object-cover opacity-30 group-hover:scale-105 transition-all duration-700"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/85 to-transparent" />
-            </div>
-
-            {/* Top Badges */}
-            <div className="relative z-10 flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-1.5 bg-neutral-200 text-black text-[10px] font-black uppercase tracking-wider px-3.5 py-1.5 rounded-full shadow-subtle">
-                <Tag className="w-3.5 h-3.5 text-black" />
-                <span>{weeklyHighlights.festivalSpecial.badgeText || "FESTIVAL HAMPER"}</span>
-              </span>
-
-              {weeklyHighlights.festivalSpecial.discountPercentage && weeklyHighlights.festivalSpecial.discountPercentage > 0 && (
-                <span className="bg-white text-black font-mono text-[10px] font-black uppercase px-2.5 py-1.5 rounded-full shadow-subtle">
-                  {weeklyHighlights.festivalSpecial.discountPercentage}% OFF
-                </span>
-              )}
-            </div>
-
-            {/* Middle Content */}
-            <div className="relative z-10 space-y-2 pt-16">
-              <span className="text-[10px] font-black uppercase text-neutral-400 tracking-wider block">
-                {festivalProduct.category} • {festivalProduct.isVeg ? '● Veg' : '▲ Non-Veg'}
-              </span>
-              <h3
-                onClick={() => navigate(`/product/${festivalProduct.id}`)}
-                className="text-xl font-extrabold text-white tracking-tight cursor-pointer hover:underline line-clamp-2"
-              >
-                {weeklyHighlights.festivalSpecial.title || festivalProduct.name}
-              </h3>
-              <p className="text-xs text-neutral-300 line-clamp-2 leading-relaxed font-medium">
-                {weeklyHighlights.festivalSpecial.subtitle || festivalProduct.description}
-              </p>
-            </div>
-
-            {/* Bottom Actions */}
-            <div className="relative z-10 pt-4 border-t border-neutral-800 flex items-center justify-between">
-              <div>
-                <span className="text-[9px] text-neutral-400 font-bold block uppercase">Hamper Price</span>
-                <span className="text-lg font-black font-mono text-white">₹{festivalProduct.price}</span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => addToCart(festivalProduct, festivalProduct.defaultWeight || '1kg Box', 1)}
-                  className="px-4 py-2.5 bg-white text-black text-xs font-black rounded-2xl hover:bg-neutral-200 transition-all flex items-center gap-1.5 shadow-subtle cursor-pointer"
-                >
-                  <ShoppingBag className="w-3.5 h-3.5 text-black" />
-                  <span>Quick Add</span>
-                </button>
-                <button
-                  onClick={() => navigate(`/product/${festivalProduct.id}`)}
-                  className="p-2.5 bg-neutral-800 border border-neutral-700 hover:border-white text-white rounded-2xl transition-all cursor-pointer"
-                  title="View Details"
-                >
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
       </div>
 
     </section>

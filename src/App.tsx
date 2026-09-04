@@ -1,6 +1,17 @@
 import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
+
+// Scroll To Top Component for smooth page transitions
+const ScrollToTop: React.FC = () => {
+  const { pathname, search } = useLocation();
+
+  React.useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [pathname, search]);
+
+  return null;
+};
 
 // Layout & Global Components
 import { AnnouncementBar } from './components/AnnouncementBar';
@@ -100,6 +111,7 @@ export const App: React.FC = () => {
   return (
     <AppProvider>
       <BrowserRouter>
+        <ScrollToTop />
         <MainLayout />
       </BrowserRouter>
     </AppProvider>
