@@ -14,9 +14,11 @@ import {
   ShieldCheck,
   ChevronRight,
   Sparkles,
+  BarChart3,
 } from 'lucide-react';
 
 // Sub-Tab Components
+import { AnalyticsManagementTab } from '../../components/admin/AnalyticsManagementTab';
 import { ProductsManagementTab } from '../../components/admin/ProductsManagementTab';
 import { OrdersManagementTab } from '../../components/admin/OrdersManagementTab';
 import { LocationsManagementTab } from '../../components/admin/LocationsManagementTab';
@@ -37,12 +39,13 @@ export const AdminDashboardPage: React.FC = () => {
     citySuggestions,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<AdminTab>('products');
+  const [activeTab, setActiveTab] = useState<AdminTab>('analytics');
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   const pendingSuggestionsCount = citySuggestions.filter((s) => s.status === 'pending').length;
 
   const tabs = [
+    { id: 'analytics', label: 'Analytics & Insights', icon: <BarChart3 className="w-4 h-4" /> },
     { id: 'products', label: 'Product Catalog', icon: <Package className="w-4 h-4" /> },
     { id: 'orders', label: 'Orders & Fulfillment', icon: <ShoppingBag className="w-4 h-4" />, badge: orders.filter((o) => o.status === 'Active').length },
     { id: 'locations', label: 'Cities & Requests', icon: <MapPin className="w-4 h-4" />, badge: pendingSuggestionsCount > 0 ? `${pendingSuggestionsCount}` : undefined },
@@ -168,6 +171,7 @@ export const AdminDashboardPage: React.FC = () => {
 
         {/* Tab Content Panel */}
         <div className="lg:col-span-9 min-h-[500px]">
+          {activeTab === 'analytics' && <AnalyticsManagementTab />}
           {activeTab === 'products' && <ProductsManagementTab />}
           {activeTab === 'orders' && <OrdersManagementTab />}
           {activeTab === 'locations' && <LocationsManagementTab />}

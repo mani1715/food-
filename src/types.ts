@@ -145,6 +145,7 @@ export interface HomeSection {
 }
 
 export type AdminTab =
+  | 'analytics'
   | 'products'
   | 'orders'
   | 'locations'

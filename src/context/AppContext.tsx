@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   Product,
   ProductCategory,
@@ -108,112 +108,309 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+const getInitialState = <T,>(key: string, fallback: T): T => {
+  try {
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (err) {
+    console.error(`Error reading ${key} from localStorage:`, err);
+  }
+  return fallback;
+};
+
+const DEFAULT_HOME_SECTIONS: HomeSection[] = [
+  {
+    id: 'sec-bestsellers',
+    badge: 'Customer Favorites',
+    title: 'Best Selling Homemade Products',
+    subtitle: 'Top rated authentic homemade delicacies loved by thousands of families.',
+    productIds: ['prod-1', 'prod-2', 'prod-6', 'prod-7'],
+    categoryFilter: 'all',
+    enabled: true,
+  },
+  {
+    id: 'sec-pickles',
+    badge: 'Spicy & Tangy Signature',
+    title: 'Homestyle Pickles Collection',
+    subtitle: 'Authentic raw mango, chicken, mutton & gongura pickles made with cold-pressed oil.',
+    productIds: ['prod-1', 'prod-2', 'prod-3', 'prod-4', 'prod-5'],
+    categoryFilter: 'Pickles',
+    enabled: true,
+  },
+  {
+    id: 'sec-sweets',
+    badge: 'Pure Ghee Delights',
+    title: 'Authentic Traditional Sweets',
+    subtitle: 'Hand-churned A2 cow ghee sweets prepared fresh without artificial preservatives.',
+    productIds: ['prod-6', 'prod-7', 'prod-8'],
+    categoryFilter: 'Sweets',
+    enabled: true,
+  },
+  {
+    id: 'sec-snacks',
+    badge: 'Crunchy Evening Savories',
+    title: 'Homestyle Snacks & Savories',
+    subtitle: 'Traditional crispy murukku, chekodi & karam mixture roasted in small batches.',
+    productIds: ['prod-9', 'prod-10', 'prod-11'],
+    categoryFilter: 'Snacks',
+    enabled: true,
+  },
+];
+
+const INITIAL_MOCK_ORDERS: Order[] = [
+  {
+    id: 'ord-1001',
+    orderNumber: 'AURA-98214',
+    trackingCode: 'TRK-883921',
+    date: '2026-09-01',
+    items: [
+      { product: MOCK_PRODUCTS[0], selectedWeight: '500g', unitPrice: 9.99, quantity: 2 },
+      { product: MOCK_PRODUCTS[5], selectedWeight: '500g', unitPrice: 12.99, quantity: 1 },
+    ],
+    subtotal: 32.97,
+    deliveryFee: 0,
+    discount: 5.0,
+    total: 27.97,
+    status: 'Active',
+    orderStatus: 'shipped',
+    paymentStatus: 'completed',
+    deliveryAddress: MOCK_LOCATIONS[0],
+    paymentMethod: 'UPI / GPay',
+    customerName: 'Anantha Lakshmi',
+    customerPhone: '9876543210',
+    customerEmail: 'anantha@example.com',
+    deliveryDays: 2,
+  },
+  {
+    id: 'ord-1002',
+    orderNumber: 'AURA-97410',
+    trackingCode: 'TRK-554109',
+    date: '2026-08-25',
+    items: [{ product: MOCK_PRODUCTS[6], selectedWeight: '500g', unitPrice: 15.99, quantity: 1 }],
+    subtotal: 15.99,
+    deliveryFee: 3.5,
+    discount: 0,
+    total: 19.49,
+    status: 'Delivered',
+    orderStatus: 'delivered',
+    paymentStatus: 'completed',
+    deliveryAddress: MOCK_LOCATIONS[1],
+    paymentMethod: 'Credit Card',
+    customerName: 'Anantha Lakshmi',
+    customerPhone: '9876543210',
+    customerEmail: 'anantha@example.com',
+    deliveryDays: 3,
+  },
+  {
+    id: 'ord-1003',
+    orderNumber: 'AURA-96112',
+    trackingCode: 'TRK-991204',
+    date: '2026-09-02',
+    items: [
+      { product: MOCK_PRODUCTS[1], selectedWeight: '1kg', unitPrice: 16.99, quantity: 2 },
+      { product: MOCK_PRODUCTS[2], selectedWeight: '500g', unitPrice: 8.99, quantity: 1 },
+    ],
+    subtotal: 42.97,
+    deliveryFee: 0,
+    discount: 4.0,
+    total: 38.97,
+    status: 'Active',
+    orderStatus: 'processing',
+    paymentStatus: 'completed',
+    deliveryAddress: {
+      id: 'loc-hyd-1',
+      label: 'Home',
+      address: 'Plot 42, Jubilee Hills Road 36',
+      city: 'Hyderabad',
+      pincode: '500033',
+    },
+    paymentMethod: 'UPI / GPay',
+    customerName: 'Srinivas Rao',
+    customerPhone: '9988776655',
+    customerEmail: 'srinivas.rao@gmail.com',
+    deliveryDays: 1,
+  },
+  {
+    id: 'ord-1004',
+    orderNumber: 'AURA-95208',
+    trackingCode: 'TRK-771402',
+    date: '2026-08-28',
+    items: [
+      { product: MOCK_PRODUCTS[3], selectedWeight: '500g', unitPrice: 7.99, quantity: 3 },
+      { product: MOCK_PRODUCTS[7], selectedWeight: '250g', unitPrice: 11.5, quantity: 2 },
+    ],
+    subtotal: 46.97,
+    deliveryFee: 2.5,
+    discount: 0,
+    total: 49.47,
+    status: 'Delivered',
+    orderStatus: 'delivered',
+    paymentStatus: 'completed',
+    deliveryAddress: {
+      id: 'loc-vjz-1',
+      label: 'Home',
+      address: 'Flat 301, M.G. Road',
+      city: 'Vijayawada',
+      pincode: '520002',
+    },
+    paymentMethod: 'Cash on Delivery',
+    customerName: 'Venkatesh K.',
+    customerPhone: '9123456789',
+    customerEmail: 'venkatesh.k@gmail.com',
+    deliveryDays: 2,
+  },
+  {
+    id: 'ord-1005',
+    orderNumber: 'AURA-94109',
+    trackingCode: 'TRK-334188',
+    date: '2026-08-20',
+    items: [
+      { product: MOCK_PRODUCTS[4], selectedWeight: '1kg', unitPrice: 22.99, quantity: 1 },
+    ],
+    subtotal: 22.99,
+    deliveryFee: 0,
+    discount: 2.0,
+    total: 20.99,
+    status: 'Delivered',
+    orderStatus: 'delivered',
+    paymentStatus: 'completed',
+    deliveryAddress: {
+      id: 'loc-vsp-1',
+      label: 'Office',
+      address: 'Sector 4, MVP Colony',
+      city: 'Visakhapatnam',
+      pincode: '530017',
+    },
+    paymentMethod: 'UPI / PhonePe',
+    customerName: 'Priya Sharma',
+    customerPhone: '9849012345',
+    customerEmail: 'priya.s@gmail.com',
+    deliveryDays: 3,
+  },
+];
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
-  const [categories, setCategories] = useState<ProductCategory[]>(MOCK_CATEGORIES);
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [wishlistProductIds, setWishlistProductIds] = useState<string[]>(['prod-1', 'prod-6']);
-  const [recentlyViewedIds, setRecentlyViewedIds] = useState<string[]>(['prod-1', 'prod-7']);
-  const [locations, setLocations] = useState<UserLocation[]>(MOCK_LOCATIONS);
-  const [currentLocation, setCurrentLocation] = useState<UserLocation>(MOCK_LOCATIONS[0]);
-  const [userProfile, setUserProfile] = useState<UserProfile>(MOCK_USER_PROFILE);
+  const [products, setProducts] = useState<Product[]>(() =>
+    getInitialState('aura_products', MOCK_PRODUCTS)
+  );
+  const [categories, setCategories] = useState<ProductCategory[]>(() =>
+    getInitialState('aura_categories', MOCK_CATEGORIES)
+  );
+  const [cartItems, setCartItems] = useState<CartItem[]>(() =>
+    getInitialState('aura_cart', [])
+  );
+  const [wishlistProductIds, setWishlistProductIds] = useState<string[]>(() =>
+    getInitialState('aura_wishlist', ['prod-1', 'prod-6'])
+  );
+  const [recentlyViewedIds, setRecentlyViewedIds] = useState<string[]>(() =>
+    getInitialState('aura_recently_viewed', ['prod-1', 'prod-7'])
+  );
+  const [locations, setLocations] = useState<UserLocation[]>(() =>
+    getInitialState('aura_locations', MOCK_LOCATIONS)
+  );
+  const [currentLocation, setCurrentLocation] = useState<UserLocation>(() =>
+    getInitialState('aura_current_location', MOCK_LOCATIONS[0])
+  );
+  const [userProfile, setUserProfile] = useState<UserProfile>(() =>
+    getInitialState('aura_user_profile', MOCK_USER_PROFILE)
+  );
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
-  const [weeklyHighlights, setWeeklyHighlights] = useState<WeeklyHighlights>(MOCK_WEEKLY_HIGHLIGHTS);
-  const [homeSections, setHomeSections] = useState<HomeSection[]>([
-    {
-      id: 'sec-bestsellers',
-      badge: 'Customer Favorites',
-      title: 'Best Selling Homemade Products',
-      subtitle: 'Top rated authentic homemade delicacies loved by thousands of families.',
-      productIds: ['prod-1', 'prod-2', 'prod-6', 'prod-7'],
-      categoryFilter: 'all',
-      enabled: true,
-    },
-    {
-      id: 'sec-pickles',
-      badge: 'Spicy & Tangy Signature',
-      title: 'Homestyle Pickles Collection',
-      subtitle: 'Authentic raw mango, chicken, mutton & gongura pickles made with cold-pressed oil.',
-      productIds: ['prod-1', 'prod-2', 'prod-3', 'prod-4', 'prod-5'],
-      categoryFilter: 'Pickles',
-      enabled: true,
-    },
-    {
-      id: 'sec-sweets',
-      badge: 'Pure Ghee Delights',
-      title: 'Authentic Traditional Sweets',
-      subtitle: 'Hand-churned A2 cow ghee sweets prepared fresh without artificial preservatives.',
-      productIds: ['prod-6', 'prod-7', 'prod-8'],
-      categoryFilter: 'Sweets',
-      enabled: true,
-    },
-    {
-      id: 'sec-snacks',
-      badge: 'Crunchy Evening Savories',
-      title: 'Homestyle Snacks & Savories',
-      subtitle: 'Traditional crispy murukku, chekodi & karam mixture roasted in small batches.',
-      productIds: ['prod-9', 'prod-10', 'prod-11'],
-      categoryFilter: 'Snacks',
-      enabled: true,
-    },
-  ]);
+  const [weeklyHighlights, setWeeklyHighlights] = useState<WeeklyHighlights>(() =>
+    getInitialState('aura_weekly_highlights', MOCK_WEEKLY_HIGHLIGHTS)
+  );
+  const [homeSections, setHomeSections] = useState<HomeSection[]>(() =>
+    getInitialState('aura_home_sections', DEFAULT_HOME_SECTIONS)
+  );
 
   // Admin Specific State
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
     return localStorage.getItem('aura_admin_auth') === 'true';
   });
-  const [deliveryCities, setDeliveryCities] = useState<DeliveryCity[]>(MOCK_DELIVERY_CITIES);
-  const [citySuggestions, setCitySuggestions] = useState<CitySuggestion[]>(MOCK_CITY_SUGGESTIONS);
-  const [whatsappContacts, setWhatsappContacts] = useState<WhatsAppContact[]>(MOCK_WHATSAPP_CONTACTS);
-  const [newsletterSubscribers, setNewsletterSubscribers] = useState<string[]>(MOCK_SUBSCRIBERS);
-  const [paymentEnabled, setPaymentEnabledState] = useState<boolean>(true);
+  const [deliveryCities, setDeliveryCities] = useState<DeliveryCity[]>(() =>
+    getInitialState('aura_delivery_cities', MOCK_DELIVERY_CITIES)
+  );
+  const [citySuggestions, setCitySuggestions] = useState<CitySuggestion[]>(() =>
+    getInitialState('aura_city_suggestions', MOCK_CITY_SUGGESTIONS)
+  );
+  const [whatsappContacts, setWhatsappContacts] = useState<WhatsAppContact[]>(() =>
+    getInitialState('aura_whatsapp_contacts', MOCK_WHATSAPP_CONTACTS)
+  );
+  const [newsletterSubscribers, setNewsletterSubscribers] = useState<string[]>(() =>
+    getInitialState('aura_subscribers', MOCK_SUBSCRIBERS)
+  );
+  const [paymentEnabled, setPaymentEnabledState] = useState<boolean>(() =>
+    getInitialState('aura_payment_enabled', true)
+  );
+  const [orders, setOrders] = useState<Order[]>(() =>
+    getInitialState('aura_orders', INITIAL_MOCK_ORDERS)
+  );
 
-  // Initial Mock Orders
-  const [orders, setOrders] = useState<Order[]>([
-    {
-      id: 'ord-1001',
-      orderNumber: 'AURA-98214',
-      trackingCode: 'TRK-883921',
-      date: '2026-09-01',
-      items: [
-        { product: MOCK_PRODUCTS[0], selectedWeight: '500g', unitPrice: 9.99, quantity: 2 },
-        { product: MOCK_PRODUCTS[5], selectedWeight: '500g', unitPrice: 12.99, quantity: 1 },
-      ],
-      subtotal: 32.97,
-      deliveryFee: 0,
-      discount: 5.0,
-      total: 27.97,
-      status: 'Active',
-      orderStatus: 'shipped',
-      paymentStatus: 'completed',
-      deliveryAddress: MOCK_LOCATIONS[0],
-      paymentMethod: 'UPI / GPay',
-      customerName: 'Anantha Lakshmi',
-      customerPhone: '9876543210',
-      customerEmail: 'anantha@example.com',
-      deliveryDays: 2,
-    },
-    {
-      id: 'ord-1002',
-      orderNumber: 'AURA-97410',
-      trackingCode: 'TRK-554109',
-      date: '2026-08-25',
-      items: [{ product: MOCK_PRODUCTS[6], selectedWeight: '500g', unitPrice: 15.99, quantity: 1 }],
-      subtotal: 15.99,
-      deliveryFee: 3.5,
-      discount: 0,
-      total: 19.49,
-      status: 'Delivered',
-      orderStatus: 'delivered',
-      paymentStatus: 'completed',
-      deliveryAddress: MOCK_LOCATIONS[1],
-      paymentMethod: 'Credit Card',
-      customerName: 'Anantha Lakshmi',
-      customerPhone: '9876543210',
-      customerEmail: 'anantha@example.com',
-      deliveryDays: 3,
-    },
-  ]);
+  // Persistent LocalStorage Effects
+  useEffect(() => {
+    localStorage.setItem('aura_products', JSON.stringify(products));
+  }, [products]);
+
+  useEffect(() => {
+    localStorage.setItem('aura_categories', JSON.stringify(categories));
+  }, [categories]);
+
+  useEffect(() => {
+    localStorage.setItem('aura_cart', JSON.stringify(cartItems));
+  }, [cartItems]);
+
+  useEffect(() => {
+    localStorage.setItem('aura_wishlist', JSON.stringify(wishlistProductIds));
+  }, [wishlistProductIds]);
+
+  useEffect(() => {
+    localStorage.setItem('aura_recently_viewed', JSON.stringify(recentlyViewedIds));
+  }, [recentlyViewedIds]);
+
+  useEffect(() => {
+    localStorage.setItem('aura_locations', JSON.stringify(locations));
+  }, [locations]);
+
+  useEffect(() => {
+    localStorage.setItem('aura_current_location', JSON.stringify(currentLocation));
+  }, [currentLocation]);
+
+  useEffect(() => {
+    localStorage.setItem('aura_user_profile', JSON.stringify(userProfile));
+  }, [userProfile]);
+
+  useEffect(() => {
+    localStorage.setItem('aura_weekly_highlights', JSON.stringify(weeklyHighlights));
+  }, [weeklyHighlights]);
+
+  useEffect(() => {
+    localStorage.setItem('aura_home_sections', JSON.stringify(homeSections));
+  }, [homeSections]);
+
+  useEffect(() => {
+    localStorage.setItem('aura_delivery_cities', JSON.stringify(deliveryCities));
+  }, [deliveryCities]);
+
+  useEffect(() => {
+    localStorage.setItem('aura_city_suggestions', JSON.stringify(citySuggestions));
+  }, [citySuggestions]);
+
+  useEffect(() => {
+    localStorage.setItem('aura_whatsapp_contacts', JSON.stringify(whatsappContacts));
+  }, [whatsappContacts]);
+
+  useEffect(() => {
+    localStorage.setItem('aura_subscribers', JSON.stringify(newsletterSubscribers));
+  }, [newsletterSubscribers]);
+
+  useEffect(() => {
+    localStorage.setItem('aura_payment_enabled', JSON.stringify(paymentEnabled));
+  }, [paymentEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem('aura_orders', JSON.stringify(orders));
+  }, [orders]);
 
   // Toast Helper
   const addToast = (title: string, message: string, type: 'success' | 'error' | 'info' = 'success') => {
