@@ -106,7 +106,11 @@ export const CheckoutPage: React.FC = () => {
       };
       setCurrentLocation(orderLocation);
 
-      const order = createOrder(paymentMethod, orderLocation);
+      const order = createOrder(paymentMethod, orderLocation, {
+        name: customerName.trim(),
+        phone: customerPhone.trim(),
+        email: customerEmail.trim(),
+      });
       setIsProcessing(false);
       navigate(`/order-success/${order.id}`);
     }, 1500);

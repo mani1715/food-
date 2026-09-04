@@ -55,20 +55,29 @@ export const TrackOrderPage: React.FC = () => {
     setSearched(true);
 
     setTimeout(() => {
-      // Clean non-digits for phone search comparison
-      const cleanQueryDigits = query.replace(/\D/g, '');
+      const queryDigits = query.replace(/\D/g, '');
+      const query10Digits = queryDigits.length >= 10 ? queryDigits.slice(-10) : queryDigits;
 
       const matches = orders.filter((o) => {
         const orderIdMatch = o.id.toLowerCase().includes(query);
         const orderNumMatch = o.orderNumber.toLowerCase().includes(query);
         const trackingMatch = o.trackingCode ? o.trackingCode.toLowerCase().includes(query) : false;
         
-        // Customer details check
-        const phoneMatch = o.customerPhone ? o.customerPhone.replace(/\D/g, '').includes(cleanQueryDigits) && cleanQueryDigits.length >= 4 : false;
+        // Robust Phone Number Matching
+        let phoneMatch = false;
+        if (o.customerPhone) {
+          const rawDigits = o.customerPhone.replace(/\D/g, '');
+          const last10Digits = rawDigits.length >= 10 ? rawDigits.slice(-10) : rawDigits;
+          
+          if (query10Digits.length >= 4) {
+            phoneMatch = last10Digits.includes(query10Digits) || rawDigits.includes(queryDigits);
+          }
+        }
+        
+        // Email Matching
         const emailMatch = o.customerEmail ? o.customerEmail.toLowerCase().includes(query) : false;
-        const addressPhoneMatch = o.deliveryAddress?.pincode?.includes(query); // Pincode backup
 
-        return orderIdMatch || orderNumMatch || trackingMatch || phoneMatch || emailMatch || addressPhoneMatch;
+        return orderIdMatch || orderNumMatch || trackingMatch || phoneMatch || emailMatch;
       });
 
       setMatchedOrders(matches);

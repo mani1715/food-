@@ -53,7 +53,11 @@ interface AppContextType {
   clearCart: () => void;
   toggleWishlist: (productId: string) => void;
   addRecentlyViewed: (productId: string) => void;
-  createOrder: (paymentMethod: string, deliveryAddress: UserLocation) => Order;
+  createOrder: (
+    paymentMethod: string,
+    deliveryAddress: UserLocation,
+    customerDetails?: { name?: string; phone?: string; email?: string }
+  ) => Order;
   updateUserProfile: (profile: Partial<UserProfile>) => void;
   setCurrentLocation: (loc: UserLocation) => void;
   addLocation: (loc: Omit<UserLocation, 'id'>) => void;
@@ -253,10 +257,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Order Placement
-  const createOrder = (paymentMethod: string, deliveryAddress: UserLocation): Order => {
+  const createOrder = (
+    paymentMethod: string,
+    deliveryAddress: UserLocation,
+    customerDetails?: { name?: string; phone?: string; email?: string }
+  ): Order => {
     const subtotal = cartItems.reduce((acc, i) => acc + i.unitPrice * i.quantity, 0);
     const deliveryFee = subtotal > 35 ? 0 : 3.5;
     const total = subtotal + deliveryFee;
+
+    const finalName = customerDetails?.name || userProfile.name || 'Customer';
+    const finalPhone = customerDetails?.phone || userProfile.phone || '';
+    const finalEmail = customerDetails?.email || userProfile.email || '';
+
+    // Save/Update user profile details if provided
+    if (customerDetails?.name || customerDetails?.phone || customerDetails?.email) {
+      setUserProfile((prev) => ({
+        ...prev,
+        name: finalName,
+        phone: finalPhone,
+        email: finalEmail,
+      }));
+    }
 
     const newOrder: Order = {
       id: `ord-${Date.now()}`,
@@ -273,9 +295,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       paymentStatus: 'completed',
       deliveryAddress,
       paymentMethod,
-      customerName: userProfile.name,
-      customerPhone: userProfile.phone,
-      customerEmail: userProfile.email,
+      customerName: finalName,
+      customerPhone: finalPhone,
+      customerEmail: finalEmail,
       deliveryDays: 3,
     };
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Heart, ShoppingBag, User } from 'lucide-react';
+import { Search, Heart, ShoppingBag, User, Package } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 
@@ -72,18 +72,6 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
         {/* Center/Right Group: Compact Process Option Buttons (Right of Search Bar) */}
         <div className="hidden lg:flex items-center gap-1.5 shrink-0">
           <button
-            onClick={() => navigate('/track-order')}
-            className={`px-3 py-1 rounded-full text-[11px] font-extrabold transition-all whitespace-nowrap cursor-pointer border shadow-subtle flex items-center gap-1 ${
-              location.pathname === '/track-order'
-                ? 'bg-black text-white border-black'
-                : 'bg-neutral-900 text-white border-black hover:bg-black'
-            }`}
-          >
-            <span>Track Order</span>
-            <span>📦</span>
-          </button>
-
-          <button
             onClick={() => navigate('/our-process')}
             className={`px-3 py-1 rounded-full text-[11px] font-extrabold transition-all whitespace-nowrap cursor-pointer border shadow-subtle flex items-center gap-1 ${
               location.pathname === '/our-process'
@@ -120,7 +108,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
           </button>
         </div>
 
-        {/* Rightmost Actions (Wishlist, Cart, Profile) */}
+        {/* Rightmost Actions (Wishlist, Cart, Track Order, Profile) */}
         <div className="flex items-center gap-2 shrink-0">
           
           {/* Wishlist Icon */}
@@ -149,6 +137,20 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
                 {cartCount}
               </span>
             )}
+          </button>
+
+          {/* Track Order Icon Button (Side of Cart) */}
+          <button
+            onClick={() => navigate('/track-order')}
+            className={`p-2.5 rounded-2xl border transition-all cursor-pointer flex items-center gap-1.5 px-3.5 shadow-subtle ${
+              location.pathname === '/track-order'
+                ? 'bg-black text-white border-black'
+                : 'bg-neutral-100 hover:bg-black hover:text-white border-neutral-300 text-black font-extrabold'
+            }`}
+            title="Track Your Order"
+          >
+            <Package className="w-4 h-4" />
+            <span className="text-xs font-bold hidden sm:inline">Track Order</span>
           </button>
 
           {/* Profile Icon */}
