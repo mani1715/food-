@@ -15,6 +15,9 @@ import { WelcomeOfferNotificationModal } from './components/modals/WelcomeOfferN
 import { HomePage } from './pages/customer/HomePage';
 import { ProductListingPage } from './pages/customer/ProductListingPage';
 import { ProductDetailsPage } from './pages/customer/ProductDetailsPage';
+import { OurProcessPage } from './pages/customer/OurProcessPage';
+import { RegionalSourcingPage } from './pages/customer/RegionalSourcingPage';
+import { QualityPromisePage } from './pages/customer/QualityPromisePage';
 import { WishlistPage } from './pages/customer/WishlistPage';
 import { CartPage } from './pages/customer/CartPage';
 import { CheckoutPage } from './pages/customer/CheckoutPage';
@@ -44,6 +47,9 @@ const MainLayout: React.FC = () => {
           <Route path="/" element={<HomePage />} />
           <Route path="/products" element={<ProductListingPage />} />
           <Route path="/product/:id" element={<ProductDetailsPage />} />
+          <Route path="/our-process" element={<OurProcessPage />} />
+          <Route path="/sourcing" element={<RegionalSourcingPage />} />
+          <Route path="/quality-promise" element={<QualityPromisePage />} />
           <Route path="/wishlist" element={<WishlistPage />} />
           <Route path="/cart" element={<CartPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
