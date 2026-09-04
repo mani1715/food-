@@ -11,6 +11,7 @@ import {
   CitySuggestion,
   WhatsAppContact,
   WeeklyHighlights,
+  HomeSection,
 } from '../types';
 import {
   MOCK_PRODUCTS,
@@ -37,6 +38,7 @@ interface AppContextType {
   currentLocation: UserLocation;
   toasts: ToastMessage[];
   weeklyHighlights: WeeklyHighlights;
+  homeSections: HomeSection[];
 
   // Admin Data & State
   isAdminAuthenticated: boolean;
@@ -76,6 +78,10 @@ interface AppContextType {
   updateProductDiscount: (id: string, percentage: number, expiryDate: string) => void;
   removeProductDiscount: (id: string) => void;
   updateWeeklyHighlights: (highlights: WeeklyHighlights) => void;
+  addHomeSection: (section: Omit<HomeSection, 'id'>) => void;
+  updateHomeSection: (id: string, updated: Partial<HomeSection>) => void;
+  deleteHomeSection: (id: string) => void;
+  toggleProductInHomeSection: (sectionId: string, productId: string) => void;
   
   // Locations & Suggestions Admin
   addDeliveryCity: (city: Omit<DeliveryCity, 'id'>) => void;
@@ -111,6 +117,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [userProfile, setUserProfile] = useState<UserProfile>(MOCK_USER_PROFILE);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [weeklyHighlights, setWeeklyHighlights] = useState<WeeklyHighlights>(MOCK_WEEKLY_HIGHLIGHTS);
+  const [homeSections, setHomeSections] = useState<HomeSection[]>([
+    {
+      id: 'sec-bestsellers',
+      badge: 'Customer Favorites',
+      title: 'Best Selling Homemade Products',
+      subtitle: 'Top rated authentic homemade delicacies loved by thousands of families.',
+      productIds: ['prod-1', 'prod-2', 'prod-6', 'prod-7'],
+      categoryFilter: 'all',
+      enabled: true,
+    },
+    {
+      id: 'sec-pickles',
+      badge: 'Spicy & Tangy Signature',
+      title: 'Homestyle Pickles Collection',
+      subtitle: 'Authentic raw mango, chicken, mutton & gongura pickles made with cold-pressed oil.',
+      productIds: ['prod-1', 'prod-2', 'prod-3', 'prod-4', 'prod-5'],
+      categoryFilter: 'Pickles',
+      enabled: true,
+    },
+    {
+      id: 'sec-sweets',
+      badge: 'Pure Ghee Delights',
+      title: 'Authentic Traditional Sweets',
+      subtitle: 'Hand-churned A2 cow ghee sweets prepared fresh without artificial preservatives.',
+      productIds: ['prod-6', 'prod-7', 'prod-8'],
+      categoryFilter: 'Sweets',
+      enabled: true,
+    },
+    {
+      id: 'sec-snacks',
+      badge: 'Crunchy Evening Savories',
+      title: 'Homestyle Snacks & Savories',
+      subtitle: 'Traditional crispy murukku, chekodi & karam mixture roasted in small batches.',
+      productIds: ['prod-9', 'prod-10', 'prod-11'],
+      categoryFilter: 'Snacks',
+      enabled: true,
+    },
+  ]);
 
   // Admin Specific State
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
@@ -384,6 +428,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast('Highlights Updated', 'Weekly Highlights & Festive Specials saved & live on homepage!', 'success');
   };
 
+  const addHomeSection = (section: Omit<HomeSection, 'id'>) => {
+    const newSec: HomeSection = { ...section, id: `sec-${Date.now()}` };
+    setHomeSections((prev) => [...prev, newSec]);
+    addToast('Section Created', `"${newSec.title}" showcase section added to homepage.`, 'success');
+  };
+
+  const updateHomeSection = (id: string, updated: Partial<HomeSection>) => {
+    setHomeSections((prev) => prev.map((s) => (s.id === id ? { ...s, ...updated } : s)));
+    addToast('Section Updated', 'Showcase section title & options updated.', 'success');
+  };
+
+  const deleteHomeSection = (id: string) => {
+    setHomeSections((prev) => prev.filter((s) => s.id !== id));
+    addToast('Section Removed', 'Showcase section removed from homepage.', 'info');
+  };
+
+  const toggleProductInHomeSection = (sectionId: string, productId: string) => {
+    setHomeSections((prev) =>
+      prev.map((s) => {
+        if (s.id === sectionId) {
+          const exists = s.productIds.includes(productId);
+          const updatedProductIds = exists
+            ? s.productIds.filter((pId: string) => pId !== productId)
+            : [...s.productIds, productId];
+          return { ...s, productIds: updatedProductIds };
+        }
+        return s;
+      })
+    );
+    addToast('Section Updated', 'Product assigned to showcase section.', 'success');
+  };
+
   // Locations & Suggestions Admin
   const addDeliveryCity = (city: Omit<DeliveryCity, 'id'>) => {
     const newCity: DeliveryCity = { ...city, id: `city-${Date.now()}` };
@@ -515,6 +591,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         currentLocation,
         toasts,
         weeklyHighlights,
+        homeSections,
         isAdminAuthenticated,
         deliveryCities,
         citySuggestions,
@@ -544,6 +621,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateProductDiscount,
         removeProductDiscount,
         updateWeeklyHighlights,
+        addHomeSection,
+        updateHomeSection,
+        deleteHomeSection,
+        toggleProductInHomeSection,
         addDeliveryCity,
         updateDeliveryCity,
         deleteDeliveryCity,

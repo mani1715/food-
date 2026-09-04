@@ -134,6 +134,16 @@ export interface WeeklyHighlights {
   festivalSpecial: HighlightItem;
 }
 
+export interface HomeSection {
+  id: string;
+  badge?: string;
+  title: string;
+  subtitle?: string;
+  productIds: string[];
+  categoryFilter?: string;
+  enabled: boolean;
+}
+
 export type AdminTab =
   | 'products'
   | 'orders'

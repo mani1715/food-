@@ -1,52 +1,79 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
-
 import { WeeklyHighlightsShowcase } from '../../components/WeeklyHighlightsShowcase';
-import { BestSellers } from '../../components/BestSellers';
-import { PicklesCollection } from '../../components/PicklesCollection';
-import { SweetsCollection } from '../../components/SweetsCollection';
-import { SnacksCollection } from '../../components/SnacksCollection';
+import { ProductCard } from '../../components/ProductCard';
 import { RecentlyViewed } from '../../components/RecentlyViewed';
 import { NewsletterSection } from '../../components/NewsletterSection';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, ArrowRight, ShieldCheck, MapPin, BookOpen } from 'lucide-react';
+import { Sparkles, ArrowRight, ShieldCheck, MapPin, BookOpen, Flame } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
-  const { products } = useApp();
+  const { products, homeSections } = useApp();
   const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-white text-black font-sans space-y-4">
       
-      {/* ========================================================================= */}
-      {/* 1. SPECIAL ITEMS FIRST                                                    */}
-      {/* ========================================================================= */}
-
-      {/* Curated Special Highlights & Festive Offers */}
+      {/* 1. SPECIAL ITEMS FIRST */}
       <WeeklyHighlightsShowcase />
 
-      {/* Top Picks / Best Sellers Showcase */}
-      <BestSellers products={products} />
+      {/* 2. DYNAMIC HOMEPAGE SHOWCASE SECTIONS (Best Selling, Pickles Collection, Authentic Sweets, etc.) */}
+      {homeSections
+        .filter((sec) => sec.enabled)
+        .map((sec) => {
+          // Get products assigned to section
+          const sectionProducts = products.filter((p) => {
+            if (sec.productIds && sec.productIds.length > 0) {
+              return sec.productIds.includes(p.id);
+            }
+            if (sec.categoryFilter && sec.categoryFilter !== 'all') {
+              return p.category.toLowerCase() === sec.categoryFilter.toLowerCase();
+            }
+            return true;
+          });
 
+          if (sectionProducts.length === 0) return null;
 
-      {/* ========================================================================= */}
-      {/* 2. FOOD ITEMS ONE BY ONE WITH THEIR CATEGORIES                            */}
-      {/* ========================================================================= */}
+          return (
+            <section key={sec.id} className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-left space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-neutral-200 pb-4">
+                <div>
+                  {sec.badge && (
+                    <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-neutral-400">
+                      <Flame className="w-4 h-4 text-black" />
+                      <span>{sec.badge}</span>
+                    </div>
+                  )}
+                  <h2 className="text-2xl sm:text-3xl font-black text-black tracking-tight mt-1">{sec.title}</h2>
+                  {sec.subtitle && <p className="text-xs text-neutral-500 font-medium mt-1">{sec.subtitle}</p>}
+                </div>
 
-      {/* Category 1: Homestyle Pickles Collection */}
-      <PicklesCollection products={products} />
+                <button
+                  onClick={() =>
+                    navigate(
+                      sec.categoryFilter && sec.categoryFilter !== 'all'
+                        ? `/products?category=${encodeURIComponent(sec.categoryFilter)}`
+                        : '/products'
+                    )
+                  }
+                  className="text-xs font-extrabold text-black hover:underline flex items-center gap-1 self-start sm:self-auto cursor-pointer shrink-0"
+                >
+                  <span>View All ({sectionProducts.length})</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
 
-      {/* Category 2: Authentic Sweets Collection */}
-      <SweetsCollection products={products} />
+              {/* Product Card Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {sectionProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+            </section>
+          );
+        })}
 
-      {/* Category 3: Homemade Snacks Collection */}
-      <SnacksCollection products={products} />
-
-
-      {/* ========================================================================= */}
       {/* 3. BRAND PROCESS & QUALITY PROMISE QUICK BANNER (LEADS TO DEDICATED PAGES) */}
-      {/* ========================================================================= */}
-      
       <section className="py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-left">
         <div className="bg-neutral-50 border border-neutral-200 rounded-3xl p-6 sm:p-8 shadow-subtle space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-200 pb-4">
@@ -67,8 +94,6 @@ export const HomePage: React.FC = () => {
 
           {/* 3 Interactive Cards Leading to Dedicated Standalone Pages */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            
-            {/* Card 1: 5-Step Process */}
             <div
               onClick={() => navigate('/our-process')}
               className="bg-white border border-neutral-200 rounded-2xl p-5 shadow-subtle hover:border-black transition-all cursor-pointer space-y-3 group"
@@ -87,7 +112,6 @@ export const HomePage: React.FC = () => {
               </div>
             </div>
 
-            {/* Card 2: Regional Sourcing */}
             <div
               onClick={() => navigate('/sourcing')}
               className="bg-white border border-neutral-200 rounded-2xl p-5 shadow-subtle hover:border-black transition-all cursor-pointer space-y-3 group"
@@ -106,7 +130,6 @@ export const HomePage: React.FC = () => {
               </div>
             </div>
 
-            {/* Card 3: Quality Promise */}
             <div
               onClick={() => navigate('/quality-promise')}
               className="bg-white border border-neutral-200 rounded-2xl p-5 shadow-subtle hover:border-black transition-all cursor-pointer space-y-3 group"
@@ -124,7 +147,6 @@ export const HomePage: React.FC = () => {
                 </p>
               </div>
             </div>
-
           </div>
         </div>
       </section>
