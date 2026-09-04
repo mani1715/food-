@@ -26,7 +26,6 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
 
   const navLinks = [
     { label: 'Home', path: '/' },
-    { label: 'Track Order 📦', path: '/track-order', isSpecial: true },
     { label: 'New Arrivals ✨', path: '/products?filter=new-arrivals', isSpecial: true },
     { label: 'Pickles', path: '/products?category=Pickles' },
     { label: 'Sweets', path: '/products?category=Sweets' },
