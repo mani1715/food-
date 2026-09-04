@@ -122,25 +122,31 @@ export const HomePage: React.FC = () => {
           </button>
         </div>
 
-        {/* Animated Category Small Photos Horizontal Grid */}
-        <div className="flex items-center gap-4 overflow-x-auto no-scrollbar py-2">
+        {/* Animated Larger Category Cards Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6 py-2">
           {categories.map((cat) => (
             <div
               key={cat.id}
               onClick={() => navigate(`/products?category=${encodeURIComponent(cat.name)}`)}
-              className="group flex flex-col items-center gap-2 cursor-pointer shrink-0"
+              className="group flex flex-col items-center text-center gap-3 p-3.5 sm:p-4 rounded-3xl bg-neutral-50 hover:bg-white border border-neutral-200 hover:border-black shadow-subtle hover:shadow-modal transition-all duration-300 cursor-pointer"
             >
-              {/* Animated Small Circle Photo */}
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-neutral-200 group-hover:border-black shadow-subtle group-hover:scale-110 transition-all duration-300 bg-neutral-100 p-0.5">
+              {/* Large 1:1 Aspect-Square Animated Circle Photo */}
+              <div className="w-24 h-24 sm:w-28 sm:h-28 aspect-square rounded-full overflow-hidden border-2 border-neutral-300 group-hover:border-black shadow-subtle group-hover:scale-105 transition-all duration-500 bg-neutral-100 p-1">
                 <img
                   src={cat.image}
                   alt={cat.name}
                   className="w-full h-full object-cover rounded-full group-hover:rotate-3 transition-transform duration-500"
                 />
               </div>
-              <span className="text-xs font-extrabold text-black group-hover:underline text-center">
-                {cat.name}
-              </span>
+
+              <div className="space-y-1">
+                <h3 className="text-sm sm:text-base font-extrabold text-black group-hover:underline">
+                  {cat.name}
+                </h3>
+                <span className="inline-block text-[10px] font-mono font-bold bg-neutral-200 text-neutral-800 px-2.5 py-0.5 rounded-full">
+                  {cat.itemCount || 10}+ Items
+                </span>
+              </div>
             </div>
           ))}
         </div>
