@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { ProductCard } from '../../components/ProductCard';
 import { BuyAlsoSection } from '../../components/BuyAlsoSection';
-import { Heart, Plus, Minus, Star, ShieldCheck, ShoppingBag, ArrowLeft } from 'lucide-react';
+import { ProductTestimonialsSection } from '../../components/ProductTestimonialsSection';
+import { Heart, Plus, Minus, Star, ShieldCheck, ShoppingBag, ArrowLeft, BookOpen, MapPin, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const ProductDetailsPage: React.FC = () => {
@@ -237,10 +238,71 @@ export const ProductDetailsPage: React.FC = () => {
         </div>
       </section>
 
-      {/* 3. Buy These Products Also Section (Frequently Bought Together Bundle) */}
+      {/* 3. HERITAGE PROCESS & QUALITY CARDS (SCROLL DOWN ON ITEM DETAILS) */}
+      <section className="space-y-4 pt-8 text-left">
+        <div className="border-b border-neutral-200 pb-3">
+          <span className="text-xs font-bold uppercase tracking-widest text-neutral-400">Purity & Cleanliness Standards</span>
+          <h3 className="text-xl font-black text-black tracking-tight mt-0.5">How We Craft & Guarantee {product.name}</h3>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div
+            onClick={() => navigate('/our-process')}
+            className="bg-white border border-neutral-200 rounded-2xl p-5 shadow-subtle hover:border-black transition-all cursor-pointer space-y-2 group"
+          >
+            <div className="p-3 bg-neutral-100 rounded-xl w-fit">
+              <BookOpen className="w-5 h-5 text-black" />
+            </div>
+            <h4 className="text-sm font-extrabold text-black group-hover:underline flex items-center justify-between">
+              <span>How We Do</span>
+              <ArrowRight className="w-4 h-4 text-neutral-400 group-hover:translate-x-1 transition-transform" />
+            </h4>
+            <p className="text-xs text-neutral-500 font-medium">
+              Traditional 5-step grandmother recipe process: stone grinding, sun-curing & earthen jar maturation.
+            </p>
+          </div>
+
+          <div
+            onClick={() => navigate('/sourcing')}
+            className="bg-white border border-neutral-200 rounded-2xl p-5 shadow-subtle hover:border-black transition-all cursor-pointer space-y-2 group"
+          >
+            <div className="p-3 bg-neutral-100 rounded-xl w-fit">
+              <MapPin className="w-5 h-5 text-black" />
+            </div>
+            <h4 className="text-sm font-extrabold text-black group-hover:underline flex items-center justify-between">
+              <span>Regional Sourcing</span>
+              <ArrowRight className="w-4 h-4 text-neutral-400 group-hover:translate-x-1 transition-transform" />
+            </h4>
+            <p className="text-xs text-neutral-500 font-medium">
+              Farm origin traceability: Vijayawada raw mangoes, Guntur red chillies & A2 Bilona ghee.
+            </p>
+          </div>
+
+          <div
+            onClick={() => navigate('/quality-promise')}
+            className="bg-white border border-neutral-200 rounded-2xl p-5 shadow-subtle hover:border-black transition-all cursor-pointer space-y-2 group"
+          >
+            <div className="p-3 bg-neutral-100 rounded-xl w-fit">
+              <ShieldCheck className="w-5 h-5 text-black" />
+            </div>
+            <h4 className="text-sm font-extrabold text-black group-hover:underline flex items-center justify-between">
+              <span>Quality Guarantee</span>
+              <ArrowRight className="w-4 h-4 text-neutral-400 group-hover:translate-x-1 transition-transform" />
+            </h4>
+            <p className="text-xs text-neutral-500 font-medium">
+              100% natural homemade purity. Zero chemical preservatives, artificial colors or palm oil.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* 4. CUSTOMER COMMENTS & TESTIMONIALS SECTION */}
+      <ProductTestimonialsSection product={product} />
+
+      {/* 5. Buy These Products Also Section (Frequently Bought Together Bundle) */}
       <BuyAlsoSection currentProduct={product} />
 
-      {/* 4. RECOMMENDED PRODUCTS FOR YOU */}
+      {/* 6. RECOMMENDED PRODUCTS FOR YOU */}
       {relatedProducts.length > 0 && (
         <section className="space-y-6 pt-10 border-t border-neutral-200 text-left">
           <div className="flex items-center justify-between border-b border-neutral-200 pb-3">

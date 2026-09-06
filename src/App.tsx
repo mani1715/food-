@@ -81,9 +81,6 @@ const MainLayout: React.FC = () => {
       {/* Mobile Bottom Navigation Bar (Home, Categories, Wishlist, Cart, Profile) */}
       <MobileBottomNav />
 
-      {/* Welcome Specials & New Arrivals Notification Popup */}
-      <WelcomeOfferNotificationModal />
-
       {/* Search Experience Modal */}
       <SearchModal
         isOpen={isSearchOpen}

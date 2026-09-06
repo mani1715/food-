@@ -47,45 +47,6 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
           </div>
         </div>
 
-        {/* Center Process Buttons (Desktop & Laptop) */}
-        <div className="hidden lg:flex items-center gap-2 shrink-0">
-          <button
-            onClick={() => navigate('/our-process')}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-extrabold transition-all cursor-pointer border shadow-subtle flex items-center gap-1.5 ${
-              location.pathname === '/our-process'
-                ? 'bg-black text-white border-black'
-                : 'bg-white text-neutral-800 border-neutral-200 hover:border-black hover:bg-black hover:text-white'
-            }`}
-          >
-            <span>How We Do</span>
-            <span>📜</span>
-          </button>
-
-          <button
-            onClick={() => navigate('/sourcing')}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-extrabold transition-all cursor-pointer border shadow-subtle flex items-center gap-1.5 ${
-              location.pathname === '/sourcing'
-                ? 'bg-black text-white border-black'
-                : 'bg-white text-neutral-800 border-neutral-200 hover:border-black hover:bg-black hover:text-white'
-            }`}
-          >
-            <span>Regional Sourcing</span>
-            <span>🗺️</span>
-          </button>
-
-          <button
-            onClick={() => navigate('/quality-promise')}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-extrabold transition-all cursor-pointer border shadow-subtle flex items-center gap-1.5 ${
-              location.pathname === '/quality-promise'
-                ? 'bg-black text-white border-black'
-                : 'bg-white text-neutral-800 border-neutral-200 hover:border-black hover:bg-black hover:text-white'
-            }`}
-          >
-            <span>Quality Promise</span>
-            <span>🛡️</span>
-          </button>
-        </div>
-
         {/* Rightmost Action Symbol Icons (Search Symbol, Wishlist, Cart, Track, Profile) */}
         <div className="flex items-center gap-2 shrink-0">
           

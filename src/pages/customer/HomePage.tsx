@@ -122,16 +122,16 @@ export const HomePage: React.FC = () => {
           </button>
         </div>
 
-        {/* Horizontal Scrollable Row of Large Animated Circular Photos (Matching User Screenshot) */}
-        <div className="flex items-center gap-6 sm:gap-8 overflow-x-auto no-scrollbar py-4 px-1">
+        {/* 3 Items Per Row Grid (No Scrolling) */}
+        <div className="grid grid-cols-3 gap-3 sm:gap-6 py-4">
           {categories.map((cat) => (
             <div
               key={cat.id}
               onClick={() => navigate(`/products?category=${encodeURIComponent(cat.name)}`)}
-              className="group flex flex-col items-center cursor-pointer shrink-0 space-y-3"
+              className="group flex flex-col items-center cursor-pointer text-center space-y-2 py-1"
             >
-              {/* Very Large 1:1 Aspect-Square Circle Photo Container */}
-              <div className="w-28 h-28 sm:w-36 sm:h-36 md:w-40 md:h-40 aspect-square rounded-full overflow-hidden border-4 border-neutral-100 group-hover:border-black shadow-modal group-hover:scale-105 transition-all duration-500 bg-neutral-100 p-0.5">
+              {/* 1:1 Aspect-Square Circle Photo Container */}
+              <div className="w-20 h-20 sm:w-28 sm:h-28 md:w-32 md:h-32 aspect-square rounded-full overflow-hidden border-2 sm:border-4 border-neutral-100 group-hover:border-black shadow-modal group-hover:scale-105 transition-all duration-300 bg-neutral-100 p-0.5">
                 <img
                   src={cat.image}
                   alt={cat.name}
@@ -140,7 +140,7 @@ export const HomePage: React.FC = () => {
               </div>
 
               {/* Bold Title Underneath */}
-              <span className="text-sm sm:text-base font-extrabold text-black group-hover:underline text-center">
+              <span className="text-xs sm:text-sm font-extrabold text-black group-hover:underline leading-tight">
                 {cat.name}
               </span>
             </div>
