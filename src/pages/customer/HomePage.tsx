@@ -250,8 +250,8 @@ export const HomePage: React.FC = () => {
           </button>
         </div>
 
-        {/* 3 Items Per Row Grid (Static, 3 per row) */}
-        <div className="grid grid-cols-3 gap-3 sm:gap-6 py-4">
+        {/* Category Grid (Responsive 2 cols on mobile, 3 on tablet/desktop) */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-6 py-4">
           {categories.map((cat) => (
             <div
               key={cat.id}

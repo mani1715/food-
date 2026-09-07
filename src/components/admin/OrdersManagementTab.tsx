@@ -220,13 +220,13 @@ export const OrdersManagementTab: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <div className="pt-3 border-t border-neutral-100 flex items-center justify-between text-xs">
+              <div className="pt-3 border-t border-neutral-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                 <div className="text-neutral-500">
                   {ord.adminNotes && <span>Notes: {ord.adminNotes}</span>}
                   {ord.cancelReason && <span className="text-rose-600 font-bold">Cancellation Reason: {ord.cancelReason}</span>}
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     onClick={() => setSelectedPrintOrder(ord)}
                     className="px-3 py-1.5 bg-black text-white font-bold rounded-xl flex items-center gap-1.5 hover:bg-neutral-800 transition-all cursor-pointer shadow-sm"

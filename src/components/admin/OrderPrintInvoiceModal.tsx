@@ -48,7 +48,7 @@ export const OrderPrintInvoiceModal: React.FC<OrderPrintInvoiceModalProps> = ({ 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 space-y-6 shadow-2xl relative my-8 max-h-[90vh] overflow-y-auto text-left"
+        className="bg-white rounded-3xl max-w-2xl w-[95vw] sm:w-full p-4 sm:p-8 space-y-6 shadow-2xl relative my-4 sm:my-8 max-h-[92vh] overflow-y-auto text-left"
       >
         {/* Action Header bar (Hidden during print) */}
         <div className="flex items-center justify-between border-b border-neutral-200 pb-4 no-print">
@@ -139,28 +139,30 @@ export const OrderPrintInvoiceModal: React.FC<OrderPrintInvoiceModalProps> = ({ 
             <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-neutral-500 border-b border-neutral-200 pb-1">
               Itemized Order Bill
             </h4>
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-black text-[10px] font-extrabold uppercase text-neutral-600">
-                  <th className="py-1.5 font-bold">Item Description</th>
-                  <th className="py-1.5 font-bold text-center">Weight</th>
-                  <th className="py-1.5 font-bold text-center">Qty</th>
-                  <th className="py-1.5 font-bold text-right">Price</th>
-                  <th className="py-1.5 font-bold text-right">Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-200 font-medium">
-                {order.items.map((item, idx) => (
-                  <tr key={idx}>
-                    <td className="py-2 text-black font-bold">{item.product.name}</td>
-                    <td className="py-2 text-center text-neutral-600 font-mono">{item.selectedWeight}</td>
-                    <td className="py-2 text-center text-black font-bold font-mono">{item.quantity}</td>
-                    <td className="py-2 text-right text-neutral-600 font-mono">₹{item.unitPrice}</td>
-                    <td className="py-2 text-right text-black font-bold font-mono">₹{(item.unitPrice * item.quantity).toFixed(2)}</td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs min-w-[400px]">
+                <thead>
+                  <tr className="border-b border-black text-[10px] font-extrabold uppercase text-neutral-600">
+                    <th className="py-1.5 font-bold">Item Description</th>
+                    <th className="py-1.5 font-bold text-center">Weight</th>
+                    <th className="py-1.5 font-bold text-center">Qty</th>
+                    <th className="py-1.5 font-bold text-right">Price</th>
+                    <th className="py-1.5 font-bold text-right">Total</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-neutral-200 font-medium">
+                  {order.items.map((item, idx) => (
+                    <tr key={idx}>
+                      <td className="py-2 text-black font-bold">{item.product.name}</td>
+                      <td className="py-2 text-center text-neutral-600 font-mono">{item.selectedWeight}</td>
+                      <td className="py-2 text-center text-black font-bold font-mono">{item.quantity}</td>
+                      <td className="py-2 text-right text-neutral-600 font-mono">₹{item.unitPrice}</td>
+                      <td className="py-2 text-right text-black font-bold font-mono">₹{(item.unitPrice * item.quantity).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* BILL SUMMARY TOTALS */}

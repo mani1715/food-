@@ -128,36 +128,36 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         </div>
 
         {/* Price & Action Buttons (Quick Add + Buy Now) */}
-        <div className="pt-3 border-t border-neutral-100 flex items-center justify-between gap-1.5">
-          <div>
+        <div className="pt-2.5 border-t border-neutral-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center justify-between sm:block">
             <span className="text-[9px] text-neutral-400 font-bold block uppercase">{selectedWeight} Price</span>
             <span className="text-sm font-extrabold font-mono text-black">₹{currentPrice}</span>
           </div>
 
           {product.outOfStock || (product.inventoryCount ?? 100) <= 0 ? (
-            <span className="px-3 py-2 bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-extrabold rounded-xl">
+            <span className="w-full sm:w-auto text-center px-3 py-1.5 bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-extrabold rounded-xl">
               Out of Stock 🚨
             </span>
           ) : (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 w-full sm:w-auto">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   addToCart(product, selectedWeight, 1);
                 }}
-                className="px-2.5 py-2 bg-neutral-100 border border-neutral-300 text-black text-[10px] font-extrabold rounded-xl hover:bg-neutral-200 transition-all flex items-center gap-1 shadow-subtle cursor-pointer"
+                className="flex-1 sm:flex-initial px-2 py-1.5 bg-neutral-100 border border-neutral-300 text-black text-[10px] font-extrabold rounded-xl hover:bg-neutral-200 transition-all flex items-center justify-center gap-1 shadow-subtle cursor-pointer whitespace-nowrap"
                 title="Add to Basket"
               >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Quick Add</span>
+                <Plus className="w-3.5 h-3.5 shrink-0" />
+                <span>Add</span>
               </button>
 
               <button
                 onClick={handleBuyNow}
-                className="px-2.5 py-2 bg-black text-white text-[10px] font-extrabold rounded-xl hover:bg-neutral-800 transition-all flex items-center gap-1 shadow-subtle cursor-pointer"
+                className="flex-1 sm:flex-initial px-2 py-1.5 bg-black text-white text-[10px] font-extrabold rounded-xl hover:bg-neutral-800 transition-all flex items-center justify-center gap-1 shadow-subtle cursor-pointer whitespace-nowrap"
                 title="Instant Checkout"
               >
-                <Zap className="w-3.5 h-3.5" />
+                <Zap className="w-3.5 h-3.5 shrink-0" />
                 <span>Buy Now</span>
               </button>
             </div>

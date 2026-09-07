@@ -209,7 +209,7 @@ export const AdminDashboardPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
         {/* Sidebar Navigation */}
-        <div className="lg:col-span-3 space-y-1 bg-neutral-50 p-2.5 rounded-3xl border border-neutral-200 shadow-subtle sticky top-24">
+        <div className="lg:col-span-3 space-y-1 bg-neutral-50 p-2.5 rounded-3xl border border-neutral-200 shadow-subtle lg:sticky lg:top-24">
           
           {/* Quick Home Store Link */}
           <button
@@ -223,39 +223,60 @@ export const AdminDashboardPage: React.FC = () => {
             <ArrowLeft className="w-3.5 h-3.5 rotate-180 text-neutral-400 group-hover:text-white transition-colors" />
           </button>
 
-          <span className="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-widest text-neutral-400 block border-t border-neutral-200 pt-2">
-            Navigation Menu
-          </span>
+          {/* Mobile Select Dropdown (< lg) */}
+          <div className="lg:hidden p-2">
+            <label className="block text-[10px] font-extrabold uppercase tracking-widest text-neutral-400 mb-1.5 text-left">
+              Select Admin View
+            </label>
+            <select
+              value={activeTab}
+              onChange={(e) => setActiveTab(e.target.value as AdminTab)}
+              className="w-full p-3 bg-white border border-neutral-300 rounded-2xl text-xs font-extrabold text-black focus:outline-none focus:border-black appearance-none cursor-pointer"
+            >
+              {tabs.map((tab) => (
+                <option key={tab.id} value={tab.id}>
+                  {tab.label} {tab.badge ? `(${tab.badge})` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as AdminTab)}
-                className={`w-full p-3 rounded-2xl text-xs font-bold transition-all flex items-center justify-between group ${
-                  isActive
-                    ? 'bg-black text-white shadow-subtle'
-                    : 'text-neutral-700 hover:bg-neutral-200/80 hover:text-black'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  {tab.icon}
-                  <span>{tab.label}</span>
-                </div>
+          {/* Desktop Navigation List (lg+) */}
+          <div className="hidden lg:block space-y-1">
+            <span className="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-widest text-neutral-400 block border-t border-neutral-200 pt-2">
+              Navigation Menu
+            </span>
 
-                {tab.badge !== undefined && (
-                  <span
-                    className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
-                      isActive ? 'bg-white text-black' : 'bg-neutral-200 text-black'
-                    }`}
-                  >
-                    {tab.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as AdminTab)}
+                  className={`w-full p-3 rounded-2xl text-xs font-bold transition-all flex items-center justify-between group cursor-pointer ${
+                    isActive
+                      ? 'bg-black text-white shadow-subtle'
+                      : 'text-neutral-700 hover:bg-neutral-200/80 hover:text-black'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    {tab.icon}
+                    <span>{tab.label}</span>
+                  </div>
+
+                  {tab.badge !== undefined && (
+                    <span
+                      className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                        isActive ? 'bg-white text-black' : 'bg-neutral-200 text-black'
+                      }`}
+                    >
+                      {tab.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Tab Content Panel */}

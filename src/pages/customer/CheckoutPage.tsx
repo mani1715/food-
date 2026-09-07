@@ -150,7 +150,7 @@ export const CheckoutPage: React.FC = () => {
           {/* SECTION 1: CUSTOMER & DELIVERY INFORMATION */}
           <div className="p-6 rounded-3xl border border-neutral-200 bg-white space-y-5 shadow-subtle">
             
-            <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-neutral-100 pb-3">
               <h3 className="text-base font-extrabold text-black flex items-center gap-2">
                 <User className="w-5 h-5 text-black" />
                 <span>1. Customer & Delivery Information</span>
@@ -160,7 +160,7 @@ export const CheckoutPage: React.FC = () => {
                 type="button"
                 onClick={handleAutoDetectLocation}
                 disabled={isDetecting}
-                className="px-3 py-1.5 bg-black text-white text-xs font-bold rounded-xl hover:bg-neutral-800 transition-all flex items-center gap-1.5 shadow-subtle cursor-pointer shrink-0"
+                className="w-full sm:w-auto px-3 py-1.5 bg-black text-white text-xs font-bold rounded-xl hover:bg-neutral-800 transition-all flex items-center justify-center gap-1.5 shadow-subtle cursor-pointer shrink-0"
               >
                 <Navigation className={`w-3.5 h-3.5 ${isDetecting ? 'animate-spin' : ''}`} />
                 <span>{isDetecting ? 'Detecting...' : '🎯 Auto-Detect GPS Location'}</span>

@@ -63,18 +63,18 @@ export const CartPage: React.FC = () => {
             {cartItems.map((item) => (
               <div
                 key={`${item.product.id}-${item.selectedWeight}`}
-                className="p-4 sm:p-5 rounded-3xl border border-neutral-200 bg-white shadow-subtle flex items-center justify-between gap-4"
+                className="p-3.5 sm:p-5 rounded-3xl border border-neutral-200 bg-white shadow-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-3"
               >
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 sm:gap-4">
                   <img
                     src={item.product.image}
                     alt={item.product.name}
-                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border border-neutral-200 shrink-0"
+                    className="w-14 h-14 sm:w-20 sm:h-20 rounded-2xl object-cover border border-neutral-200 shrink-0"
                   />
-                  <div className="space-y-1">
+                  <div className="space-y-1 text-left">
                     <h4
                       onClick={() => navigate(`/product/${item.product.id}`)}
-                      className="text-sm sm:text-base font-bold text-black cursor-pointer hover:underline"
+                      className="text-sm sm:text-base font-bold text-black cursor-pointer hover:underline line-clamp-1"
                     >
                       {item.product.name}
                     </h4>
@@ -85,7 +85,7 @@ export const CartPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-neutral-100">
                   {/* Quantity Controller */}
                   <div className="flex items-center border border-neutral-300 rounded-xl p-1 bg-neutral-50">
                     <button
@@ -112,6 +112,7 @@ export const CartPage: React.FC = () => {
                   <button
                     onClick={() => removeFromCart(item.product.id, item.selectedWeight)}
                     className="p-2 text-neutral-400 hover:text-rose-600 cursor-pointer"
+                    title="Remove item"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
