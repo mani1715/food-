@@ -1,112 +1,196 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { WeeklyHighlightsShowcase } from '../../components/WeeklyHighlightsShowcase';
 import { ProductCard } from '../../components/ProductCard';
 import { RecentlyViewed } from '../../components/RecentlyViewed';
 import { NewsletterSection } from '../../components/NewsletterSection';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, ArrowRight, ShieldCheck, MapPin, BookOpen, Flame, Heart, CheckCircle2, Award, Zap } from 'lucide-react';
+import { Sparkles, ArrowRight, ShieldCheck, MapPin, BookOpen, Flame, Heart, CheckCircle2, Award, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
+
+const heroSlides = [
+  {
+    id: 1,
+    image: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=1600&auto=format&fit=crop',
+    badge: 'Handcrafted at Home with Pure Love',
+    title: 'Authentic Home Flavors Made with Pure Resources & Passion.',
+    subtitle: 'At AISHU FOODS, every pickle jar, sweet box, and spice powder is prepared at home using 100% natural ingredients, cold-pressed oils, and pure A2 cow ghee.',
+    ctaText: 'Explore All Products',
+    ctaLink: '/products',
+  },
+  {
+    id: 2,
+    image: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?q=80&w=1600&auto=format&fit=crop',
+    badge: "Grandma's Special Recipe",
+    title: 'Traditional Andhra Avakaya & Mouth-Watering Pickles.',
+    subtitle: 'Aromatic Vijayawada raw mangoes marinated in stone-ground Guntur chili powder & Chekku sesame oil for that irresistible authentic taste.',
+    ctaText: 'Shop Pickles Collection',
+    ctaLink: '/products?category=Pickles',
+  },
+  {
+    id: 3,
+    image: 'https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?q=80&w=1600&auto=format&fit=crop',
+    badge: 'Pure A2 Cow Ghee Specialties',
+    title: 'Authentic Sweets & Crunchy Homemade Snacks.',
+    subtitle: 'Zero chemical preservatives, zero palm oil. Uncompromising quality & generous quantity at fair, budget-friendly prices.',
+    ctaText: 'Explore Sweets & Snacks',
+    ctaLink: '/products?category=Sweets',
+  },
+];
 
 export const HomePage: React.FC = () => {
   const { products, categories, homeSections } = useApp();
   const navigate = useNavigate();
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  // Auto-scrolling Hero Banner effect (scrolls every 4 seconds)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const nextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+  };
+
+  const prevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length);
+  };
 
   return (
     <div className="min-h-screen bg-white text-black font-sans space-y-10">
       
-      {/* 1. HERO BANNER AT THE VERY TOP */}
-      <section className="relative overflow-hidden bg-black text-white py-12 sm:py-20 px-4 sm:px-6 lg:px-8 border-b border-neutral-800">
-        {/* Background Image Container with Soft Gradient Dark Overlay */}
-        <div className="absolute inset-0 z-0">
-          <img
-            src="https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=1600&auto=format&fit=crop"
-            alt="Aishu Foods Traditional Spices & Pickles"
-            className="w-full h-full object-cover opacity-40 scale-105"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/90 to-black/60" />
-        </div>
+      {/* 1. AUTO-SCROLLING HERO BANNER AT THE TOP */}
+      <section className="relative overflow-hidden bg-black text-white py-12 sm:py-20 px-4 sm:px-6 lg:px-8 border-b border-neutral-800 min-h-[460px] flex items-center">
+        
+        {/* Carousel Background Images */}
+        {heroSlides.map((slide, index) => (
+          <div
+            key={slide.id}
+            className={`absolute inset-0 z-0 transition-opacity duration-1000 ease-in-out ${
+              index === currentSlide ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}
+          >
+            <img
+              src={slide.image}
+              alt={slide.title}
+              className="w-full h-full object-cover opacity-40 scale-105"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-black via-black/90 to-black/60" />
+          </div>
+        ))}
 
-        <div className="relative z-10 max-w-7xl mx-auto text-left space-y-8">
+        {/* Hero Content Container */}
+        <div className="relative z-10 max-w-7xl mx-auto w-full text-left space-y-6">
           
           {/* Top Badge */}
           <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-black uppercase tracking-widest px-4 py-2 rounded-full shadow-subtle">
             <Heart className="w-4 h-4 text-rose-400 fill-rose-400" />
-            <span>Handcrafted at Home with Pure Love & Energy</span>
+            <span>{heroSlides[currentSlide].badge}</span>
           </div>
 
           {/* Banner Main Headline & Subtitle */}
           <div className="space-y-4 max-w-3xl">
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-tight font-serif">
-              Authentic Home Flavors Made with Pure Resources & Passion.
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-tight font-serif transition-all duration-500">
+              {heroSlides[currentSlide].title}
             </h1>
             <p className="text-sm sm:text-base text-neutral-300 font-medium leading-relaxed">
-              At <strong className="text-white font-black">AISHU FOODS</strong>, every pickle jar, sweet box, and spice powder is prepared at home using 100% natural ingredients, cold-pressed oils, stone-ground spices, and pure A2 cow ghee. <span className="text-amber-400 font-bold">Uncompromising quality & generous quantity at fair, affordable prices.</span>
+              {heroSlides[currentSlide].subtitle}
             </p>
           </div>
 
-          {/* 4 Differentiator Cards Grid (What Makes Us Different) */}
+          {/* 4 Differentiator Badges */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 pt-2">
-            
-            <div className="bg-white/10 backdrop-blur-md border border-white/15 p-3.5 sm:p-4 rounded-2xl space-y-1.5 hover:border-amber-400 transition-all">
+            <div className="bg-white/10 backdrop-blur-md border border-white/15 p-3 sm:p-3.5 rounded-2xl space-y-1 hover:border-amber-400 transition-all">
               <div className="flex items-center gap-2 text-amber-400 font-extrabold text-xs">
                 <CheckCircle2 className="w-4 h-4" />
                 <span>100% Pure & Natural</span>
               </div>
-              <p className="text-[11px] text-neutral-300 font-medium">Zero chemical preservatives, synthetic colors or palm oil.</p>
+              <p className="text-[11px] text-neutral-300 font-medium">Zero preservatives or synthetic colors.</p>
             </div>
 
-            <div className="bg-white/10 backdrop-blur-md border border-white/15 p-3.5 sm:p-4 rounded-2xl space-y-1.5 hover:border-amber-400 transition-all">
+            <div className="bg-white/10 backdrop-blur-md border border-white/15 p-3 sm:p-3.5 rounded-2xl space-y-1 hover:border-amber-400 transition-all">
               <div className="flex items-center gap-2 text-amber-400 font-extrabold text-xs">
                 <BookOpen className="w-4 h-4" />
                 <span>Grandma's Recipe</span>
               </div>
-              <p className="text-[11px] text-neutral-300 font-medium">Stone-ground spices & authentic traditional Andhra curing.</p>
+              <p className="text-[11px] text-neutral-300 font-medium">Stone-ground spices & traditional curing.</p>
             </div>
 
-            <div className="bg-white/10 backdrop-blur-md border border-white/15 p-3.5 sm:p-4 rounded-2xl space-y-1.5 hover:border-amber-400 transition-all">
+            <div className="bg-white/10 backdrop-blur-md border border-white/15 p-3 sm:p-3.5 rounded-2xl space-y-1 hover:border-amber-400 transition-all">
               <div className="flex items-center gap-2 text-amber-400 font-extrabold text-xs">
                 <Award className="w-4 h-4" />
                 <span>Full Quantity & Value</span>
               </div>
-              <p className="text-[11px] text-neutral-300 font-medium">Generous portion sizes at honest, budget-friendly prices.</p>
+              <p className="text-[11px] text-neutral-300 font-medium">Generous portions at honest prices.</p>
             </div>
 
-            <div className="bg-white/10 backdrop-blur-md border border-white/15 p-3.5 sm:p-4 rounded-2xl space-y-1.5 hover:border-amber-400 transition-all">
+            <div className="bg-white/10 backdrop-blur-md border border-white/15 p-3 sm:p-3.5 rounded-2xl space-y-1 hover:border-amber-400 transition-all">
               <div className="flex items-center gap-2 text-amber-400 font-extrabold text-xs">
                 <Zap className="w-4 h-4" />
                 <span>Made Fresh on Order</span>
               </div>
-              <p className="text-[11px] text-neutral-300 font-medium">Prepared in small hygienic batches with positive energy.</p>
+              <p className="text-[11px] text-neutral-300 font-medium">Prepared in small hygienic batches.</p>
             </div>
-
           </div>
 
-          {/* Hero Action Buttons */}
-          <div className="flex items-center flex-wrap gap-3 pt-2">
-            <button
-              onClick={() => navigate('/products')}
-              className="px-7 py-3.5 bg-white text-black text-xs font-black rounded-2xl hover:bg-neutral-200 transition-all flex items-center gap-2 shadow-modal cursor-pointer"
-            >
-              <span>Explore All Products</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+          {/* Hero Action Buttons & Slide Controls */}
+          <div className="flex items-center justify-between flex-wrap gap-4 pt-2">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate(heroSlides[currentSlide].ctaLink)}
+                className="px-7 py-3.5 bg-white text-black text-xs font-black rounded-2xl hover:bg-neutral-200 transition-all flex items-center gap-2 shadow-modal cursor-pointer"
+              >
+                <span>{heroSlides[currentSlide].ctaText}</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
 
-            <button
-              onClick={() => navigate('/our-process')}
-              className="px-6 py-3.5 bg-neutral-900 border border-neutral-700 hover:border-white text-white text-xs font-black rounded-2xl transition-all flex items-center gap-2 cursor-pointer"
-            >
-              <span>How We Do</span>
-              <span>📜</span>
-            </button>
+              <button
+                onClick={() => navigate('/our-process')}
+                className="px-6 py-3.5 bg-neutral-900 border border-neutral-700 hover:border-white text-white text-xs font-black rounded-2xl transition-all flex items-center gap-2 cursor-pointer"
+              >
+                <span>How We Do</span>
+                <span>📜</span>
+              </button>
+            </div>
+
+            {/* Slide Navigation Dots & Prev/Next Arrows */}
+            <div className="flex items-center gap-3 z-20">
+              <button
+                onClick={prevSlide}
+                aria-label="Previous Slide"
+                className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-all cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              <div className="flex items-center gap-1.5">
+                {heroSlides.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setCurrentSlide(idx)}
+                    className={`h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
+                      idx === currentSlide ? 'w-8 bg-white' : 'w-2.5 bg-white/40 hover:bg-white/70'
+                    }`}
+                  />
+                ))}
+              </div>
+
+              <button
+                onClick={nextSlide}
+                aria-label="Next Slide"
+                className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-all cursor-pointer"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
         </div>
       </section>
 
-      {/* 2. SPECIAL HIGHLIGHTS & OFFERS (SECOND SECTION ON HOMEPAGE) */}
-      <WeeklyHighlightsShowcase />
-
-      {/* 3. CATEGORIES BAR WITH ANIMATED SMALL PHOTOS */}
+      {/* 2. EXPLORE CATEGORIES (3 ITEMS PER ROW GRID) */}
       <section className="py-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-left space-y-4">
         <div className="flex items-center justify-between border-b border-neutral-200 pb-3">
           <div>
@@ -122,7 +206,7 @@ export const HomePage: React.FC = () => {
           </button>
         </div>
 
-        {/* 3 Items Per Row Grid (No Scrolling) */}
+        {/* 3 Items Per Row Grid (Static, 3 per row) */}
         <div className="grid grid-cols-3 gap-3 sm:gap-6 py-4">
           {categories.map((cat) => (
             <div
@@ -148,7 +232,10 @@ export const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* 4. DYNAMIC HOMEPAGE SHOWCASE SECTIONS (Best Selling, Pickles Collection, Authentic Sweets, etc.) */}
+      {/* 3. DISCOUNTS & SPECIAL HIGHLIGHTS */}
+      <WeeklyHighlightsShowcase />
+
+      {/* 4. ITEMS DISPLAYING ONE BY ONE (DYNAMIC HOMEPAGE SHOWCASE SECTIONS) */}
       {homeSections
         .filter((sec) => sec.enabled)
         .map((sec) => {
@@ -290,3 +377,4 @@ export const HomePage: React.FC = () => {
     </div>
   );
 };
+

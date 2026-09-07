@@ -1,5 +1,5 @@
-import React from 'react';
-import { Search, Heart, ShoppingBag, User, Package, BookOpen, MapPin, ShieldCheck } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, Heart, ShoppingBag, User, Package, ChevronDown } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 
@@ -14,16 +14,61 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
 
   const cartCount = cartItems.reduce((acc, i) => acc + i.quantity, 0);
 
-  const navLinks = [
-    { label: 'Home', path: '/' },
-    { label: 'New Arrivals ✨', path: '/products?filter=new-arrivals', isSpecial: true },
-    { label: 'Pickles 🌶️', path: '/products?category=Pickles' },
-    { label: 'Sweets 🍬', path: '/products?category=Sweets' },
-    { label: 'Snacks 🥨', path: '/products?category=Snacks' },
-    { label: 'Powders / Podis 🌾', path: '/products?category=Powders' },
-    { label: 'Veg ●', path: '/products?dietary=Veg' },
-    { label: 'Non-Veg ▲', path: '/products?dietary=Non-Veg' },
-    { label: 'All Categories', path: '/categories' },
+  const categoryMenus = [
+    {
+      label: 'Home',
+      path: '/',
+    },
+    {
+      label: 'Pickles 🌶️',
+      path: '/products?category=Pickles',
+      subCategories: [
+        { label: 'Veg Pickles ●', path: '/products?category=Pickles&dietary=Veg' },
+        { label: 'Non-Veg Pickles ▲', path: '/products?category=Pickles&dietary=Non-Veg' },
+        { label: 'All Pickles Collection', path: '/products?category=Pickles' },
+      ],
+    },
+    {
+      label: 'Sweets 🍬',
+      path: '/products?category=Sweets',
+      subCategories: [
+        { label: 'Pure Ghee Sweets 🍯', path: '/products?category=Sweets' },
+        { label: 'Traditional Sweets 🍬', path: '/products?category=Sweets' },
+        { label: 'All Sweets Collection', path: '/products?category=Sweets' },
+      ],
+    },
+    {
+      label: 'Snacks 🥨',
+      path: '/products?category=Snacks',
+      subCategories: [
+        { label: 'Crispy Murukku & Savories 🥨', path: '/products?category=Snacks' },
+        { label: 'Karam & Mixture 🌶️', path: '/products?category=Snacks' },
+        { label: 'All Snacks Collection', path: '/products?category=Snacks' },
+      ],
+    },
+    {
+      label: 'Powders / Podis 🌾',
+      path: '/products?category=Powders',
+      subCategories: [
+        { label: 'Idli & Dosa Podis 🌾', path: '/products?category=Powders' },
+        { label: 'Rice Podis & Spices 🍚', path: '/products?category=Powders' },
+        { label: 'All Powders Collection', path: '/products?category=Powders' },
+      ],
+    },
+    {
+      label: 'New & Specials ✨',
+      path: '/products?filter=new-arrivals',
+      isSpecial: true,
+      subCategories: [
+        { label: 'New Arrivals ✨', path: '/products?filter=new-arrivals' },
+        { label: 'Best Sellers ⭐', path: '/products' },
+        { label: 'Festival Hampers 🎉', path: '/products?category=Gift%20Boxes' },
+      ],
+    },
+    {
+      label: 'All Categories',
+      path: '/categories',
+    },
   ];
 
   return (
@@ -50,7 +95,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
         {/* Rightmost Action Symbol Icons (Search Symbol, Wishlist, Cart, Track, Profile) */}
         <div className="flex items-center gap-2 shrink-0">
           
-          {/* Compact Symbol Search Button (Not big text box) */}
+          {/* Compact Symbol Search Button */}
           <button
             onClick={onOpenSearch}
             className="p-2.5 rounded-2xl border border-neutral-200 hover:border-black hover:bg-black hover:text-white text-black transition-all flex items-center gap-1.5 cursor-pointer shadow-subtle group"
@@ -115,25 +160,44 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
 
       </div>
 
-      {/* Category Horizontal Navigation Line */}
+      {/* Category Horizontal Navigation Line with Sub-Category Hover Dropdowns */}
       <nav className="border-t border-neutral-100 bg-neutral-50/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-2 overflow-x-auto no-scrollbar py-2 text-xs font-extrabold">
-          {navLinks.map((link) => {
-            const isActive = location.pathname + location.search === link.path || (link.path === '/' && location.pathname === '/');
+          {categoryMenus.map((menu) => {
+            const isActive = location.pathname + location.search === menu.path || (menu.path === '/' && location.pathname === '/');
+            const hasSub = menu.subCategories && menu.subCategories.length > 0;
+
             return (
-              <button
-                key={link.label}
-                onClick={() => navigate(link.path)}
-                className={`px-3.5 py-1.5 rounded-full transition-all whitespace-nowrap cursor-pointer border ${
-                  isActive
-                    ? 'bg-black text-white border-black shadow-subtle'
-                    : link.isSpecial
-                    ? 'bg-neutral-900 text-white border-black hover:bg-black'
-                    : 'bg-white text-neutral-800 border-neutral-200 hover:border-black hover:bg-black hover:text-white'
-                }`}
-              >
-                {link.label}
-              </button>
+              <div key={menu.label} className="relative group shrink-0">
+                <button
+                  onClick={() => navigate(menu.path)}
+                  className={`px-3.5 py-1.5 rounded-full transition-all whitespace-nowrap cursor-pointer border flex items-center gap-1 ${
+                    isActive
+                      ? 'bg-black text-white border-black shadow-subtle'
+                      : menu.isSpecial
+                      ? 'bg-neutral-900 text-white border-black hover:bg-black'
+                      : 'bg-white text-neutral-800 border-neutral-200 hover:border-black hover:bg-black hover:text-white'
+                  }`}
+                >
+                  <span>{menu.label}</span>
+                  {hasSub && <ChevronDown className="w-3 h-3 opacity-60 group-hover:rotate-180 transition-transform" />}
+                </button>
+
+                {/* Hover Dropdown Sub-Menu */}
+                {hasSub && (
+                  <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-neutral-200 rounded-2xl shadow-modal opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 p-2 space-y-1 text-left">
+                    {menu.subCategories?.map((sub) => (
+                      <button
+                        key={sub.label}
+                        onClick={() => navigate(sub.path)}
+                        className="w-full text-left px-3 py-2 rounded-xl text-xs font-extrabold text-neutral-800 hover:bg-black hover:text-white transition-all cursor-pointer block"
+                      >
+                        {sub.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
