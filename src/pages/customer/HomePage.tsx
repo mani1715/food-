@@ -3,60 +3,83 @@ import { useApp } from '../../context/AppContext';
 import { WeeklyHighlightsShowcase } from '../../components/WeeklyHighlightsShowcase';
 import { ProductCard } from '../../components/ProductCard';
 import { RecentlyViewed } from '../../components/RecentlyViewed';
-import { NewsletterSection } from '../../components/NewsletterSection';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, ArrowRight, ShieldCheck, MapPin, BookOpen, Flame, Heart, CheckCircle2, Award, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
+import { HeroBannerSlide } from '../../types';
 
-const heroSlides = [
+const heroSlides: HeroBannerSlide[] = [
   {
-    id: 1,
+    id: '1',
     image: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=1600&auto=format&fit=crop',
     badge: 'Handcrafted at Home with Pure Love',
     title: 'Authentic Home Flavors Made with Pure Resources & Passion.',
     subtitle: 'At AISHU FOODS, every pickle jar, sweet box, and spice powder is prepared at home using 100% natural ingredients, cold-pressed oils, and pure A2 cow ghee.',
     ctaText: 'Explore All Products',
     ctaLink: '/products',
+    enabled: true,
+    objectPosition: 'center',
+    objectFit: 'cover',
+    overlayOpacity: 'dark',
   },
   {
-    id: 2,
+    id: '2',
     image: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?q=80&w=1600&auto=format&fit=crop',
     badge: "Grandma's Special Recipe",
     title: 'Traditional Andhra Avakaya & Mouth-Watering Pickles.',
     subtitle: 'Aromatic Vijayawada raw mangoes marinated in stone-ground Guntur chili powder & Chekku sesame oil for that irresistible authentic taste.',
     ctaText: 'Shop Pickles Collection',
     ctaLink: '/products?category=Pickles',
+    enabled: true,
+    objectPosition: 'center',
+    objectFit: 'cover',
+    overlayOpacity: 'dark',
   },
   {
-    id: 3,
+    id: '3',
     image: 'https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?q=80&w=1600&auto=format&fit=crop',
     badge: 'Pure A2 Cow Ghee Specialties',
     title: 'Authentic Sweets & Crunchy Homemade Snacks.',
     subtitle: 'Zero chemical preservatives, zero palm oil. Uncompromising quality & generous quantity at fair, budget-friendly prices.',
     ctaText: 'Explore Sweets & Snacks',
     ctaLink: '/products?category=Sweets',
+    enabled: true,
+    objectPosition: 'center',
+    objectFit: 'cover',
+    overlayOpacity: 'dark',
   },
 ];
 
 export const HomePage: React.FC = () => {
-  const { products, categories, homeSections } = useApp();
+  const { products, categories, homeSections, heroBanners } = useApp();
   const navigate = useNavigate();
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  // Auto-scrolling Hero Banner effect (scrolls every 4 seconds)
+  const activeHeroSlides =
+    heroBanners && heroBanners.filter((b) => b.enabled).length > 0
+      ? heroBanners.filter((b) => b.enabled)
+      : heroSlides;
+
+  // Auto-scrolling Hero Banner effect (scrolls every 6 seconds)
   useEffect(() => {
+    if (activeHeroSlides.length === 0) return;
     const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
-    }, 4000);
+      setCurrentSlide((prev) => (prev + 1) % activeHeroSlides.length);
+    }, 6000);
     return () => clearInterval(timer);
-  }, []);
+  }, [activeHeroSlides.length]);
 
   const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+    if (activeHeroSlides.length === 0) return;
+    setCurrentSlide((prev) => (prev + 1) % activeHeroSlides.length);
   };
 
   const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length);
+    if (activeHeroSlides.length === 0) return;
+    setCurrentSlide((prev) => (prev - 1 + activeHeroSlides.length) % activeHeroSlides.length);
   };
+
+  const safeSlideIndex = currentSlide % (activeHeroSlides.length || 1);
+  const currentBanner = activeHeroSlides[safeSlideIndex] || heroSlides[0];
 
   return (
     <div className="min-h-screen bg-white text-black font-sans space-y-10">
@@ -64,22 +87,43 @@ export const HomePage: React.FC = () => {
       {/* 1. AUTO-SCROLLING HERO BANNER AT THE TOP */}
       <section className="relative overflow-hidden bg-black text-white py-12 sm:py-20 px-4 sm:px-6 lg:px-8 border-b border-neutral-800 min-h-[460px] flex items-center">
         
-        {/* Carousel Background Images */}
-        {heroSlides.map((slide, index) => (
-          <div
-            key={slide.id}
-            className={`absolute inset-0 z-0 transition-opacity duration-1000 ease-in-out ${
-              index === currentSlide ? 'opacity-100' : 'opacity-0 pointer-events-none'
-            }`}
-          >
-            <img
-              src={slide.image}
-              alt={slide.title}
-              className="w-full h-full object-cover opacity-40 scale-105"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-black via-black/90 to-black/60" />
-          </div>
-        ))}
+        {/* Carousel Background Images with Custom Alignment & Fitting */}
+        {activeHeroSlides.map((slide, index) => {
+          const posClass =
+            slide.objectPosition === 'top' ? 'object-top' :
+            slide.objectPosition === 'bottom' ? 'object-bottom' :
+            slide.objectPosition === 'left' ? 'object-left' :
+            slide.objectPosition === 'right' ? 'object-right' :
+            slide.objectPosition === 'top-left' ? '[object-position:left_top]' :
+            slide.objectPosition === 'top-right' ? '[object-position:right_top]' :
+            slide.objectPosition === 'bottom-left' ? '[object-position:left_bottom]' :
+            slide.objectPosition === 'bottom-right' ? '[object-position:right_bottom]' : 'object-center';
+
+          const fitClass =
+            slide.objectFit === 'contain' ? 'object-contain' :
+            slide.objectFit === 'fill' ? 'object-fill' : 'object-cover';
+
+          const overlayClass =
+            slide.overlayOpacity === 'light' ? 'from-black/60 via-black/40 to-black/20' :
+            slide.overlayOpacity === 'medium' ? 'from-black/80 via-black/60 to-black/30' :
+            slide.overlayOpacity === 'heavy' ? 'from-black via-black to-black/80' : 'from-black via-black/90 to-black/60';
+
+          return (
+            <div
+              key={slide.id}
+              className={`absolute inset-0 z-0 transition-opacity duration-1000 ease-in-out ${
+                index === safeSlideIndex ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              }`}
+            >
+              <img
+                src={slide.image}
+                alt={slide.title}
+                className={`w-full h-full ${fitClass} ${posClass} opacity-50 scale-105 transition-all duration-700`}
+              />
+              <div className={`absolute inset-0 bg-gradient-to-r ${overlayClass}`} />
+            </div>
+          );
+        })}
 
         {/* Hero Content Container */}
         <div className="relative z-10 max-w-7xl mx-auto w-full text-left space-y-6">
@@ -87,16 +131,16 @@ export const HomePage: React.FC = () => {
           {/* Top Badge */}
           <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-black uppercase tracking-widest px-4 py-2 rounded-full shadow-subtle">
             <Heart className="w-4 h-4 text-rose-400 fill-rose-400" />
-            <span>{heroSlides[currentSlide].badge}</span>
+            <span>{currentBanner.badge}</span>
           </div>
 
           {/* Banner Main Headline & Subtitle */}
           <div className="space-y-4 max-w-3xl">
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-tight font-serif transition-all duration-500">
-              {heroSlides[currentSlide].title}
+              {currentBanner.title}
             </h1>
             <p className="text-sm sm:text-base text-neutral-300 font-medium leading-relaxed">
-              {heroSlides[currentSlide].subtitle}
+              {currentBanner.subtitle}
             </p>
           </div>
 
@@ -139,10 +183,10 @@ export const HomePage: React.FC = () => {
           <div className="flex items-center justify-between flex-wrap gap-4 pt-2">
             <div className="flex items-center gap-3">
               <button
-                onClick={() => navigate(heroSlides[currentSlide].ctaLink)}
+                onClick={() => navigate(currentBanner.ctaLink)}
                 className="px-7 py-3.5 bg-white text-black text-xs font-black rounded-2xl hover:bg-neutral-200 transition-all flex items-center gap-2 shadow-modal cursor-pointer"
               >
-                <span>{heroSlides[currentSlide].ctaText}</span>
+                <span>{currentBanner.ctaText}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 
@@ -166,12 +210,12 @@ export const HomePage: React.FC = () => {
               </button>
 
               <div className="flex items-center gap-1.5">
-                {heroSlides.map((_, idx) => (
+                {activeHeroSlides.map((_, idx) => (
                   <button
                     key={idx}
                     onClick={() => setCurrentSlide(idx)}
                     className={`h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
-                      idx === currentSlide ? 'w-8 bg-white' : 'w-2.5 bg-white/40 hover:bg-white/70'
+                      idx === safeSlideIndex ? 'w-8 bg-white' : 'w-2.5 bg-white/40 hover:bg-white/70'
                     }`}
                   />
                 ))}
@@ -370,9 +414,6 @@ export const HomePage: React.FC = () => {
 
       {/* Recently Viewed */}
       <RecentlyViewed />
-
-      {/* Newsletter Subscription */}
-      <NewsletterSection />
 
     </div>
   );

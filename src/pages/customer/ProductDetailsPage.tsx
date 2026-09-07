@@ -163,32 +163,53 @@ export const ProductDetailsPage: React.FC = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={() => addToCart(product, selectedWeight, quantity)}
-                className="flex-1 py-4 bg-black text-white text-xs font-extrabold rounded-2xl hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 shadow-subtle cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add To Cart • ₹{currentPrice * quantity}</span>
-              </button>
+            {product.outOfStock || (product.inventoryCount ?? 100) <= 0 ? (
+              <div className="flex gap-3">
+                <button
+                  disabled
+                  className="flex-1 py-4 bg-rose-100 text-rose-800 border border-rose-300 text-xs font-black rounded-2xl cursor-not-allowed text-center"
+                >
+                  🚨 Out of Stock — Restocking Soon
+                </button>
 
-              <button
-                onClick={handleBuyNow}
-                className="flex-1 py-4 bg-white border-2 border-black text-black text-xs font-extrabold rounded-2xl hover:bg-neutral-100 transition-all cursor-pointer"
-              >
-                Buy Now
-              </button>
+                <button
+                  onClick={() => toggleWishlist(product.id)}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                    isWishlisted ? 'bg-black text-white border-black' : 'border-neutral-200 text-black hover:border-black'
+                  }`}
+                  title="Wishlist"
+                >
+                  <Heart className={`w-5 h-5 ${isWishlisted ? 'fill-white' : ''}`} />
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => addToCart(product, selectedWeight, quantity)}
+                  className="flex-1 py-4 bg-black text-white text-xs font-extrabold rounded-2xl hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 shadow-subtle cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add To Cart • ₹{currentPrice * quantity}</span>
+                </button>
 
-              <button
-                onClick={() => toggleWishlist(product.id)}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer ${
-                  isWishlisted ? 'bg-black text-white border-black' : 'border-neutral-200 text-black hover:border-black'
-                }`}
-                title="Wishlist"
-              >
-                <Heart className={`w-5 h-5 ${isWishlisted ? 'fill-white' : ''}`} />
-              </button>
-            </div>
+                <button
+                  onClick={handleBuyNow}
+                  className="flex-1 py-4 bg-white border-2 border-black text-black text-xs font-extrabold rounded-2xl hover:bg-neutral-100 transition-all cursor-pointer"
+                >
+                  Buy Now
+                </button>
+
+                <button
+                  onClick={() => toggleWishlist(product.id)}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                    isWishlisted ? 'bg-black text-white border-black' : 'border-neutral-200 text-black hover:border-black'
+                  }`}
+                  title="Wishlist"
+                >
+                  <Heart className={`w-5 h-5 ${isWishlisted ? 'fill-white' : ''}`} />
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2 text-xs text-neutral-500 font-semibold pt-2">
@@ -258,7 +279,7 @@ export const ProductDetailsPage: React.FC = () => {
               <ArrowRight className="w-4 h-4 text-neutral-400 group-hover:translate-x-1 transition-transform" />
             </h4>
             <p className="text-xs text-neutral-500 font-medium">
-              Traditional 5-step grandmother recipe process: stone grinding, sun-curing & earthen jar maturation.
+              {product.howWeDoText || 'Traditional 5-step grandmother recipe process: stone grinding, sun-curing & earthen jar maturation.'}
             </p>
           </div>
 
@@ -274,7 +295,7 @@ export const ProductDetailsPage: React.FC = () => {
               <ArrowRight className="w-4 h-4 text-neutral-400 group-hover:translate-x-1 transition-transform" />
             </h4>
             <p className="text-xs text-neutral-500 font-medium">
-              Farm origin traceability: Vijayawada raw mangoes, Guntur red chillies & A2 Bilona ghee.
+              {product.sourcingText || 'Farm origin traceability: Vijayawada raw mangoes, Guntur red chillies & A2 Bilona ghee.'}
             </p>
           </div>
 
@@ -290,7 +311,7 @@ export const ProductDetailsPage: React.FC = () => {
               <ArrowRight className="w-4 h-4 text-neutral-400 group-hover:translate-x-1 transition-transform" />
             </h4>
             <p className="text-xs text-neutral-500 font-medium">
-              100% natural homemade purity. Zero chemical preservatives, artificial colors or palm oil.
+              {product.qualityGuaranteeText || '100% natural homemade purity. Zero chemical preservatives, artificial colors or palm oil.'}
             </p>
           </div>
         </div>

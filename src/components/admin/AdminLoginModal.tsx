@@ -3,6 +3,8 @@ import { useApp } from '../../context/AppContext';
 import { ShieldCheck, X, ArrowRight, KeyRound } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import { sanitizeInput } from '../../utils/security';
+
 interface AdminLoginModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -18,7 +20,8 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const success = loginAdmin(email, password);
+    const cleanEmail = sanitizeInput(email);
+    const success = loginAdmin(cleanEmail, password);
     if (success) {
       if (onSuccess) onSuccess();
       onClose();

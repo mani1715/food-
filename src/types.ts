@@ -29,6 +29,9 @@ export interface Product {
   availableCities?: string[];
   inStock?: boolean;
   grandmaStory?: string;
+  howWeDoText?: string;
+  sourcingText?: string;
+  qualityGuaranteeText?: string;
 }
 
 export interface ProductCategory {
@@ -145,9 +148,46 @@ export interface HomeSection {
   enabled: boolean;
 }
 
+export interface HeroBannerSlide {
+  id: string;
+  image: string;
+  badge: string;
+  title: string;
+  subtitle: string;
+  ctaText: string;
+  ctaLink: string;
+  enabled: boolean;
+  objectPosition?: 'center' | 'top' | 'bottom' | 'left' | 'right' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+  objectFit?: 'cover' | 'contain' | 'fill';
+  overlayOpacity?: 'light' | 'medium' | 'dark' | 'heavy';
+}
+
+export interface HeaderAnnouncement {
+  id: string;
+  text: string;
+  enabled: boolean;
+}
+
+export interface Coupon {
+  id: string;
+  code: string;
+  description: string;
+  discountType: 'percentage' | 'flat';
+  discountValue: number;
+  minOrderAmount: number;
+  appliesTo: 'all' | 'category' | 'product';
+  targetCategory?: string;
+  targetProductId?: string;
+  expiryDate?: string;
+  enabled: boolean;
+  usageCount: number;
+}
+
 export type AdminTab =
   | 'analytics'
   | 'products'
+  | 'notifications'
+  | 'banners'
   | 'orders'
   | 'locations'
   | 'bestsellers'

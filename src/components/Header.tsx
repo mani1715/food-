@@ -10,10 +10,20 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { cartItems, wishlistProductIds } = useApp();
+  const { cartItems, wishlistProductIds, headerAnnouncements } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const cartCount = cartItems.reduce((acc, i) => acc + i.quantity, 0);
+
+  const activeAnnouncements =
+    headerAnnouncements && headerAnnouncements.filter((a) => a.enabled).length > 0
+      ? headerAnnouncements.filter((a) => a.enabled).map((a) => a.text)
+      : [
+          "Fast & reliable delivery within 3–4 days across India!",
+          "Use Code AF05 & get 5% additional discount on your First Purchase",
+          "Free Shipping All Over India on orders over ₹499",
+          "100% Homemade, Zero Preservatives & Cold-Pressed Oils",
+        ];
 
   const categoryMenus = [
     {
@@ -84,26 +94,35 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-neutral-200 transition-all shadow-subtle">
       
-      {/* 1. TOP ANNOUNCEMENT BANNER */}
-      <div className="bg-[#6B2D1D] text-white py-2 px-4 text-xs font-semibold tracking-wide text-center flex items-center justify-center overflow-hidden">
-        <div className="flex items-center gap-4 sm:gap-6 whitespace-nowrap animate-pulse sm:animate-none">
-          <span className="flex items-center gap-1.5">
-            <span>Fast & reliable delivery within 3–4 days!</span>
-          </span>
-          <Zap className="w-3.5 h-3.5 text-amber-300 fill-amber-300 shrink-0" />
-          <span className="flex items-center gap-1.5 font-bold">
-            <span>Use Code <strong className="text-amber-300 font-extrabold underline">AF05</strong> & get 5% additional discount on First Purchase</span>
-          </span>
-          <Zap className="w-3.5 h-3.5 text-amber-300 fill-amber-300 shrink-0 hidden sm:inline" />
-          <span className="hidden md:inline">Free Shipping All Over India</span>
+      {/* 1. TOP SCROLLING ANNOUNCEMENT TICKER (BLACK & WHITE MARQUEE) */}
+      <div className="bg-black text-white py-2 px-4 text-xs font-bold tracking-wide overflow-hidden border-b border-neutral-800">
+        <div className="animate-marquee items-center gap-8 text-neutral-200">
+          {/* First Copy */}
+          {activeAnnouncements.map((text, index) => (
+            <React.Fragment key={`a1-${index}`}>
+              <span className="flex items-center gap-2 whitespace-nowrap">
+                <Zap className="w-3.5 h-3.5 text-white shrink-0 fill-white" />
+                <span>{text}</span>
+              </span>
+            </React.Fragment>
+          ))}
+          {/* Duplicate Copy for Seamless Infinite Scrolling */}
+          {activeAnnouncements.map((text, index) => (
+            <React.Fragment key={`a2-${index}`}>
+              <span className="flex items-center gap-2 whitespace-nowrap">
+                <Zap className="w-3.5 h-3.5 text-white shrink-0 fill-white" />
+                <span>{text}</span>
+              </span>
+            </React.Fragment>
+          ))}
         </div>
       </div>
 
       {/* 2. MAIN HEADER NAVIGATION BAR */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4">
+      <div className="w-full max-w-[1400px] mx-auto px-2 sm:px-4 lg:px-6 py-2.5 flex items-center justify-between gap-4">
         
-        {/* Left Side: Circular Brand Logo & Title */}
-        <div className="flex items-center gap-3">
+        {/* Left Side: Extra Large Circular Brand Logo (Shifted to Far Left) */}
+        <div className="flex items-center gap-2 sm:gap-3 -ml-1 sm:-ml-3 lg:-ml-4">
           {/* Mobile Burger Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -113,24 +132,20 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
 
-          <div onClick={() => navigate('/')} className="flex items-center gap-3 cursor-pointer group shrink-0">
-            {/* Circular Logo Emblem */}
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full overflow-hidden border-2 border-[#6B2D1D] bg-[#6B2D1D] flex items-center justify-center shadow-subtle group-hover:scale-105 transition-transform shrink-0 p-0.5">
-              <img src="/aishu-logo.jpg" alt="Aishu Foods Logo" className="w-full h-full object-cover rounded-full" />
-            </div>
-            <div className="hidden sm:block">
-              <span className="text-xl sm:text-2xl font-black text-black tracking-tight block leading-none font-serif">
-                AISHU FOODS
-              </span>
-              <span className="text-[10px] font-extrabold tracking-widest text-neutral-500 uppercase block mt-1">
-                Pure Homemade Flavors
-              </span>
+          <div onClick={() => navigate('/')} className="flex items-center cursor-pointer group shrink-0">
+            {/* Extra Large Circular Logo Emblem */}
+            <div className="w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 rounded-full overflow-hidden border-3 border-black bg-black flex items-center justify-center shadow-modal group-hover:scale-105 transition-transform shrink-0 my-[-10px]">
+              <img
+                src="/aishu-logo.jpg"
+                alt="Aishu Foods Logo"
+                className="w-full h-full object-cover scale-[1.38] rounded-full"
+              />
             </div>
           </div>
         </div>
 
         {/* Center: Category Navigation Links with Dropdown Carets (Desktop) */}
-        <nav className="hidden lg:flex items-center gap-6 text-xs font-bold text-neutral-800">
+        <nav className="hidden lg:flex items-center gap-6 text-xs font-extrabold text-neutral-900">
           {categoryMenus.map((menu) => {
             const hasSub = menu.subCategories && menu.subCategories.length > 0;
             const isActive = location.pathname + location.search === menu.path;
@@ -139,13 +154,13 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
               <div key={menu.label} className="relative group">
                 <button
                   onClick={() => navigate(menu.path)}
-                  className={`flex items-center gap-1.5 py-2 hover:text-[#6B2D1D] transition-colors cursor-pointer whitespace-nowrap tracking-wide uppercase ${
-                    isActive ? 'text-[#6B2D1D] font-extrabold border-b-2 border-[#6B2D1D]' : ''
-                  } ${menu.isSpecial ? 'text-[#6B2D1D] font-extrabold' : ''}`}
+                  className={`flex items-center gap-1.5 py-2 hover:text-black transition-colors cursor-pointer whitespace-nowrap tracking-wider uppercase ${
+                    isActive ? 'text-black font-black border-b-2 border-black' : ''
+                  }`}
                 >
                   <span>{menu.label}</span>
                   {hasSub && (
-                    <ChevronDown className="w-3.5 h-3.5 text-neutral-500 group-hover:text-[#6B2D1D] group-hover:rotate-180 transition-transform" />
+                    <ChevronDown className="w-3.5 h-3.5 text-neutral-500 group-hover:text-black group-hover:rotate-180 transition-transform" />
                   )}
                 </button>
 
@@ -156,7 +171,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
                       <button
                         key={sub.label}
                         onClick={() => navigate(sub.path)}
-                        className="w-full text-left px-3.5 py-2 rounded-xl text-xs font-semibold text-neutral-800 hover:bg-neutral-100 hover:text-[#6B2D1D] transition-all cursor-pointer block"
+                        className="w-full text-left px-3.5 py-2 rounded-xl text-xs font-bold text-neutral-800 hover:bg-black hover:text-white transition-all cursor-pointer block"
                       >
                         {sub.label}
                       </button>
@@ -168,27 +183,27 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
           })}
         </nav>
 
-        {/* Right Side: Action Icons (Search, Wishlist, Profile, Cart, Track) */}
+        {/* Right Side: Action Icons (Search, Wishlist, Profile, Track, Cart) */}
         <div className="flex items-center gap-3 shrink-0">
           
           {/* Search Icon */}
           <button
             onClick={onOpenSearch}
-            className="p-2 text-neutral-800 hover:text-[#6B2D1D] transition-colors cursor-pointer"
+            className="p-2.5 text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer"
             title="Search Store"
           >
-            <Search className="w-5 h-5 sm:w-6 sm:h-6" />
+            <Search className="w-6 h-6" />
           </button>
 
           {/* Wishlist Icon */}
           <button
             onClick={() => navigate('/wishlist')}
-            className="relative p-2 text-neutral-800 hover:text-[#6B2D1D] transition-colors cursor-pointer"
+            className="relative p-2.5 text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer"
             title="Wishlist"
           >
-            <Heart className="w-5 h-5 sm:w-6 sm:h-6" />
+            <Heart className="w-6 h-6" />
             {wishlistProductIds.length > 0 && (
-              <span className="absolute top-0 right-0 w-4 h-4 rounded-full bg-[#6B2D1D] text-white text-[9px] font-bold flex items-center justify-center">
+              <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black text-white text-[9px] font-bold flex items-center justify-center">
                 {wishlistProductIds.length}
               </span>
             )}
@@ -197,30 +212,30 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
           {/* Profile / Account Icon */}
           <button
             onClick={() => navigate('/profile')}
-            className="p-2 text-neutral-800 hover:text-[#6B2D1D] transition-colors cursor-pointer"
+            className="p-2.5 text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer"
             title="Account Profile"
           >
-            <User className="w-5 h-5 sm:w-6 sm:h-6" />
+            <User className="w-6 h-6" />
           </button>
 
           {/* Track Order Icon */}
           <button
             onClick={() => navigate('/track-order')}
-            className="p-2 text-neutral-800 hover:text-[#6B2D1D] transition-colors cursor-pointer hidden sm:block"
+            className="p-2.5 text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer hidden sm:block"
             title="Track Order"
           >
-            <Package className="w-5 h-5 sm:w-6 sm:h-6" />
+            <Package className="w-6 h-6" />
           </button>
 
           {/* Cart Icon */}
           <button
             onClick={() => navigate('/cart')}
-            className="relative p-2 text-neutral-800 hover:text-[#6B2D1D] transition-colors cursor-pointer"
+            className="relative p-2.5 text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer"
             title="Shopping Cart"
           >
-            <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6" />
+            <ShoppingBag className="w-6 h-6" />
             {cartCount > 0 && (
-              <span className="absolute top-0 right-0 w-4 h-4 rounded-full bg-[#6B2D1D] text-white text-[9px] font-bold flex items-center justify-center">
+              <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black text-white text-[9px] font-bold flex items-center justify-center">
                 {cartCount}
               </span>
             )}

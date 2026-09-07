@@ -12,6 +12,9 @@ import {
   WhatsAppContact,
   WeeklyHighlights,
   HomeSection,
+  HeroBannerSlide,
+  HeaderAnnouncement,
+  Coupon,
 } from '../types';
 import {
   MOCK_PRODUCTS,
@@ -23,7 +26,18 @@ import {
   MOCK_WHATSAPP_CONTACTS,
   MOCK_SUBSCRIBERS,
   MOCK_WEEKLY_HIGHLIGHTS,
+  MOCK_HERO_BANNERS,
+  MOCK_HEADER_ANNOUNCEMENTS,
+  MOCK_COUPONS,
 } from '../data/mockData';
+import {
+  sanitizeInput,
+  sanitizePrice,
+  sanitizeQuantity,
+  validateEmail,
+  validateIndianPhone,
+  rateLimiter,
+} from '../utils/security';
 
 interface AppContextType {
   // Catalog & State
@@ -39,6 +53,19 @@ interface AppContextType {
   toasts: ToastMessage[];
   weeklyHighlights: WeeklyHighlights;
   homeSections: HomeSection[];
+  heroBanners: HeroBannerSlide[];
+  headerAnnouncements: HeaderAnnouncement[];
+  coupons: Coupon[];
+
+  // Coupon Actions
+  addCoupon: (coupon: Omit<Coupon, 'id' | 'usageCount'>) => void;
+  updateCoupon: (id: string, updated: Partial<Coupon>) => void;
+  deleteCoupon: (id: string) => void;
+  validateAndApplyCoupon: (
+    code: string,
+    cartItemsList: CartItem[],
+    cartSubtotal: number
+  ) => { success: boolean; discountAmount: number; coupon?: Coupon; message: string };
 
   // Admin Data & State
   isAdminAuthenticated: boolean;
@@ -85,6 +112,14 @@ interface AppContextType {
   deleteHomeSection: (id: string) => void;
   toggleProductInHomeSection: (sectionId: string, productId: string) => void;
   
+  // Hero Banners & Announcements Admin
+  addHeroBanner: (banner: Omit<HeroBannerSlide, 'id'>) => void;
+  updateHeroBanner: (id: string, updated: Partial<HeroBannerSlide>) => void;
+  deleteHeroBanner: (id: string) => void;
+  addHeaderAnnouncement: (text: string) => void;
+  updateHeaderAnnouncement: (id: string, updated: Partial<HeaderAnnouncement>) => void;
+  deleteHeaderAnnouncement: (id: string) => void;
+
   // Locations & Suggestions Admin
   addDeliveryCity: (city: Omit<DeliveryCity, 'id'>) => void;
   updateDeliveryCity: (id: string, updated: Partial<DeliveryCity>) => void;
@@ -323,10 +358,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [homeSections, setHomeSections] = useState<HomeSection[]>(() =>
     getInitialState('aura_home_sections', DEFAULT_HOME_SECTIONS)
   );
+  const [heroBanners, setHeroBanners] = useState<HeroBannerSlide[]>(() =>
+    getInitialState('aura_hero_banners', MOCK_HERO_BANNERS)
+  );
+  const [headerAnnouncements, setHeaderAnnouncements] = useState<HeaderAnnouncement[]>(() =>
+    getInitialState('aura_header_announcements', MOCK_HEADER_ANNOUNCEMENTS)
+  );
+  const [coupons, setCoupons] = useState<Coupon[]>(() =>
+    getInitialState('aura_coupons', MOCK_COUPONS)
+  );
 
-  // Admin Specific State
+  // Admin Specific State (with 4-hour automatic session expiration)
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
-    return localStorage.getItem('aura_admin_auth') === 'true';
+    const isAuth = localStorage.getItem('aura_admin_auth') === 'true';
+    const authTimeStr = localStorage.getItem('aura_admin_auth_time');
+    if (isAuth && authTimeStr) {
+      const authTime = parseInt(authTimeStr, 10);
+      const fourHoursMs = 4 * 60 * 60 * 1000;
+      if (Date.now() - authTime > fourHoursMs) {
+        localStorage.removeItem('aura_admin_auth');
+        localStorage.removeItem('aura_admin_auth_time');
+        return false;
+      }
+    }
+    return isAuth;
   });
   const [deliveryCities, setDeliveryCities] = useState<DeliveryCity[]>(() =>
     getInitialState('aura_delivery_cities', MOCK_DELIVERY_CITIES)
@@ -387,6 +442,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem('aura_home_sections', JSON.stringify(homeSections));
   }, [homeSections]);
+
+  useEffect(() => {
+    localStorage.setItem('aura_hero_banners', JSON.stringify(heroBanners));
+  }, [heroBanners]);
+
+  useEffect(() => {
+    localStorage.setItem('aura_header_announcements', JSON.stringify(headerAnnouncements));
+  }, [headerAnnouncements]);
+
+  useEffect(() => {
+    localStorage.setItem('aura_coupons', JSON.stringify(coupons));
+  }, [coupons]);
 
   useEffect(() => {
     localStorage.setItem('aura_delivery_cities', JSON.stringify(deliveryCities));
@@ -509,9 +576,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const deliveryFee = subtotal > 35 ? 0 : 3.5;
     const total = subtotal + deliveryFee;
 
-    const finalName = customerDetails?.name || userProfile.name || 'Customer';
-    const finalPhone = customerDetails?.phone || userProfile.phone || '';
-    const finalEmail = customerDetails?.email || userProfile.email || '';
+    const finalName = sanitizeInput(customerDetails?.name || userProfile.name || 'Customer');
+    const finalPhone = sanitizeInput(customerDetails?.phone || userProfile.phone || '');
+    const finalEmail = sanitizeInput(customerDetails?.email || userProfile.email || '');
 
     // Save/Update user profile details if provided
     if (customerDetails?.name || customerDetails?.phone || customerDetails?.email) {
@@ -545,6 +612,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setOrders((prev) => [newOrder, ...prev]);
+
+    // Decrease stock count for each ordered item & trigger low stock notifications
+    setProducts((prevProducts) =>
+      prevProducts.map((p) => {
+        const orderedItems = cartItems.filter((item) => item.product.id === p.id);
+        if (orderedItems.length === 0) return p;
+
+        const totalOrderedQty = orderedItems.reduce((acc, item) => acc + item.quantity, 0);
+        const currentStock = p.inventoryCount ?? 100;
+        const newStock = Math.max(0, currentStock - totalOrderedQty);
+        const isOut = newStock <= 0;
+
+        if (newStock < 10 && newStock > 0) {
+          setTimeout(() => {
+            addToast(
+              '⚠️ Low Stock Alert',
+              `Stock for "${p.name}" is low (${newStock} units left)!`,
+              'info'
+            );
+          }, 800);
+        } else if (isOut) {
+          setTimeout(() => {
+            addToast(
+              '🚨 Out of Stock Alert',
+              `"${p.name}" is now completely Out of Stock!`,
+              'error'
+            );
+          }, 800);
+        }
+
+        return {
+          ...p,
+          inventoryCount: newStock,
+          outOfStock: isOut,
+          inStock: !isOut,
+        };
+      })
+    );
+
     clearCart();
     return newOrder;
   };
@@ -554,22 +660,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast('Profile Updated', 'Your details have been saved.', 'success');
   };
 
-  // ADMIN ACTIONS
+  // ADMIN ACTIONS (Security-hardened login with rate limiting & session timing)
   const loginAdmin = (email: string, pass: string): boolean => {
-    if (email === 'admin@aura.com' && pass === 'admin123') {
+    const cleanEmail = sanitizeInput(email).trim().toLowerCase();
+
+    // Brute-force Prevention: Max 5 failed attempts per 5 mins; locks for 15 mins if exceeded
+    const rateCheck = rateLimiter.check('admin_login_rate', 5, 5 * 60 * 1000, 15 * 60 * 1000);
+    if (!rateCheck.allowed) {
+      addToast(
+        '🚨 Security Lockout',
+        `Too many failed attempts! Account locked for ${rateCheck.retryAfterSec}s to block brute-force attacks.`,
+        'error'
+      );
+      return false;
+    }
+
+    if (cleanEmail === 'admin@aura.com' && pass === 'admin123') {
+      rateLimiter.reset('admin_login_rate');
       setIsAdminAuthenticated(true);
       localStorage.setItem('aura_admin_auth', 'true');
-      addToast('Admin Authenticated', 'Welcome to Aura Admin Portal.', 'success');
+      localStorage.setItem('aura_admin_auth_time', Date.now().toString());
+      addToast('Admin Authenticated 🔒', 'Welcome to Aura Admin Portal. Session expires in 4 hours.', 'success');
       return true;
     }
-    addToast('Authentication Failed', 'Invalid admin email or password.', 'error');
+
+    rateLimiter.recordAttempt('admin_login_rate');
+    const remaining = rateCheck.remaining - 1;
+    addToast(
+      'Authentication Failed ❌',
+      `Invalid credentials. ${remaining > 0 ? `${remaining} attempt(s) remaining.` : 'Account temporarily locked.'}`,
+      'error'
+    );
     return false;
   };
 
   const logoutAdmin = () => {
     setIsAdminAuthenticated(false);
     localStorage.removeItem('aura_admin_auth');
-    addToast('Signed Out', 'Logged out of Admin Portal.', 'info');
+    localStorage.removeItem('aura_admin_auth_time');
+    addToast('Signed Out 🔒', 'Admin session terminated safely.', 'info');
   };
 
   const addCategory = (name: string, image?: string, description?: string): ProductCategory => {
@@ -688,6 +817,155 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast('Section Updated', 'Product assigned to showcase section.', 'success');
   };
 
+  // Hero Banners & Announcements Admin
+  const addHeroBanner = (banner: Omit<HeroBannerSlide, 'id'>) => {
+    const newBanner: HeroBannerSlide = { ...banner, id: `banner-${Date.now()}` };
+    setHeroBanners((prev) => [...prev, newBanner]);
+    addToast('Banner Added', 'New hero slide added.', 'success');
+  };
+
+  const updateHeroBanner = (id: string, updated: Partial<HeroBannerSlide>) => {
+    setHeroBanners((prev) => prev.map((b) => (b.id === id ? { ...b, ...updated } : b)));
+    addToast('Banner Updated', 'Hero slide updated successfully.', 'success');
+  };
+
+  const deleteHeroBanner = (id: string) => {
+    setHeroBanners((prev) => prev.filter((b) => b.id !== id));
+    addToast('Banner Removed', 'Hero slide removed.', 'info');
+  };
+
+  const addHeaderAnnouncement = (text: string) => {
+    const newAnnouncement: HeaderAnnouncement = { id: `ann-${Date.now()}`, text, enabled: true };
+    setHeaderAnnouncements((prev) => [...prev, newAnnouncement]);
+    addToast('Announcement Added', 'New top announcement ticker line added.', 'success');
+  };
+
+  const updateHeaderAnnouncement = (id: string, updated: Partial<HeaderAnnouncement>) => {
+    setHeaderAnnouncements((prev) => prev.map((a) => (a.id === id ? { ...a, ...updated } : a)));
+    addToast('Announcement Updated', 'Header ticker line updated.', 'success');
+  };
+
+  const deleteHeaderAnnouncement = (id: string) => {
+    setHeaderAnnouncements((prev) => prev.filter((a) => a.id !== id));
+    addToast('Announcement Removed', 'Header announcement removed.', 'info');
+  };
+
+  // Coupon Management Admin & Validation
+  const addCoupon = (coupon: Omit<Coupon, 'id' | 'usageCount'>) => {
+    const newCoupon: Coupon = {
+      ...coupon,
+      id: `coup-${Date.now()}`,
+      code: sanitizeInput(coupon.code).trim().toUpperCase(),
+      usageCount: 0,
+    };
+    setCoupons((prev) => [newCoupon, ...prev]);
+    addToast('Coupon Created 🎉', `Coupon code "${newCoupon.code}" created successfully.`, 'success');
+  };
+
+  const updateCoupon = (id: string, updated: Partial<Coupon>) => {
+    setCoupons((prev) =>
+      prev.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              ...updated,
+              code: updated.code ? sanitizeInput(updated.code).trim().toUpperCase() : c.code,
+            }
+          : c
+      )
+    );
+    addToast('Coupon Updated', 'Coupon rules and availability saved.', 'success');
+  };
+
+  const deleteCoupon = (id: string) => {
+    setCoupons((prev) => prev.filter((c) => c.id !== id));
+    addToast('Coupon Deleted', 'Coupon removed from system.', 'info');
+  };
+
+  const validateAndApplyCoupon = (
+    code: string,
+    cartItemsList: CartItem[],
+    cartSubtotal: number
+  ): { success: boolean; discountAmount: number; coupon?: Coupon; message: string } => {
+    const cleanCode = sanitizeInput(code).trim().toUpperCase();
+    if (!cleanCode) {
+      return { success: false, discountAmount: 0, message: 'Please enter a coupon code.' };
+    }
+
+    const foundCoupon = coupons.find((c) => c.code.trim().toUpperCase() === cleanCode);
+    if (!foundCoupon) {
+      return { success: false, discountAmount: 0, message: `Invalid coupon code "${cleanCode}".` };
+    }
+
+    if (!foundCoupon.enabled) {
+      return { success: false, discountAmount: 0, message: `Coupon "${cleanCode}" is currently inactive.` };
+    }
+
+    if (foundCoupon.expiryDate) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      if (todayStr > foundCoupon.expiryDate) {
+        return { success: false, discountAmount: 0, message: `Coupon "${cleanCode}" expired on ${foundCoupon.expiryDate}.` };
+      }
+    }
+
+    // Minimum Order Subtotal Condition Check (e.g., >= ₹1500)
+    if (cartSubtotal < foundCoupon.minOrderAmount) {
+      const missingAmount = Math.ceil(foundCoupon.minOrderAmount - cartSubtotal);
+      return {
+        success: false,
+        discountAmount: 0,
+        message: `Coupon "${cleanCode}" requires a minimum cart subtotal of ₹${foundCoupon.minOrderAmount}. Add ₹${missingAmount} more to activate!`,
+      };
+    }
+
+    // Item / Category Condition Check
+    let eligibleSubtotal = cartSubtotal;
+
+    if (foundCoupon.appliesTo === 'category' && foundCoupon.targetCategory) {
+      const matchingItems = cartItemsList.filter(
+        (item) => item.product.category.toLowerCase() === foundCoupon.targetCategory!.toLowerCase()
+      );
+
+      if (matchingItems.length === 0) {
+        return {
+          success: false,
+          discountAmount: 0,
+          message: `Coupon "${cleanCode}" is valid ONLY when purchasing items from the "${foundCoupon.targetCategory}" category!`,
+        };
+      }
+
+      eligibleSubtotal = matchingItems.reduce((acc, i) => acc + i.unitPrice * i.quantity, 0);
+    } else if (foundCoupon.appliesTo === 'product' && foundCoupon.targetProductId) {
+      const matchingItems = cartItemsList.filter((item) => item.product.id === foundCoupon.targetProductId);
+
+      if (matchingItems.length === 0) {
+        const targetProdName = products.find((p) => p.id === foundCoupon.targetProductId)?.name || 'target item';
+        return {
+          success: false,
+          discountAmount: 0,
+          message: `Coupon "${cleanCode}" is valid ONLY when purchasing "${targetProdName}"!`,
+        };
+      }
+
+      eligibleSubtotal = matchingItems.reduce((acc, i) => acc + i.unitPrice * i.quantity, 0);
+    }
+
+    // Calculate Discount Amount
+    let calculatedDiscount = 0;
+    if (foundCoupon.discountType === 'percentage') {
+      calculatedDiscount = Math.round((eligibleSubtotal * foundCoupon.discountValue) / 100);
+    } else {
+      calculatedDiscount = Math.min(eligibleSubtotal, foundCoupon.discountValue);
+    }
+
+    return {
+      success: true,
+      discountAmount: calculatedDiscount,
+      coupon: foundCoupon,
+      message: `Coupon "${foundCoupon.code}" activated! ₹${calculatedDiscount} discount applied.`,
+    };
+  };
+
   // Locations & Suggestions Admin
   const addDeliveryCity = (city: Omit<DeliveryCity, 'id'>) => {
     const newCity: DeliveryCity = { ...city, id: `city-${Date.now()}` };
@@ -800,8 +1078,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addNewsletterSubscriber = (email: string) => {
-    if (!newsletterSubscribers.includes(email)) {
-      setNewsletterSubscribers((prev) => [...prev, email]);
+    const cleanEmail = sanitizeInput(email).toLowerCase();
+    if (validateEmail(cleanEmail) && !newsletterSubscribers.includes(cleanEmail)) {
+      setNewsletterSubscribers((prev) => [...prev, cleanEmail]);
+      addToast('Subscribed! 🎉', 'You have been subscribed to Aishu Foods VIP offers.', 'success');
     }
   };
 
@@ -820,6 +1100,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toasts,
         weeklyHighlights,
         homeSections,
+        heroBanners,
+        headerAnnouncements,
+        coupons,
         isAdminAuthenticated,
         deliveryCities,
         citySuggestions,
@@ -855,6 +1138,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateHomeSection,
         deleteHomeSection,
         toggleProductInHomeSection,
+        addHeroBanner,
+        updateHeroBanner,
+        deleteHeroBanner,
+        addHeaderAnnouncement,
+        updateHeaderAnnouncement,
+        deleteHeaderAnnouncement,
+        addCoupon,
+        updateCoupon,
+        deleteCoupon,
+        validateAndApplyCoupon,
         addDeliveryCity,
         updateDeliveryCity,
         deleteDeliveryCity,

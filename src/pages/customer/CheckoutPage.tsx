@@ -3,13 +3,15 @@ import { useApp } from '../../context/AppContext';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, CreditCard, Smartphone, DollarSign, ShieldCheck, ArrowRight, Navigation, User, Phone, Mail, FileText, Home, Briefcase } from 'lucide-react';
 
+import { validateEmail, validateIndianPhone, validatePincode } from '../../utils/security';
+
 export const CheckoutPage: React.FC = () => {
   const { cartItems, userProfile, locations, currentLocation, setCurrentLocation, createOrder, addToast } = useApp();
   const navigate = useNavigate();
 
   // Form State for Customer & Delivery Details
   const [customerName, setCustomerName] = useState(userProfile.name || 'Lakshmi Narayana');
-  const [customerPhone, setCustomerPhone] = useState(userProfile.phone || '+91 98765 43210');
+  const [customerPhone, setCustomerPhone] = useState(userProfile.phone || '9876543210');
   const [customerEmail, setCustomerEmail] = useState(userProfile.email || 'lakshmi.n@example.com');
   
   const [address, setAddress] = useState(currentLocation.address || 'Plot 42, Road No 12, Jubilee Hills');
@@ -92,6 +94,21 @@ export const CheckoutPage: React.FC = () => {
 
     if (!customerName.trim() || !customerPhone.trim() || !address.trim() || !city.trim() || !pincode.trim()) {
       addToast('Missing Details', 'Please fill in all required customer & delivery fields.', 'error');
+      return;
+    }
+
+    if (customerEmail.trim() && !validateEmail(customerEmail.trim())) {
+      addToast('Invalid Email', 'Please enter a valid email address.', 'error');
+      return;
+    }
+
+    if (!validateIndianPhone(customerPhone.trim())) {
+      addToast('Invalid Phone Number', 'Please enter a valid 10-digit mobile number.', 'error');
+      return;
+    }
+
+    if (!validatePincode(pincode.trim())) {
+      addToast('Invalid PIN Code', 'Please enter a valid 6-digit postal PIN code.', 'error');
       return;
     }
 

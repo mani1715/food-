@@ -5,24 +5,29 @@ import { Plus, Minus, Trash2, ArrowRight, ShieldCheck } from 'lucide-react';
 import { EmptyState } from '../../components/EmptyState';
 
 export const CartPage: React.FC = () => {
-  const { cartItems, updateCartQuantity, removeFromCart, clearCart, addToast } = useApp();
+  const { cartItems, updateCartQuantity, removeFromCart, clearCart, validateAndApplyCoupon, addToast } = useApp();
   const navigate = useNavigate();
 
   const [couponCode, setCouponCode] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  const [appliedCouponInfo, setAppliedCouponInfo] = useState<{ code: string; discountAmount: number } | null>(null);
 
   const subtotal = cartItems.reduce((acc, i) => acc + i.unitPrice * i.quantity, 0);
   const deliveryFee = subtotal > 499 || subtotal === 0 ? 0 : 49;
-  const discount = appliedCoupon ? 50 : 0;
+  const discount = appliedCouponInfo ? appliedCouponInfo.discountAmount : 0;
   const grandTotal = Math.max(0, subtotal + deliveryFee - discount);
 
   const handleApplyCoupon = (e: React.FormEvent) => {
     e.preventDefault();
-    if (couponCode.toUpperCase() === 'AURAFIRST') {
-      setAppliedCoupon('AURAFIRST');
-      addToast('Coupon Applied!', '₹50 discount applied to your order.');
+    const result = validateAndApplyCoupon(couponCode, cartItems, subtotal);
+    if (result.success && result.coupon) {
+      setAppliedCouponInfo({
+        code: result.coupon.code,
+        discountAmount: result.discountAmount,
+      });
+      addToast('Coupon Activated! 🎉', result.message, 'success');
     } else {
-      addToast('Invalid Coupon', 'Try coupon code AURAFIRST', 'error');
+      setAppliedCouponInfo(null);
+      addToast('Coupon Warning ⚠️', result.message, 'error');
     }
   };
 
@@ -134,10 +139,10 @@ export const CartPage: React.FC = () => {
                 </button>
               </form>
 
-              {appliedCoupon && (
+              {appliedCouponInfo && (
                 <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 font-bold flex items-center justify-between">
-                  <span>Code {appliedCoupon} Applied!</span>
-                  <span>-₹50</span>
+                  <span>Coupon {appliedCouponInfo.code} Activated!</span>
+                  <span>-₹{appliedCouponInfo.discountAmount}</span>
                 </div>
               )}
 

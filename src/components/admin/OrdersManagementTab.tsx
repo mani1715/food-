@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Order } from '../../types';
-import { Search, Edit2, Save, XCircle } from 'lucide-react';
+import { Search, Edit2, Save, XCircle, Printer } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { OrderPrintInvoiceModal } from './OrderPrintInvoiceModal';
 
 export const OrdersManagementTab: React.FC = () => {
   const { orders, updateOrderStatus, updatePaymentStatus, cancelOrder } = useApp();
@@ -14,6 +15,9 @@ export const OrdersManagementTab: React.FC = () => {
   const [editPaymentStatus, setEditPaymentStatus] = useState<Order['paymentStatus']>('completed');
   const [editNotes, setEditNotes] = useState('');
   const [editDeliveryDays, setEditDeliveryDays] = useState(3);
+
+  // Print Invoice & Delivery Label State
+  const [selectedPrintOrder, setSelectedPrintOrder] = useState<Order | null>(null);
 
   // Cancellation Modal State
   const [cancelModalOrderId, setCancelModalOrderId] = useState<string | null>(null);
@@ -224,6 +228,14 @@ export const OrdersManagementTab: React.FC = () => {
 
                 <div className="flex items-center gap-2">
                   <button
+                    onClick={() => setSelectedPrintOrder(ord)}
+                    className="px-3 py-1.5 bg-black text-white font-bold rounded-xl flex items-center gap-1.5 hover:bg-neutral-800 transition-all cursor-pointer shadow-sm"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>Print Bill & Label</span>
+                  </button>
+
+                  <button
                     onClick={() => handleStartEdit(ord)}
                     className="px-3 py-1.5 border border-neutral-200 hover:border-black text-black font-bold rounded-xl flex items-center gap-1.5 cursor-pointer"
                   >
@@ -247,6 +259,12 @@ export const OrdersManagementTab: React.FC = () => {
           </div>
         ))}
       </div>
+
+      {/* Printable Invoice & Delivery Label Modal */}
+      <OrderPrintInvoiceModal
+        order={selectedPrintOrder}
+        onClose={() => setSelectedPrintOrder(null)}
+      />
 
       {/* Cancel Order Modal */}
       {cancelModalOrderId && (

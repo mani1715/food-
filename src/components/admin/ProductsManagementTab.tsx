@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Product, WeightOption } from '../../types';
-import { Plus, Edit2, Trash2, Search, X, Star, Tag, Scale, Image as ImageIcon, LayoutGrid, Check, Sparkles } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, X, Star, Tag, Scale, Image as ImageIcon, LayoutGrid, Check, Sparkles, BookOpen } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export const ProductsManagementTab: React.FC = () => {
@@ -29,6 +29,13 @@ export const ProductsManagementTab: React.FC = () => {
   const [newCategory, setNewCategory] = useState('Pickles');
   const [newDescription, setNewDescription] = useState('');
   const [newGrandmaStory, setNewGrandmaStory] = useState('');
+  const [newHowWeDoText, setNewHowWeDoText] = useState('');
+  const [newSourcingText, setNewSourcingText] = useState('');
+  const [newQualityGuaranteeText, setNewQualityGuaranteeText] = useState('');
+  const [newIngredientsStr, setNewIngredientsStr] = useState('');
+  const [newRating, setNewRating] = useState<number>(5.0);
+  const [newReviewsCount, setNewReviewsCount] = useState<number>(1);
+  const [newInventoryCount, setNewInventoryCount] = useState<number>(100);
   const [newImageInput, setNewImageInput] = useState('');
   const [newGallery, setNewGallery] = useState<string[]>([
     'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=800&auto=format&fit=crop',
@@ -49,6 +56,7 @@ export const ProductsManagementTab: React.FC = () => {
 
   // Edit Product Extra State
   const [editGalleryInput, setEditGalleryInput] = useState('');
+  const [editIngredientsStr, setEditIngredientsStr] = useState('');
   const [editSelectedSectionIds, setEditSelectedSectionIds] = useState<string[]>([]);
 
   // Add New Category Modal State
@@ -68,6 +76,14 @@ export const ProductsManagementTab: React.FC = () => {
   const handleOpenAddModal = () => {
     setNewName('');
     setNewDescription('');
+    setNewGrandmaStory('');
+    setNewHowWeDoText('');
+    setNewSourcingText('');
+    setNewQualityGuaranteeText('');
+    setNewIngredientsStr('');
+    setNewRating(5.0);
+    setNewReviewsCount(1);
+    setNewInventoryCount(100);
     setNewIsBestSeller(false);
     setNewIsNewArrival(true); // Default to New Arrival for freshly added products!
     setNewIsFestival(false);
@@ -80,6 +96,7 @@ export const ProductsManagementTab: React.FC = () => {
   const handleOpenEditModal = (prod: Product) => {
     setEditingProduct(prod);
     setEditGalleryInput('');
+    setEditIngredientsStr(prod.ingredients?.join(', ') || '');
     const containingSecIds = homeSections
       .filter((s) => s.productIds.includes(prod.id))
       .map((s) => s.id);
@@ -136,25 +153,34 @@ export const ProductsManagementTab: React.FC = () => {
     const newProdId = `prod-${Date.now()}`;
     const primaryImg = newGallery[0] || 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=800&auto=format&fit=crop';
 
+    const parsedIngredients = newIngredientsStr
+      .split(',')
+      .map((i) => i.trim())
+      .filter(Boolean);
+
     addProduct({
       name: newName,
       category: newCategory,
       price: newWeightOptions[0]?.price || 299,
-      rating: 5.0,
-      reviewsCount: 1,
+      rating: newRating || 5.0,
+      reviewsCount: newReviewsCount || 1,
       image: primaryImg,
       gallery: newGallery,
       description: newDescription || 'Fresh handcrafted homemade food item prepared with traditional ingredients.',
+      ingredients: parsedIngredients.length > 0 ? parsedIngredients : undefined,
       grandmaStory: newGrandmaStory.trim() || undefined,
+      howWeDoText: newHowWeDoText.trim() || undefined,
+      sourcingText: newSourcingText.trim() || undefined,
+      qualityGuaranteeText: newQualityGuaranteeText.trim() || undefined,
       weightOptions: newWeightOptions,
       defaultWeight: newWeightOptions[0]?.weight || '500g',
       isVeg: newIsVeg,
       isBestSeller: newIsBestSeller,
       isNewArrival: newIsNewArrival,
       isFestival: newIsFestival,
-      inventoryCount: 100,
-      outOfStock: false,
-      inStock: true,
+      inventoryCount: newInventoryCount,
+      outOfStock: newInventoryCount <= 0,
+      inStock: newInventoryCount > 0,
     });
 
     // Assign new product to selected home showcase sections
@@ -177,11 +203,22 @@ export const ProductsManagementTab: React.FC = () => {
 
     const primaryImg = editingProduct.gallery?.[0] || editingProduct.image;
 
+    const parsedIngredients = editIngredientsStr
+      .split(',')
+      .map((i) => i.trim())
+      .filter(Boolean);
+
     updateProduct(editingProduct.id, {
       name: editingProduct.name,
       category: editingProduct.category,
       description: editingProduct.description,
+      ingredients: parsedIngredients,
       grandmaStory: editingProduct.grandmaStory,
+      howWeDoText: editingProduct.howWeDoText,
+      sourcingText: editingProduct.sourcingText,
+      qualityGuaranteeText: editingProduct.qualityGuaranteeText,
+      rating: editingProduct.rating,
+      reviewsCount: editingProduct.reviewsCount,
       image: primaryImg,
       gallery: editingProduct.gallery || [primaryImg],
       isVeg: editingProduct.isVeg,
@@ -190,8 +227,9 @@ export const ProductsManagementTab: React.FC = () => {
       isFestival: editingProduct.isFestival,
       weightOptions: editingProduct.weightOptions,
       price: editingProduct.weightOptions[0]?.price || editingProduct.price,
-      inventoryCount: editingProduct.inventoryCount,
-      outOfStock: editingProduct.outOfStock,
+      inventoryCount: editingProduct.inventoryCount ?? 100,
+      outOfStock: (editingProduct.inventoryCount ?? 100) <= 0,
+      inStock: (editingProduct.inventoryCount ?? 100) > 0,
     });
 
     // Update section memberships for this product
@@ -244,6 +282,34 @@ export const ProductsManagementTab: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Low Stock Notification Warning Bar (< 10 Units) */}
+      {products.some((p) => (p.inventoryCount ?? 100) < 10 || p.outOfStock) && (
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-900 font-bold shadow-subtle">
+          <div className="flex items-center gap-2">
+            <span className="text-base animate-bounce">⚠️</span>
+            <span>
+              <strong>Low Stock Alert:</strong> {products.filter((p) => (p.inventoryCount ?? 100) < 10 || p.outOfStock).length} product(s) have low inventory stock (&lt; 10 units) or are completely out of stock!
+            </span>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {products
+              .filter((p) => (p.inventoryCount ?? 100) < 10 || p.outOfStock)
+              .map((p) => (
+                <span
+                  key={p.id}
+                  onClick={() => handleOpenEditModal(p)}
+                  className={`px-2.5 py-1 rounded-xl text-[11px] font-mono cursor-pointer border hover:underline ${
+                    p.outOfStock ? 'bg-rose-100 text-rose-800 border-rose-300 font-black' : 'bg-amber-100 text-amber-900 border-amber-300'
+                  }`}
+                  title="Click to edit stock count"
+                >
+                  {p.name}: <strong>{p.outOfStock ? 'Out of Stock' : `${p.inventoryCount} left`}</strong>
+                </span>
+              ))}
+          </div>
+        </div>
+      )}
 
       {/* Search & Filter Bar */}
       <div className="flex flex-col sm:flex-row items-center gap-3">
@@ -473,14 +539,102 @@ export const ProductsManagementTab: React.FC = () => {
               </div>
 
               <div>
+                <label className="block text-neutral-500 mb-1">Ingredients & Recipe (Comma-separated list)</label>
+                <input
+                  type="text"
+                  value={newIngredientsStr}
+                  onChange={(e) => setNewIngredientsStr(e.target.value)}
+                  placeholder="e.g. Whole Cashews, Sugar, Pure Ghee, Edible Silver Foil"
+                  className="w-full p-3 rounded-2xl border border-neutral-300 font-sans"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-neutral-500 mb-1">Taste Rating (1.0 to 5.0)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="1"
+                    max="5"
+                    value={newRating}
+                    onChange={(e) => setNewRating(Number(e.target.value))}
+                    className="w-full p-3 rounded-2xl border border-neutral-300 font-mono font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-neutral-500 mb-1">Reviews Count</label>
+                  <input
+                    type="number"
+                    value={newReviewsCount}
+                    onChange={(e) => setNewReviewsCount(Number(e.target.value))}
+                    className="w-full p-3 rounded-2xl border border-neutral-300 font-mono font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-neutral-500 mb-1">Inventory Stock Count *</label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    value={newInventoryCount}
+                    onChange={(e) => setNewInventoryCount(Number(e.target.value))}
+                    placeholder="100"
+                    className="w-full p-3 rounded-2xl border border-neutral-300 font-mono font-black text-black"
+                  />
+                </div>
+              </div>
+
+              <div>
                 <label className="block text-neutral-500 mb-1">Grandma Says... Story / Memory Text (Optional)</label>
                 <textarea
-                  rows={3}
+                  rows={2}
                   value={newGrandmaStory}
                   onChange={(e) => setNewGrandmaStory(e.target.value)}
                   placeholder="Enter custom heritage memory story for this product..."
                   className="w-full p-3 rounded-2xl border border-neutral-300 bg-white font-normal"
                 />
+              </div>
+
+              {/* 3 CUSTOM PROCESS CARDS EDITING SECTION */}
+              <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-200 space-y-3">
+                <span className="text-xs font-extrabold text-black flex items-center gap-1.5">
+                  <BookOpen className="w-4 h-4 text-black" />
+                  <span>Custom Process Cards (How We Do, Sourcing & Guarantee)</span>
+                </span>
+
+                <div>
+                  <label className="block text-neutral-500 mb-1">How We Do Card Text</label>
+                  <input
+                    type="text"
+                    value={newHowWeDoText}
+                    onChange={(e) => setNewHowWeDoText(e.target.value)}
+                    placeholder="e.g. Traditional 5-step grandmother recipe process..."
+                    className="w-full p-2.5 rounded-xl border border-neutral-300 bg-white font-normal"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-neutral-500 mb-1">Regional Sourcing Card Text</label>
+                  <input
+                    type="text"
+                    value={newSourcingText}
+                    onChange={(e) => setNewSourcingText(e.target.value)}
+                    placeholder="e.g. Farm origin traceability: Vijayawada raw mangoes..."
+                    className="w-full p-2.5 rounded-xl border border-neutral-300 bg-white font-normal"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-neutral-500 mb-1">Quality Guarantee Card Text</label>
+                  <input
+                    type="text"
+                    value={newQualityGuaranteeText}
+                    onChange={(e) => setNewQualityGuaranteeText(e.target.value)}
+                    placeholder="e.g. 100% natural homemade purity. Zero preservatives..."
+                    className="w-full p-2.5 rounded-xl border border-neutral-300 bg-white font-normal"
+                  />
+                </div>
               </div>
 
               {/* SHOWCASE COLLECTIONS & FEATURE FLAGS SELECTION */}
@@ -743,14 +897,108 @@ export const ProductsManagementTab: React.FC = () => {
               </div>
 
               <div>
+                <label className="block text-neutral-500 mb-1">Ingredients & Recipe (Comma-separated list)</label>
+                <input
+                  type="text"
+                  value={editIngredientsStr}
+                  onChange={(e) => setEditIngredientsStr(e.target.value)}
+                  placeholder="e.g. Whole Cashews, Sugar, Pure Ghee, Edible Silver Foil"
+                  className="w-full p-3 rounded-2xl border border-neutral-300 font-sans"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-neutral-500 mb-1">Taste Rating (1.0 to 5.0)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="1"
+                    max="5"
+                    value={editingProduct.rating || 5.0}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, rating: Number(e.target.value) })}
+                    className="w-full p-3 rounded-2xl border border-neutral-300 font-mono font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-neutral-500 mb-1">Reviews Count</label>
+                  <input
+                    type="number"
+                    value={editingProduct.reviewsCount || 1}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, reviewsCount: Number(e.target.value) })}
+                    className="w-full p-3 rounded-2xl border border-neutral-300 font-mono font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-neutral-500 mb-1">Inventory Stock Count *</label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    value={editingProduct.inventoryCount ?? 100}
+                    onChange={(e) =>
+                      setEditingProduct({
+                        ...editingProduct,
+                        inventoryCount: Number(e.target.value),
+                        outOfStock: Number(e.target.value) <= 0,
+                        inStock: Number(e.target.value) > 0,
+                      })
+                    }
+                    className="w-full p-3 rounded-2xl border border-neutral-300 font-mono font-black text-black"
+                  />
+                </div>
+              </div>
+
+              <div>
                 <label className="block text-neutral-500 mb-1">Grandma Says... Story / Memory Text (Optional)</label>
                 <textarea
-                  rows={3}
+                  rows={2}
                   value={editingProduct.grandmaStory || ''}
                   onChange={(e) => setEditingProduct({ ...editingProduct, grandmaStory: e.target.value })}
                   placeholder="Enter custom heritage memory story for this product..."
                   className="w-full p-3 rounded-2xl border border-neutral-300 bg-white font-normal"
                 />
+              </div>
+
+              {/* EDIT 3 CUSTOM PROCESS CARDS */}
+              <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-200 space-y-3">
+                <span className="text-xs font-extrabold text-black flex items-center gap-1.5">
+                  <BookOpen className="w-4 h-4 text-black" />
+                  <span>Custom Process Cards (How We Do, Sourcing & Guarantee)</span>
+                </span>
+
+                <div>
+                  <label className="block text-neutral-500 mb-1">How We Do Card Text</label>
+                  <input
+                    type="text"
+                    value={editingProduct.howWeDoText || ''}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, howWeDoText: e.target.value })}
+                    placeholder="e.g. Traditional 5-step grandmother recipe process..."
+                    className="w-full p-2.5 rounded-xl border border-neutral-300 bg-white font-normal"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-neutral-500 mb-1">Regional Sourcing Card Text</label>
+                  <input
+                    type="text"
+                    value={editingProduct.sourcingText || ''}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, sourcingText: e.target.value })}
+                    placeholder="e.g. Farm origin traceability: Vijayawada raw mangoes..."
+                    className="w-full p-2.5 rounded-xl border border-neutral-300 bg-white font-normal"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-neutral-500 mb-1">Quality Guarantee Card Text</label>
+                  <input
+                    type="text"
+                    value={editingProduct.qualityGuaranteeText || ''}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, qualityGuaranteeText: e.target.value })}
+                    placeholder="e.g. 100% natural homemade purity. Zero preservatives..."
+                    className="w-full p-2.5 rounded-xl border border-neutral-300 bg-white font-normal"
+                  />
+                </div>
               </div>
 
               {/* EDIT SHOWCASE COLLECTIONS & FEATURE FLAGS */}

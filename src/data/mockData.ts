@@ -1,4 +1,66 @@
-import { Product, ProductCategory, UserLocation, DeliveryCity, CitySuggestion, WhatsAppContact, WeeklyHighlights } from '../types';
+import { Product, ProductCategory, UserLocation, DeliveryCity, CitySuggestion, WhatsAppContact, WeeklyHighlights, HeroBannerSlide, HeaderAnnouncement, Coupon } from '../types';
+
+export const MOCK_HERO_BANNERS: HeroBannerSlide[] = [
+  {
+    id: 'banner-1',
+    image: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=1600&auto=format&fit=crop',
+    badge: 'Handcrafted at Home with Pure Love',
+    title: 'Authentic Home Flavors Made with Pure Resources & Passion.',
+    subtitle: 'At AISHU FOODS, every pickle jar, sweet box, and spice powder is prepared at home using 100% natural ingredients, cold-pressed oils, and pure A2 cow ghee.',
+    ctaText: 'Explore All Products',
+    ctaLink: '/products',
+    enabled: true,
+    objectPosition: 'center',
+    objectFit: 'cover',
+    overlayOpacity: 'dark',
+  },
+  {
+    id: 'banner-2',
+    image: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?q=80&w=1600&auto=format&fit=crop',
+    badge: "Grandma's Special Recipe",
+    title: 'Traditional Andhra Avakaya & Mouth-Watering Pickles.',
+    subtitle: 'Aromatic Vijayawada raw mangoes marinated in stone-ground Guntur chili powder & Chekku sesame oil for that irresistible authentic taste.',
+    ctaText: 'Shop Pickles Collection',
+    ctaLink: '/products?category=Pickles',
+    enabled: true,
+    objectPosition: 'center',
+    objectFit: 'cover',
+    overlayOpacity: 'dark',
+  },
+  {
+    id: 'banner-3',
+    image: 'https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?q=80&w=1600&auto=format&fit=crop',
+    badge: 'Pure A2 Cow Ghee Specialties',
+    title: 'Authentic Sweets & Crunchy Homemade Snacks.',
+    subtitle: 'Zero chemical preservatives, zero palm oil. Uncompromising quality & generous quantity at fair, budget-friendly prices.',
+    ctaText: 'Explore Sweets & Snacks',
+    ctaLink: '/products?category=Sweets',
+    enabled: true,
+    objectPosition: 'center',
+    objectFit: 'cover',
+    overlayOpacity: 'dark',
+  },
+  {
+    id: 'banner-4',
+    image: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?q=80&w=1600&auto=format&fit=crop',
+    badge: 'Traditional Stone-Ground Powders',
+    title: 'Aromatic Podis, Curry Powders & Rice Mixes.',
+    subtitle: 'Hand-roasted spices stone-ground to perfection. Authentic aroma and taste for everyday wholesome family meals.',
+    ctaText: 'Explore Powders Collection',
+    ctaLink: '/products?category=Powders',
+    enabled: true,
+    objectPosition: 'center',
+    objectFit: 'cover',
+    overlayOpacity: 'dark',
+  },
+];
+
+export const MOCK_HEADER_ANNOUNCEMENTS: HeaderAnnouncement[] = [
+  { id: 'ann-1', text: 'Fast & reliable delivery within 3–4 days across India!', enabled: true },
+  { id: 'ann-2', text: 'Use Code AF05 & get 5% additional discount on your First Purchase', enabled: true },
+  { id: 'ann-3', text: 'Free Shipping All Over India on orders over ₹499', enabled: true },
+  { id: 'ann-4', text: '100% Homemade, Zero Preservatives & Cold-Pressed Oils', enabled: true },
+];
 
 export const MOCK_WEEKLY_HIGHLIGHTS: WeeklyHighlights = {
   specialOfDay: {
@@ -410,5 +472,65 @@ export const MOCK_LOCATIONS: UserLocation[] = [
     address: 'Cyber Towers, 4th Floor, Hitech City',
     city: 'Hyderabad',
     pincode: '500081',
+  },
+];
+
+export const MOCK_COUPONS: Coupon[] = [
+  {
+    id: 'coup-1',
+    code: 'AF05',
+    description: 'Get 5% OFF on your First Purchase across all homemade items',
+    discountType: 'percentage',
+    discountValue: 5,
+    minOrderAmount: 0,
+    appliesTo: 'all',
+    enabled: true,
+    usageCount: 142,
+  },
+  {
+    id: 'coup-2',
+    code: 'AURAFIRST',
+    description: 'Flat ₹50 OFF on any order over ₹499',
+    discountType: 'flat',
+    discountValue: 50,
+    minOrderAmount: 499,
+    appliesTo: 'all',
+    enabled: true,
+    usageCount: 89,
+  },
+  {
+    id: 'coup-3',
+    code: 'FESTIVE1500',
+    description: 'Special Festivities: Flat ₹200 OFF on orders above ₹1500',
+    discountType: 'flat',
+    discountValue: 200,
+    minOrderAmount: 1500,
+    appliesTo: 'all',
+    enabled: true,
+    usageCount: 37,
+  },
+  {
+    id: 'coup-4',
+    code: 'SWEETS15',
+    description: '15% OFF exclusively on Authentic Pure Ghee Sweets (Min order ₹1000)',
+    discountType: 'percentage',
+    discountValue: 15,
+    minOrderAmount: 1000,
+    appliesTo: 'category',
+    targetCategory: 'Sweets',
+    enabled: true,
+    usageCount: 64,
+  },
+  {
+    id: 'coup-5',
+    code: 'PICKLES50',
+    description: 'Flat ₹50 OFF on Pickles Collection (Min order ₹600)',
+    discountType: 'flat',
+    discountValue: 50,
+    minOrderAmount: 600,
+    appliesTo: 'category',
+    targetCategory: 'Pickles',
+    enabled: true,
+    usageCount: 52,
   },
 ];

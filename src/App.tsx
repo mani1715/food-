@@ -42,16 +42,19 @@ import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
 
 const MainLayout: React.FC = () => {
   const { toasts, removeToast } = useApp();
+  const location = useLocation();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  const isAdminRoute = location.pathname.startsWith('/admin');
 
   return (
     <div className="min-h-screen bg-white text-black font-sans selection:bg-black selection:text-white pb-16 lg:pb-0">
       
-      {/* 1. Announcement Bar */}
-      <AnnouncementBar />
+      {/* 1. Customer Announcement Bar (Hidden on Admin routes) */}
+      {!isAdminRoute && <AnnouncementBar />}
 
-      {/* 2. Single-Line Clean Sticky Header with Primary Navigation */}
-      <Header onOpenSearch={() => setIsSearchOpen(true)} />
+      {/* 2. Customer Header with Categories (Hidden on Admin routes) */}
+      {!isAdminRoute && <Header onOpenSearch={() => setIsSearchOpen(true)} />}
 
       {/* Main Content Router */}
       <main>
@@ -75,11 +78,11 @@ const MainLayout: React.FC = () => {
         </Routes>
       </main>
 
-      {/* Footer */}
-      <Footer />
+      {/* Footer (Hidden on Admin routes) */}
+      {!isAdminRoute && <Footer />}
 
-      {/* Mobile Bottom Navigation Bar (Home, Categories, Wishlist, Cart, Profile) */}
-      <MobileBottomNav />
+      {/* Mobile Bottom Navigation Bar (Hidden on Admin routes) */}
+      {!isAdminRoute && <MobileBottomNav />}
 
       {/* Search Experience Modal */}
       <SearchModal

@@ -46,23 +46,31 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         />
         
         {/* Top Left Badges: Best Seller, New, Veg/Non-Veg */}
-        <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
-          {product.isVeg ? (
-            <span className="bg-white/90 backdrop-blur-sm border border-emerald-800 text-emerald-900 text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow-subtle flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-700 inline-block" />
-              Veg
+        <div className="absolute top-2 left-2 flex flex-col gap-1 items-start z-10">
+          {product.outOfStock || (product.inventoryCount ?? 100) <= 0 ? (
+            <span className="bg-rose-600 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow-subtle">
+              Out of Stock
             </span>
           ) : (
-            <span className="bg-white/90 backdrop-blur-sm border border-rose-800 text-rose-900 text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow-subtle flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-rose-700 inline-block" />
-              Non-Veg
-            </span>
-          )}
+            <>
+              {product.isVeg ? (
+                <span className="bg-white/90 backdrop-blur-sm border border-emerald-800 text-emerald-900 text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow-subtle flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-700 inline-block" />
+                  Veg
+                </span>
+              ) : (
+                <span className="bg-white/90 backdrop-blur-sm border border-rose-800 text-rose-900 text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow-subtle flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-rose-700 inline-block" />
+                  Non-Veg
+                </span>
+              )}
 
-          {product.isBestSeller && (
-            <span className="bg-black text-white text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full shadow-subtle">
-              Best Seller
-            </span>
+              {product.isBestSeller && (
+                <span className="bg-black text-white text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full shadow-subtle">
+                  Best Seller
+                </span>
+              )}
+            </>
           )}
         </div>
 
@@ -72,7 +80,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             e.stopPropagation();
             toggleWishlist(product.id);
           }}
-          className={`absolute top-2 right-2 p-2 rounded-full transition-all shadow-subtle cursor-pointer ${
+          className={`absolute top-2 right-2 p-2 rounded-full transition-all shadow-subtle cursor-pointer z-10 ${
             isWishlisted ? 'bg-black text-white' : 'bg-white/90 text-black hover:bg-black hover:text-white backdrop-blur-sm'
           }`}
         >
@@ -126,28 +134,34 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             <span className="text-sm font-extrabold font-mono text-black">₹{currentPrice}</span>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                addToCart(product, selectedWeight, 1);
-              }}
-              className="px-2.5 py-2 bg-neutral-100 border border-neutral-300 text-black text-[10px] font-extrabold rounded-xl hover:bg-neutral-200 transition-all flex items-center gap-1 shadow-subtle cursor-pointer"
-              title="Add to Basket"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Quick Add</span>
-            </button>
+          {product.outOfStock || (product.inventoryCount ?? 100) <= 0 ? (
+            <span className="px-3 py-2 bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-extrabold rounded-xl">
+              Out of Stock 🚨
+            </span>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  addToCart(product, selectedWeight, 1);
+                }}
+                className="px-2.5 py-2 bg-neutral-100 border border-neutral-300 text-black text-[10px] font-extrabold rounded-xl hover:bg-neutral-200 transition-all flex items-center gap-1 shadow-subtle cursor-pointer"
+                title="Add to Basket"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Quick Add</span>
+              </button>
 
-            <button
-              onClick={handleBuyNow}
-              className="px-2.5 py-2 bg-black text-white text-[10px] font-extrabold rounded-xl hover:bg-neutral-800 transition-all flex items-center gap-1 shadow-subtle cursor-pointer"
-              title="Instant Checkout"
-            >
-              <Zap className="w-3.5 h-3.5" />
-              <span>Buy Now</span>
-            </button>
-          </div>
+              <button
+                onClick={handleBuyNow}
+                className="px-2.5 py-2 bg-black text-white text-[10px] font-extrabold rounded-xl hover:bg-neutral-800 transition-all flex items-center gap-1 shadow-subtle cursor-pointer"
+                title="Instant Checkout"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                <span>Buy Now</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
