@@ -349,23 +349,37 @@ export const AnalyticsManagementTab: React.FC = () => {
             </div>
           </div>
 
-          {/* Quick Regional Coverage Card */}
+          {/* Live Fulfillment & Real-Time Stock Health Summary */}
           <div className="bg-neutral-900 text-white p-6 rounded-3xl shadow-subtle space-y-4 text-left">
             <div className="flex items-center gap-2 text-amber-400">
-              <MapPin className="w-5 h-5" />
-              <h4 className="text-sm font-extrabold tracking-wide uppercase">Active Network</h4>
+              <TrendingUp className="w-5 h-5" />
+              <h4 className="text-sm font-extrabold tracking-wide uppercase">Real-Time Store Status</h4>
             </div>
             <div>
-              <div className="text-3xl font-black">{deliveryCities.length} Cities</div>
+              <div className="text-3xl font-black">{filteredOrders.length} Total Orders</div>
               <p className="text-xs text-neutral-400 mt-1">
-                Active delivery coverage across Andhra Pradesh, Telangana, Bengaluru & Chennai.
+                Live performance metrics updated across catalog items, active orders & payments.
               </p>
             </div>
-            <div className="pt-2 border-t border-neutral-800 flex items-center justify-between text-xs text-neutral-300">
-              <span>Customer City Requests</span>
-              <span className="font-extrabold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full">
-                {citySuggestions.length} Pending
-              </span>
+            <div className="pt-3 border-t border-neutral-800 space-y-2 text-xs">
+              <div className="flex items-center justify-between text-neutral-300">
+                <span>Active Fulfillments</span>
+                <span className="font-extrabold text-amber-400 font-mono">
+                  {orders.filter((o) => o.status === 'Active').length} Active
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-neutral-300">
+                <span>Completed Deliveries</span>
+                <span className="font-extrabold text-emerald-400 font-mono">
+                  {orders.filter((o) => o.status === 'Delivered').length} Delivered
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-neutral-300">
+                <span>Catalog Stock Health</span>
+                <span className="font-extrabold text-white font-mono">
+                  {products.filter((p) => (p.inventoryCount ?? 100) > 0 && !p.outOfStock).length} / {products.length} In Stock
+                </span>
+              </div>
             </div>
           </div>
 

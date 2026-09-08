@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Heart, ShoppingBag, User, Package, ChevronDown, Zap, Menu, X } from 'lucide-react';
+import { Search, Heart, ShoppingBag, User, Package, ChevronDown, Zap, Menu, X, Home, ShieldCheck } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 
@@ -247,49 +247,111 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
 
       {/* 3. MOBILE NAVIGATION DRAWER */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-neutral-200 bg-white px-4 py-4 space-y-3">
-          {categoryMenus.map((menu) => (
-            <div key={menu.label} className="space-y-1 border-b border-neutral-100 pb-2">
-              <button
-                onClick={() => {
-                  navigate(menu.path);
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full text-left font-bold text-sm text-neutral-900 py-1 flex items-center justify-between"
-              >
-                <span>{menu.label}</span>
-                {menu.subCategories && <ChevronDown className="w-4 h-4 text-neutral-400" />}
-              </button>
-              {menu.subCategories && (
-                <div className="pl-4 space-y-1">
-                  {menu.subCategories.map((sub) => (
-                    <button
-                      key={sub.label}
-                      onClick={() => {
-                        navigate(sub.path);
-                        setMobileMenuOpen(false);
-                      }}
-                      className="block w-full text-left text-xs font-semibold text-neutral-600 py-1"
-                    >
-                      {sub.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-          <div className="pt-2 flex items-center gap-4">
+        <div className="lg:hidden border-t border-neutral-200 bg-white px-4 py-4 space-y-4 shadow-modal">
+          
+          {/* Top Home Shortcut Button */}
+          <button
+            onClick={() => {
+              navigate('/');
+              setMobileMenuOpen(false);
+            }}
+            className="w-full p-3 bg-black text-white rounded-2xl font-black text-xs flex items-center justify-center gap-2 cursor-pointer shadow-subtle"
+          >
+            <Home className="w-4 h-4 text-white" />
+            <span>🏠 STORE HOME</span>
+          </button>
+
+          <div className="space-y-3 border-t border-b border-neutral-100 py-3">
+            {categoryMenus.map((menu) => (
+              <div key={menu.label} className="space-y-1">
+                <button
+                  onClick={() => {
+                    navigate(menu.path);
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full text-left font-extrabold text-sm text-neutral-900 py-1 flex items-center justify-between hover:text-black"
+                >
+                  <span>{menu.label}</span>
+                  {menu.subCategories && <ChevronDown className="w-4 h-4 text-neutral-400" />}
+                </button>
+                {menu.subCategories && (
+                  <div className="pl-4 space-y-1 border-l-2 border-neutral-100">
+                    {menu.subCategories.map((sub) => (
+                      <button
+                        key={sub.label}
+                        onClick={() => {
+                          navigate(sub.path);
+                          setMobileMenuOpen(false);
+                        }}
+                        className="block w-full text-left text-xs font-semibold text-neutral-600 py-1 hover:text-black"
+                      >
+                        {sub.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Quick Shortcuts Bar */}
+          <div className="grid grid-cols-2 gap-2 text-xs font-bold pt-1">
+            <button
+              onClick={() => {
+                navigate('/cart');
+                setMobileMenuOpen(false);
+              }}
+              className="p-2.5 bg-neutral-50 border border-neutral-200 rounded-xl flex items-center gap-2 text-neutral-800"
+            >
+              <ShoppingBag className="w-4 h-4 text-black" />
+              <span>Basket ({cartCount})</span>
+            </button>
+
+            <button
+              onClick={() => {
+                navigate('/wishlist');
+                setMobileMenuOpen(false);
+              }}
+              className="p-2.5 bg-neutral-50 border border-neutral-200 rounded-xl flex items-center gap-2 text-neutral-800"
+            >
+              <Heart className="w-4 h-4 text-black" />
+              <span>Wishlist ({wishlistProductIds.length})</span>
+            </button>
+
+            <button
+              onClick={() => {
+                navigate('/profile');
+                setMobileMenuOpen(false);
+              }}
+              className="p-2.5 bg-neutral-50 border border-neutral-200 rounded-xl flex items-center gap-2 text-neutral-800"
+            >
+              <User className="w-4 h-4 text-black" />
+              <span>My Profile</span>
+            </button>
+
             <button
               onClick={() => {
                 navigate('/track-order');
                 setMobileMenuOpen(false);
               }}
-              className="text-xs font-bold text-neutral-800 flex items-center gap-1.5 py-1"
+              className="p-2.5 bg-neutral-50 border border-neutral-200 rounded-xl flex items-center gap-2 text-neutral-800"
             >
-              <Package className="w-4 h-4" />
+              <Package className="w-4 h-4 text-black" />
               <span>Track Order</span>
             </button>
           </div>
+
+          <button
+            onClick={() => {
+              navigate('/admin');
+              setMobileMenuOpen(false);
+            }}
+            className="w-full p-2.5 bg-neutral-100 hover:bg-neutral-200 border border-neutral-200 rounded-xl text-xs font-bold text-neutral-700 flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <ShieldCheck className="w-4 h-4 text-black" />
+            <span>Admin Portal Login</span>
+          </button>
+
         </div>
       )}
 

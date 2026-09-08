@@ -309,8 +309,8 @@ export const BannersManagementTab: React.FC = () => {
 
       {/* HERO BANNER EDIT/ADD MODAL */}
       {showBannerModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 space-y-6 shadow-2xl border border-neutral-200 animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 space-y-6 shadow-2xl border border-neutral-200 my-auto max-h-[88vh] overflow-y-auto text-left animate-in fade-in zoom-in duration-200">
             <div className="flex items-center justify-between border-b border-neutral-100 pb-4">
               <h3 className="text-lg font-extrabold text-black">
                 {editingBannerId ? 'Edit Hero Banner Slide' : 'Add New Hero Banner Slide'}
