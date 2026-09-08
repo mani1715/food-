@@ -77,7 +77,7 @@ interface AppContextType {
 
   // Actions - Customer
   addToCart: (product: Product, selectedWeight: string, quantity?: number) => void;
-  updateCartQuantity: (productId: string, selectedWeight: string, delta: number) => void;
+  updateCartQuantity: (productId: string, selectedWeight: string, newQuantity: number) => void;
   removeFromCart: (productId: string, selectedWeight: string) => void;
   clearCart: () => void;
   toggleWishlist: (productId: string) => void;
@@ -526,13 +526,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast('Added to Cart', `${product.name} (${selectedWeight}) added.`, 'success');
   };
 
-  const updateCartQuantity = (productId: string, selectedWeight: string, delta: number) => {
+  const updateCartQuantity = (productId: string, selectedWeight: string, newQuantity: number) => {
     setCartItems((prev) =>
       prev
         .map((item) => {
           if (item.product.id === productId && item.selectedWeight === selectedWeight) {
-            const newQty = item.quantity + delta;
-            return newQty > 0 ? { ...item, quantity: newQty } : null;
+            return newQuantity > 0 ? { ...item, quantity: newQuantity } : null;
           }
           return item;
         })
