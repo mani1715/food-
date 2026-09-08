@@ -358,9 +358,14 @@ export const CheckoutPage: React.FC = () => {
             <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
               {cartItems.map((item, idx) => (
                 <div key={idx} className="flex items-center justify-between text-xs font-medium pb-2 border-b border-neutral-200">
-                  <div>
-                    <p className="font-bold text-black">{item.product.name}</p>
-                    <p className="text-[10px] text-neutral-500">Qty: {item.quantity} • Weight: {item.selectedWeight}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-black text-white text-[10px] font-mono font-bold flex items-center justify-center shrink-0">
+                      #{idx + 1}
+                    </span>
+                    <div>
+                      <p className="font-bold text-black">{item.product.name}</p>
+                      <p className="text-[10px] text-neutral-500">Qty: {item.quantity} • Weight: {item.selectedWeight}</p>
+                    </div>
                   </div>
                   <span className="font-mono font-bold text-black">₹{item.unitPrice * item.quantity}</span>
                 </div>

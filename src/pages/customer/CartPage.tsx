@@ -59,59 +59,72 @@ export const CartPage: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* Left Column: Cart Items List */}
-          <div className="lg:col-span-8 space-y-4">
-            {cartItems.map((item) => (
+          <div className="lg:col-span-8 space-y-3 sm:space-y-4">
+            {cartItems.map((item, index) => (
               <div
                 key={`${item.product.id}-${item.selectedWeight}`}
-                className="p-3.5 sm:p-5 rounded-3xl border border-neutral-200 bg-white shadow-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                className="p-3 sm:p-4 rounded-2xl border border-neutral-200 bg-white shadow-subtle flex flex-row items-center justify-between gap-2 sm:gap-4 text-left"
               >
-                <div className="flex items-center gap-3 sm:gap-4">
+                {/* Item Number, Image & Details */}
+                <div className="flex items-center gap-2.5 sm:gap-4 min-w-0 flex-1">
+                  {/* Product Serial Number Badge */}
+                  <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-neutral-900 text-white text-[11px] sm:text-xs font-mono font-bold flex items-center justify-center shrink-0 shadow-sm">
+                    #{index + 1}
+                  </span>
+
                   <img
                     src={item.product.image}
                     alt={item.product.name}
-                    className="w-14 h-14 sm:w-20 sm:h-20 rounded-2xl object-cover border border-neutral-200 shrink-0"
+                    className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl object-cover border border-neutral-200 shrink-0"
                   />
-                  <div className="space-y-1 text-left">
+                  <div className="space-y-0.5 min-w-0 flex-1">
                     <h4
                       onClick={() => navigate(`/product/${item.product.id}`)}
-                      className="text-sm sm:text-base font-bold text-black cursor-pointer hover:underline line-clamp-1"
+                      className="text-xs sm:text-sm font-bold text-black cursor-pointer hover:underline truncate"
                     >
                       {item.product.name}
                     </h4>
-                    <span className="inline-block text-[10px] bg-neutral-100 font-bold text-black px-2 py-0.5 rounded border border-neutral-200">
-                      Weight: {item.selectedWeight}
-                    </span>
-                    <p className="text-xs font-mono font-bold text-neutral-600">₹{item.unitPrice} each</p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="inline-block text-[10px] bg-neutral-100 font-bold text-black px-1.5 py-0.5 rounded border border-neutral-200 shrink-0">
+                        {item.selectedWeight}
+                      </span>
+                      <span className="text-[11px] font-mono font-bold text-neutral-600 shrink-0">
+                        ₹{item.unitPrice} each
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-neutral-100">
+                {/* Right Side: Quantity Controller, Subtotal & Delete */}
+                <div className="flex items-center gap-2 sm:gap-4 shrink-0">
                   {/* Quantity Controller */}
-                  <div className="flex items-center border border-neutral-300 rounded-xl p-1 bg-neutral-50">
+                  <div className="flex items-center border border-neutral-300 rounded-xl p-0.5 sm:p-1 bg-neutral-50">
                     <button
                       onClick={() => updateCartQuantity(item.product.id, item.selectedWeight, item.quantity - 1)}
-                      className="p-1 text-black hover:bg-neutral-200 rounded-lg cursor-pointer"
+                      className="p-1 text-black hover:bg-neutral-200 rounded-lg cursor-pointer transition-colors"
+                      title="Decrease quantity"
                     >
                       <Minus className="w-3.5 h-3.5" />
                     </button>
-                    <span className="w-8 text-center text-xs font-mono font-bold">{item.quantity}</span>
+                    <span className="w-6 sm:w-8 text-center text-xs font-mono font-bold">{item.quantity}</span>
                     <button
                       onClick={() => updateCartQuantity(item.product.id, item.selectedWeight, item.quantity + 1)}
-                      className="p-1 text-black hover:bg-neutral-200 rounded-lg cursor-pointer"
+                      className="p-1 text-black hover:bg-neutral-200 rounded-lg cursor-pointer transition-colors"
+                      title="Increase quantity"
                     >
                       <Plus className="w-3.5 h-3.5" />
                     </button>
                   </div>
 
                   {/* Subtotal */}
-                  <span className="text-sm font-extrabold font-mono text-black min-w-[60px] text-right">
+                  <span className="text-xs sm:text-sm font-extrabold font-mono text-black min-w-[50px] sm:min-w-[65px] text-right">
                     ₹{item.unitPrice * item.quantity}
                   </span>
 
                   {/* Remove Button */}
                   <button
                     onClick={() => removeFromCart(item.product.id, item.selectedWeight)}
-                    className="p-2 text-neutral-400 hover:text-rose-600 cursor-pointer"
+                    className="p-1.5 text-neutral-400 hover:text-rose-600 transition-colors cursor-pointer shrink-0"
                     title="Remove item"
                   >
                     <Trash2 className="w-4 h-4" />

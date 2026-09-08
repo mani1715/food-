@@ -127,7 +127,10 @@ export const FloatingBundleWidget: React.FC = () => {
                     cartItems.map((item, idx) => (
                       <div key={idx} className="flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2 truncate max-w-[170px]">
-                          <img src={item.product.image} alt={item.product.name} className="w-7 h-7 rounded-lg object-cover border" />
+                          <span className="w-4 h-4 rounded-full bg-black text-white text-[9px] font-mono font-bold flex items-center justify-center shrink-0">
+                            #{idx + 1}
+                          </span>
+                          <img src={item.product.image} alt={item.product.name} className="w-7 h-7 rounded-lg object-cover border shrink-0" />
                           <span className="truncate font-bold text-black">{item.product.name}</span>
                         </div>
                         <span className="font-mono text-neutral-500 font-bold">{item.quantity}x (₹{item.unitPrice})</span>
