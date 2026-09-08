@@ -317,7 +317,68 @@ export const ProductDetailsPage: React.FC = () => {
         </div>
       </section>
 
-      {/* 4. CUSTOMER COMMENTS & TESTIMONIALS SECTION */}
+      {/* 4. THE 5-STEP TRADITIONAL CRAFTSMANSHIP PROCESS SECTION */}
+      <section className="pt-8 border-t border-neutral-200 text-left space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-neutral-200 pb-3 gap-2">
+          <div>
+            <span className="text-xs font-bold uppercase tracking-widest text-neutral-400">Heritage Craftsmanship</span>
+            <h3 className="text-2xl font-black text-black tracking-tight mt-0.5">The 5-Step Traditional Craftsmanship Process</h3>
+          </div>
+          <span className="text-xs font-mono font-bold bg-neutral-100 text-black px-3 py-1.5 rounded-full border border-neutral-200 w-fit">
+            100% Small-Batch Guarantee
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          {(product.customProcessSteps && product.customProcessSteps.length === 5
+            ? product.customProcessSteps
+            : [
+                {
+                  stepNumber: '01',
+                  title: 'Freshly Picked Produce',
+                  subtitle: 'Direct Farm Sourcing',
+                  description: 'Selected raw mangoes, fresh Gongura leaves, and farm produce sourced directly from trusted local Andhra & Telangana orchards.',
+                },
+                {
+                  stepNumber: '02',
+                  title: 'Natural Sun-Curing',
+                  subtitle: 'Traditional Solar Maturation',
+                  description: 'Traditional sun-drying under clean, hygienic solar conditions to preserve authentic aroma, natural color, and deep rustic flavor.',
+                },
+                {
+                  stepNumber: '03',
+                  title: 'Stone-Ground Spices',
+                  subtitle: 'Slow Batch Grinding',
+                  description: 'Whole Guntur chillies, mustard, fenugreek, and coriander roasted in small batches and slow-ground using traditional stone mills (Rolu).',
+                },
+                {
+                  stepNumber: '04',
+                  title: 'Pure Oils & A2 Desi Ghee',
+                  subtitle: 'Cold-Pressed Chekku Oils & Bilona Ghee',
+                  description: 'Prepared exclusively with cold-pressed sesame & groundnut oils from wooden mills, and pure hand-churned A2 cow ghee.',
+                },
+                {
+                  stepNumber: '05',
+                  title: 'Traditional Earthen Storage',
+                  subtitle: 'Authentic Ceramic Jars (Jadi)',
+                  description: 'Matured naturally in authentic ceramic jars (Jadi) sealed with clean cotton cloth, without artificial chemicals or synthetic preservatives.',
+                },
+              ]
+          ).map((step, idx) => (
+            <div
+              key={idx}
+              className="bg-neutral-50 border border-neutral-200 rounded-3xl p-5 shadow-subtle space-y-2 hover:border-black transition-all"
+            >
+              <span className="text-2xl font-black font-mono text-black block">{step.stepNumber}</span>
+              <h4 className="text-sm font-extrabold text-black tracking-tight">{step.title}</h4>
+              <span className="text-[10px] font-bold text-neutral-400 uppercase block">{step.subtitle}</span>
+              <p className="text-xs text-neutral-600 font-medium leading-relaxed pt-1">{step.description}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 5. CUSTOMER COMMENTS & TESTIMONIALS SECTION */}
       <ProductTestimonialsSection product={product} />
 
       {/* 5. Buy These Products Also Section (Frequently Bought Together Bundle) */}

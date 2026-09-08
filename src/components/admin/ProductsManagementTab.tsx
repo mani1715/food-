@@ -1,8 +1,41 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Product, WeightOption } from '../../types';
-import { Plus, Edit2, Trash2, Search, X, Star, Tag, Scale, Image as ImageIcon, LayoutGrid, Check, Sparkles, BookOpen } from 'lucide-react';
+import { Product, WeightOption, ProcessStep } from '../../types';
+import { Plus, Edit2, Trash2, Search, X, Star, Tag, Scale, Image as ImageIcon, LayoutGrid, Check, Sparkles, BookOpen, Layers } from 'lucide-react';
 import { motion } from 'framer-motion';
+
+const DEFAULT_PROCESS_STEPS: ProcessStep[] = [
+  {
+    stepNumber: '01',
+    title: 'Freshly Picked Produce',
+    subtitle: 'Direct Farm Sourcing',
+    description: 'Selected raw mangoes, fresh Gongura leaves, and farm produce sourced directly from trusted local Andhra & Telangana orchards at peak freshness.',
+  },
+  {
+    stepNumber: '02',
+    title: 'Natural Sun-Curing',
+    subtitle: 'Traditional Solar Maturation',
+    description: 'Traditional sun-drying under clean, hygienic solar conditions to preserve authentic aroma, natural color, and deep rustic flavor.',
+  },
+  {
+    stepNumber: '03',
+    title: 'Stone-Ground Spices',
+    subtitle: 'Slow Batch Grinding',
+    description: 'Whole Guntur chillies, mustard, fenugreek, and coriander roasted in small batches and slow-ground using traditional stone mills (Rolu).',
+  },
+  {
+    stepNumber: '04',
+    title: 'Pure Oils & A2 Desi Ghee',
+    subtitle: 'Cold-Pressed Chekku Oils & Bilona Ghee',
+    description: 'Prepared exclusively with cold-pressed sesame & groundnut oils from wooden mills, and pure hand-churned A2 cow ghee.',
+  },
+  {
+    stepNumber: '05',
+    title: 'Traditional Earthen Storage',
+    subtitle: 'Authentic Ceramic Jars (Jadi)',
+    description: 'Matured naturally in authentic ceramic jars (Jadi) sealed with clean cotton cloth, without artificial chemicals or synthetic preservatives.',
+  },
+];
 
 export const ProductsManagementTab: React.FC = () => {
   const {
@@ -54,6 +87,8 @@ export const ProductsManagementTab: React.FC = () => {
     { weight: '1kg', price: 549 },
   ]);
 
+  const [newProcessSteps, setNewProcessSteps] = useState<ProcessStep[]>(DEFAULT_PROCESS_STEPS);
+
   // Edit Product Extra State
   const [editGalleryInput, setEditGalleryInput] = useState('');
   const [editIngredientsStr, setEditIngredientsStr] = useState('');
@@ -80,6 +115,7 @@ export const ProductsManagementTab: React.FC = () => {
     setNewHowWeDoText('');
     setNewSourcingText('');
     setNewQualityGuaranteeText('');
+    setNewProcessSteps([...DEFAULT_PROCESS_STEPS]);
     setNewIngredientsStr('');
     setNewRating(5.0);
     setNewReviewsCount(1);
@@ -172,6 +208,7 @@ export const ProductsManagementTab: React.FC = () => {
       howWeDoText: newHowWeDoText.trim() || undefined,
       sourcingText: newSourcingText.trim() || undefined,
       qualityGuaranteeText: newQualityGuaranteeText.trim() || undefined,
+      customProcessSteps: newProcessSteps,
       weightOptions: newWeightOptions,
       defaultWeight: newWeightOptions[0]?.weight || '500g',
       isVeg: newIsVeg,
@@ -217,6 +254,7 @@ export const ProductsManagementTab: React.FC = () => {
       howWeDoText: editingProduct.howWeDoText,
       sourcingText: editingProduct.sourcingText,
       qualityGuaranteeText: editingProduct.qualityGuaranteeText,
+      customProcessSteps: editingProduct.customProcessSteps || DEFAULT_PROCESS_STEPS,
       rating: editingProduct.rating,
       reviewsCount: editingProduct.reviewsCount,
       image: primaryImg,
@@ -637,6 +675,66 @@ export const ProductsManagementTab: React.FC = () => {
                 </div>
               </div>
 
+              {/* 5-STEP TRADITIONAL CRAFTSMANSHIP PROCESS EDITING SECTION */}
+              <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-200 space-y-3">
+                <span className="text-xs font-extrabold text-black flex items-center gap-1.5">
+                  <Layers className="w-4 h-4 text-black" />
+                  <span>The 5-Step Traditional Craftsmanship Process</span>
+                </span>
+
+                <div className="space-y-3 pt-1">
+                  {newProcessSteps.map((step, idx) => (
+                    <div key={idx} className="p-3 bg-white border border-neutral-200 rounded-xl space-y-2 text-xs">
+                      <div className="flex items-center justify-between border-b border-neutral-100 pb-1.5">
+                        <span className="font-extrabold text-black font-mono">Step {step.stepNumber}</span>
+                        <span className="text-[10px] text-neutral-400 font-bold uppercase">Craftsmanship Phase</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] text-neutral-400 font-bold mb-0.5">Title</label>
+                          <input
+                            type="text"
+                            value={step.title}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setNewProcessSteps((prev) => prev.map((s, i) => (i === idx ? { ...s, title: val } : s)));
+                            }}
+                            placeholder="Step Title"
+                            className="w-full p-2 border border-neutral-300 rounded-lg font-bold bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-neutral-400 font-bold mb-0.5">Subtitle / Tagline</label>
+                          <input
+                            type="text"
+                            value={step.subtitle}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setNewProcessSteps((prev) => prev.map((s, i) => (i === idx ? { ...s, subtitle: val } : s)));
+                            }}
+                            placeholder="Subtitle"
+                            className="w-full p-2 border border-neutral-300 rounded-lg font-medium bg-white"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-neutral-400 font-bold mb-0.5">Step Description</label>
+                        <textarea
+                          rows={2}
+                          value={step.description}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setNewProcessSteps((prev) => prev.map((s, i) => (i === idx ? { ...s, description: val } : s)));
+                          }}
+                          placeholder="Step detailed process..."
+                          className="w-full p-2 border border-neutral-300 rounded-lg font-normal bg-white"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {/* SHOWCASE COLLECTIONS & FEATURE FLAGS SELECTION */}
               <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-200 space-y-3">
                 <span className="text-xs font-extrabold text-black flex items-center gap-1.5">
@@ -998,6 +1096,72 @@ export const ProductsManagementTab: React.FC = () => {
                     placeholder="e.g. 100% natural homemade purity. Zero preservatives..."
                     className="w-full p-2.5 rounded-xl border border-neutral-300 bg-white font-normal"
                   />
+                </div>
+              </div>
+
+              {/* EDIT 5-STEP TRADITIONAL CRAFTSMANSHIP PROCESS SECTION */}
+              <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-200 space-y-3">
+                <span className="text-xs font-extrabold text-black flex items-center gap-1.5">
+                  <Layers className="w-4 h-4 text-black" />
+                  <span>The 5-Step Traditional Craftsmanship Process</span>
+                </span>
+
+                <div className="space-y-3 pt-1">
+                  {(editingProduct.customProcessSteps || DEFAULT_PROCESS_STEPS).map((step, idx) => (
+                    <div key={idx} className="p-3 bg-white border border-neutral-200 rounded-xl space-y-2 text-xs">
+                      <div className="flex items-center justify-between border-b border-neutral-100 pb-1.5">
+                        <span className="font-extrabold text-black font-mono">Step {step.stepNumber}</span>
+                        <span className="text-[10px] text-neutral-400 font-bold uppercase">Craftsmanship Phase</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] text-neutral-400 font-bold mb-0.5">Title</label>
+                          <input
+                            type="text"
+                            value={step.title}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const current = [...(editingProduct.customProcessSteps || DEFAULT_PROCESS_STEPS)];
+                              current[idx] = { ...current[idx], title: val };
+                              setEditingProduct({ ...editingProduct, customProcessSteps: current });
+                            }}
+                            placeholder="Step Title"
+                            className="w-full p-2 border border-neutral-300 rounded-lg font-bold bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-neutral-400 font-bold mb-0.5">Subtitle / Tagline</label>
+                          <input
+                            type="text"
+                            value={step.subtitle}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const current = [...(editingProduct.customProcessSteps || DEFAULT_PROCESS_STEPS)];
+                              current[idx] = { ...current[idx], subtitle: val };
+                              setEditingProduct({ ...editingProduct, customProcessSteps: current });
+                            }}
+                            placeholder="Subtitle"
+                            className="w-full p-2 border border-neutral-300 rounded-lg font-medium bg-white"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-neutral-400 font-bold mb-0.5">Step Description</label>
+                        <textarea
+                          rows={2}
+                          value={step.description}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const current = [...(editingProduct.customProcessSteps || DEFAULT_PROCESS_STEPS)];
+                            current[idx] = { ...current[idx], description: val };
+                            setEditingProduct({ ...editingProduct, customProcessSteps: current });
+                          }}
+                          placeholder="Step detailed process..."
+                          className="w-full p-2 border border-neutral-300 rounded-lg font-normal bg-white"
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 

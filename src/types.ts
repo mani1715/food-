@@ -3,6 +3,13 @@ export interface WeightOption {
   price: number;  // e.g. 8.99, 15.99, 29.99
 }
 
+export interface ProcessStep {
+  stepNumber: string; // e.g. "01", "02", "03", "04", "05"
+  title: string;      // e.g. "Freshly Picked Produce"
+  subtitle: string;   // e.g. "Direct Farm Sourcing"
+  description: string;// e.g. "Selected raw mangoes and Gongura leaves sourced directly from local Andhra orchards..."
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -32,6 +39,7 @@ export interface Product {
   howWeDoText?: string;
   sourcingText?: string;
   qualityGuaranteeText?: string;
+  customProcessSteps?: ProcessStep[];
 }
 
 export interface ProductCategory {
