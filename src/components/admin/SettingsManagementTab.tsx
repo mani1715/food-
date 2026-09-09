@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { CreditCard, Smartphone, Plus, Trash2, ShieldCheck } from 'lucide-react';
+import { CreditCard, Smartphone, Plus, Trash2, Image as ImageIcon } from 'lucide-react';
+import { DragDropImagePicker } from './DragDropImagePicker';
 
 export const SettingsManagementTab: React.FC = () => {
   const {
+    siteLogo,
+    updateSiteLogo,
     paymentEnabled,
     setPaymentEnabled,
     whatsappContacts,
@@ -110,6 +113,28 @@ export const SettingsManagementTab: React.FC = () => {
                 </button>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Store Brand Logo Manager (Drag & Drop Photo Upload) */}
+        <div className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-subtle space-y-4 md:col-span-2">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-black text-white flex items-center justify-center">
+              <ImageIcon className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-extrabold text-black">Store Brand Logo</h3>
+              <p className="text-xs text-neutral-400">Drag & drop or select new logo photo from your files/folder to update store logo</p>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl border border-neutral-200 bg-neutral-50 space-y-4">
+            <DragDropImagePicker
+              label="Change Store Logo"
+              value={siteLogo}
+              onChange={updateSiteLogo}
+              helperText="Upload transparent PNG, JPG or SVG logo for crisp display across Header, Footer and Mobile Navigation."
+            />
           </div>
         </div>
 

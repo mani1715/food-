@@ -43,6 +43,7 @@ interface AppContextType {
   // Catalog & State
   products: Product[];
   categories: ProductCategory[];
+  siteLogo: string;
   cartItems: CartItem[];
   wishlistProductIds: string[];
   recentlyViewedIds: string[];
@@ -97,7 +98,10 @@ interface AppContextType {
   // Actions - Admin
   loginAdmin: (email: string, pass: string) => boolean;
   logoutAdmin: () => void;
+  updateSiteLogo: (logoUrl: string) => void;
   addCategory: (name: string, image?: string, description?: string) => ProductCategory;
+  updateCategory: (id: string, updated: Partial<ProductCategory>) => void;
+  deleteCategory: (id: string) => void;
   addProduct: (product: Omit<Product, 'id'>) => void;
   updateProduct: (id: string, updated: Partial<Product>) => void;
   deleteProduct: (id: string) => void;
@@ -333,6 +337,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [categories, setCategories] = useState<ProductCategory[]>(() =>
     getInitialState('aura_categories', MOCK_CATEGORIES)
   );
+  const [siteLogo, setSiteLogo] = useState<string>(() =>
+    getInitialState('aura_site_logo', '/aishu-logo.jpg')
+  );
+
+  useEffect(() => {
+    localStorage.setItem('aura_site_logo', siteLogo);
+  }, [siteLogo]);
+
+  const updateSiteLogo = (logoUrl: string) => {
+    setSiteLogo(logoUrl);
+    addToast('Store Logo Updated 🖼️', 'Site logo updated successfully.', 'success');
+  };
   const [cartItems, setCartItems] = useState<CartItem[]>(() =>
     getInitialState('aura_cart', [])
   );
@@ -600,7 +616,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       discount: 0,
       total,
       status: 'Active',
-      orderStatus: 'pending',
+      orderStatus: 'placed',
       paymentStatus: 'completed',
       deliveryAddress,
       paymentMethod,
@@ -611,45 +627,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setOrders((prev) => [newOrder, ...prev]);
-
-    // Decrease stock count for each ordered item & trigger low stock notifications
-    setProducts((prevProducts) =>
-      prevProducts.map((p) => {
-        const orderedItems = cartItems.filter((item) => item.product.id === p.id);
-        if (orderedItems.length === 0) return p;
-
-        const totalOrderedQty = orderedItems.reduce((acc, item) => acc + item.quantity, 0);
-        const currentStock = p.inventoryCount ?? 100;
-        const newStock = Math.max(0, currentStock - totalOrderedQty);
-        const isOut = newStock <= 0;
-
-        if (newStock < 10 && newStock > 0) {
-          setTimeout(() => {
-            addToast(
-              '⚠️ Low Stock Alert',
-              `Stock for "${p.name}" is low (${newStock} units left)!`,
-              'info'
-            );
-          }, 800);
-        } else if (isOut) {
-          setTimeout(() => {
-            addToast(
-              '🚨 Out of Stock Alert',
-              `"${p.name}" is now completely Out of Stock!`,
-              'error'
-            );
-          }, 800);
-        }
-
-        return {
-          ...p,
-          inventoryCount: newStock,
-          outOfStock: isOut,
-          inStock: !isOut,
-        };
-      })
-    );
-
     clearCart();
     return newOrder;
   };
@@ -720,6 +697,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     addToast('Category Created', `Category "${trimmedName}" added to catalog.`, 'success');
     return newCat;
+  };
+
+  const updateCategory = (id: string, updated: Partial<ProductCategory>) => {
+    setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, ...updated } : c)));
+    addToast('Category Updated', 'Category details updated.', 'success');
+  };
+
+  const deleteCategory = (id: string) => {
+    setCategories((prev) => prev.filter((c) => c.id !== id));
+    addToast('Category Removed', 'Category deleted from store.', 'info');
   };
 
   const addProduct = (product: Omit<Product, 'id'>) => {
@@ -1018,10 +1005,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     notes?: string,
     deliveryDays?: number
   ) => {
+    let prevStatusOfOrder: Order['orderStatus'] | undefined;
+    let targetOrderItems: CartItem[] = [];
+
     setOrders((prev) =>
       prev.map((o) => {
         if (o.id === orderId || o.orderNumber === orderId) {
-          const mainStatus = status === 'delivered' ? 'Delivered' : status === 'pending' ? 'Active' : 'Active';
+          prevStatusOfOrder = o.orderStatus;
+          targetOrderItems = o.items;
+          const mainStatus = status === 'delivered' ? 'Delivered' : status === 'cancelled' ? 'Cancelled' : 'Active';
           return {
             ...o,
             orderStatus: status,
@@ -1033,6 +1025,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return o;
       })
     );
+
+    // Stock only updates AFTER shipping the product!
+    if (status === 'shipped' && prevStatusOfOrder !== 'shipped' && targetOrderItems.length > 0) {
+      setProducts((prevProducts) =>
+        prevProducts.map((p) => {
+          const orderedItems = targetOrderItems.filter((item) => item.product.id === p.id);
+          if (orderedItems.length === 0) return p;
+
+          const totalOrderedQty = orderedItems.reduce((acc, item) => acc + item.quantity, 0);
+          const currentStock = p.inventoryCount ?? 100;
+          const newStock = Math.max(0, currentStock - totalOrderedQty);
+          const isOut = newStock <= 0;
+
+          if (newStock < 10 && newStock > 0) {
+            setTimeout(() => {
+              addToast(
+                '⚠️ Low Stock Alert',
+                `Stock for "${p.name}" is low (${newStock} units left)!`,
+                'info'
+              );
+            }, 600);
+          } else if (isOut) {
+            setTimeout(() => {
+              addToast(
+                '🚨 Out of Stock Alert',
+                `"${p.name}" is now completely Out of Stock!`,
+                'error'
+              );
+            }, 600);
+          }
+
+          return {
+            ...p,
+            inventoryCount: newStock,
+            outOfStock: isOut,
+            inStock: !isOut,
+          };
+        })
+      );
+    }
+
     addToast('Order Status Updated', `Order set to ${status}.`, 'success');
   };
 
@@ -1089,6 +1122,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         products,
         categories,
+        siteLogo,
         cartItems,
         wishlistProductIds,
         recentlyViewedIds,
@@ -1123,7 +1157,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         removeToast,
         loginAdmin,
         logoutAdmin,
+        updateSiteLogo,
         addCategory,
+        updateCategory,
+        deleteCategory,
         addProduct,
         updateProduct,
         deleteProduct,

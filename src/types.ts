@@ -112,7 +112,7 @@ export interface Order {
   discount: number;
   total: number;
   status: 'Active' | 'Delivered' | 'Cancelled';
-  orderStatus: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'out for delivery' | 'delivered' | 'cancelled';
+  orderStatus: 'placed' | 'pending' | 'confirmed' | 'processing' | 'ready_to_ship' | 'shipped' | 'out for delivery' | 'delivered' | 'cancelled';
   paymentStatus: 'pending' | 'completed' | 'failed';
   deliveryAddress: UserLocation;
   paymentMethod: string;

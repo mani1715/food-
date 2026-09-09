@@ -10,7 +10,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { cartItems, wishlistProductIds, headerAnnouncements } = useApp();
+  const { cartItems, wishlistProductIds, headerAnnouncements, siteLogo, categories } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const cartCount = cartItems.reduce((acc, i) => acc + i.quantity, 0);
@@ -26,42 +26,13 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
         ];
 
   const categoryMenus = [
-    {
-      label: 'Pickles',
-      path: '/products?category=Pickles',
+    ...(categories || []).map((cat) => ({
+      label: cat.name,
+      path: `/products?category=${encodeURIComponent(cat.name)}`,
       subCategories: [
-        { label: 'Veg Pickles ●', path: '/products?category=Pickles&dietary=Veg' },
-        { label: 'Non-Veg Pickles ▲', path: '/products?category=Pickles&dietary=Non-Veg' },
-        { label: 'All Pickles Collection', path: '/products?category=Pickles' },
+        { label: `All ${cat.name} Collection`, path: `/products?category=${encodeURIComponent(cat.name)}` },
       ],
-    },
-    {
-      label: 'Sweets',
-      path: '/products?category=Sweets',
-      subCategories: [
-        { label: 'Pure Ghee Sweets 🍯', path: '/products?category=Sweets' },
-        { label: 'Traditional Andhra Sweets 🍬', path: '/products?category=Sweets' },
-        { label: 'All Sweets Collection', path: '/products?category=Sweets' },
-      ],
-    },
-    {
-      label: 'Snacks',
-      path: '/products?category=Snacks',
-      subCategories: [
-        { label: 'Crispy Murukku & Savories 🥨', path: '/products?category=Snacks' },
-        { label: 'Karam & Mixture 🌶️', path: '/products?category=Snacks' },
-        { label: 'All Snacks Collection', path: '/products?category=Snacks' },
-      ],
-    },
-    {
-      label: 'Powders',
-      path: '/products?category=Powders',
-      subCategories: [
-        { label: 'Idli & Dosa Podis 🌾', path: '/products?category=Powders' },
-        { label: 'Rice Podis & Spices 🍚', path: '/products?category=Powders' },
-        { label: 'All Powders Collection', path: '/products?category=Powders' },
-      ],
-    },
+    })),
     {
       label: 'BEST SELLERS',
       path: '/products',
@@ -119,10 +90,10 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
       </div>
 
       {/* 2. MAIN HEADER NAVIGATION BAR */}
-      <div className="w-full max-w-[1400px] mx-auto px-2 sm:px-4 lg:px-6 py-2.5 flex items-center justify-between gap-4">
+      <div className="w-full max-w-[1400px] mx-auto px-2 sm:px-4 lg:px-6 py-2 flex items-center justify-between gap-4">
         
-        {/* Left Side: Extra Large Circular Brand Logo (Shifted to Far Left) */}
-        <div className="flex items-center gap-2 sm:gap-3 -ml-1 sm:-ml-3 lg:-ml-4">
+        {/* Left Side: Brand Logo */}
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* Mobile Burger Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -133,12 +104,12 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
           </button>
 
           <div onClick={() => navigate('/')} className="flex items-center cursor-pointer group shrink-0">
-            {/* Responsive Circular Logo Emblem */}
-            <div className="w-14 h-14 sm:w-20 sm:h-20 lg:w-28 lg:h-28 rounded-full overflow-hidden border-2 sm:border-3 border-black bg-black flex items-center justify-center shadow-modal group-hover:scale-105 transition-transform shrink-0 my-[-4px] sm:my-[-8px]">
+            {/* Dynamic Circular Store Logo */}
+            <div className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 rounded-full overflow-hidden border-2 border-black bg-black flex items-center justify-center shadow-subtle group-hover:scale-105 transition-transform shrink-0">
               <img
-                src="/aishu-logo.jpg"
+                src={siteLogo || '/aishu-logo.jpg'}
                 alt="Aishu Foods Logo"
-                className="w-full h-full object-cover scale-[1.38] rounded-full"
+                className="w-full h-full object-cover"
               />
             </div>
           </div>

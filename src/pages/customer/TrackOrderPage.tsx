@@ -88,11 +88,13 @@ export const TrackOrderPage: React.FC = () => {
 
   const getStatusIcon = (orderStatus: Order['orderStatus']) => {
     switch (orderStatus) {
+      case 'placed':
       case 'pending':
       case 'confirmed':
         return <Clock className="w-6 h-6 text-amber-600" />;
       case 'processing':
         return <Package className="w-6 h-6 text-blue-600" />;
+      case 'ready_to_ship':
       case 'shipped':
       case 'out for delivery':
         return <Truck className="w-6 h-6 text-purple-600" />;
@@ -107,11 +109,13 @@ export const TrackOrderPage: React.FC = () => {
 
   const getStatusBadge = (orderStatus: Order['orderStatus']) => {
     switch (orderStatus) {
+      case 'placed':
       case 'pending':
       case 'confirmed':
         return 'bg-amber-100 text-amber-900 border-amber-300';
       case 'processing':
         return 'bg-blue-100 text-blue-900 border-blue-300';
+      case 'ready_to_ship':
       case 'shipped':
       case 'out for delivery':
         return 'bg-purple-100 text-purple-900 border-purple-300';

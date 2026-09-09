@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { Product, WeightOption, ProcessStep } from '../../types';
 import { Plus, Edit2, Trash2, Search, X, Star, Tag, Scale, Image as ImageIcon, LayoutGrid, Check, Sparkles, BookOpen, Layers } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { DragDropImagePicker } from './DragDropImagePicker';
 
 const DEFAULT_PROCESS_STEPS: ProcessStep[] = [
   {
@@ -846,28 +847,18 @@ export const ProductsManagementTab: React.FC = () => {
                   ))}
                 </div>
 
-                <div className="flex gap-2 pt-1">
-                  <input
-                    type="url"
-                    value={newImageInput}
-                    onChange={(e) => setNewImageInput(e.target.value)}
-                    placeholder="Paste Photo URL (e.g. https://...)"
-                    className="flex-1 p-2.5 rounded-xl border border-neutral-300 bg-white text-xs font-bold"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (newImageInput.trim()) {
-                        setNewGallery([...newGallery, newImageInput.trim()]);
-                        setNewImageInput('');
-                      }
-                    }}
-                    className="px-3 py-2 bg-black text-white text-xs font-extrabold rounded-xl flex items-center gap-1 shrink-0 cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Add Photo</span>
-                  </button>
-                </div>
+                <DragDropImagePicker
+                  label="Add Photo to Gallery"
+                  value=""
+                  onChange={(url) => {
+                    if (url) setNewGallery((prev) => [...prev, url]);
+                  }}
+                  multiple={true}
+                  onMultipleChange={(urls) => {
+                    if (urls.length > 0) setNewGallery((prev) => [...prev, ...urls]);
+                  }}
+                  helperText="Drag & drop product images from your computer or click to select files/folders."
+                />
               </div>
 
               {/* Weight & Price Tier Editor */}
@@ -1417,16 +1408,12 @@ export const ProductsManagementTab: React.FC = () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-neutral-500 mb-1">Category Image URL (Optional)</label>
-                <input
-                  type="url"
-                  value={newCatImage}
-                  onChange={(e) => setNewCatImage(e.target.value)}
-                  placeholder="https://..."
-                  className="w-full p-3 rounded-2xl border border-neutral-300"
-                />
-              </div>
+              <DragDropImagePicker
+                label="Category Cover Image"
+                value={newCatImage}
+                onChange={setNewCatImage}
+                helperText="Upload or select category banner image."
+              />
 
               <div>
                 <label className="block text-neutral-500 mb-1">Description (Optional)</label>
