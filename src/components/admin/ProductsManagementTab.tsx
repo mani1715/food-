@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Product, WeightOption, ProcessStep } from '../../types';
-import { Plus, Edit2, Trash2, Search, X, Star, Tag, Scale, Image as ImageIcon, LayoutGrid, Check, Sparkles, BookOpen, Layers } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, X, Star, Tag, Scale, Image as ImageIcon, LayoutGrid, Check, Sparkles, BookOpen, Layers, History, TrendingUp, TrendingDown } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { DragDropImagePicker } from './DragDropImagePicker';
 
@@ -51,12 +51,34 @@ export const ProductsManagementTab: React.FC = () => {
     toggleProductFestival,
     homeSections,
     updateHomeSection,
+    restockProduct,
+    destockProduct,
+    stockHistoryLogs,
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+
+  // Restock / Destock Modal State
+  const [stockModalState, setStockModalState] = useState<{
+    isOpen: boolean;
+    type: 'restock' | 'destock';
+    product: Product | null;
+    quantity: number;
+    note: string;
+  }>({
+    isOpen: false,
+    type: 'restock',
+    product: null,
+    quantity: 10,
+    note: '',
+  });
+
+  // Stock History Log Modal State
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [historySearchQuery, setHistorySearchQuery] = useState('');
 
   // New Product Form State
   const [newName, setNewName] = useState('');
@@ -66,11 +88,11 @@ export const ProductsManagementTab: React.FC = () => {
   const [newHowWeDoText, setNewHowWeDoText] = useState('');
   const [newSourcingText, setNewSourcingText] = useState('');
   const [newQualityGuaranteeText, setNewQualityGuaranteeText] = useState('');
-  const [newIngredientsStr, setNewIngredientsStr] = useState('');
+  const [newIngredientsList, setNewIngredientsList] = useState<string[]>([]);
+  const [ingredientInput, setIngredientInput] = useState('');
   const [newRating, setNewRating] = useState<number>(5.0);
   const [newReviewsCount, setNewReviewsCount] = useState<number>(1);
   const [newInventoryCount, setNewInventoryCount] = useState<number>(100);
-  const [newImageInput, setNewImageInput] = useState('');
   const [newGallery, setNewGallery] = useState<string[]>([
     'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=800&auto=format&fit=crop',
     'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?q=80&w=800&auto=format&fit=crop',
@@ -92,7 +114,8 @@ export const ProductsManagementTab: React.FC = () => {
 
   // Edit Product Extra State
   const [editGalleryInput, setEditGalleryInput] = useState('');
-  const [editIngredientsStr, setEditIngredientsStr] = useState('');
+  const [editIngredientsList, setEditIngredientsList] = useState<string[]>([]);
+  const [editIngredientInput, setEditIngredientInput] = useState('');
   const [editSelectedSectionIds, setEditSelectedSectionIds] = useState<string[]>([]);
 
   // Add New Category Modal State
@@ -108,8 +131,14 @@ export const ProductsManagementTab: React.FC = () => {
     return matchesCat && matchesSearch;
   });
 
+  const filteredHistoryLogs = stockHistoryLogs.filter((log) => {
+    if (!historySearchQuery.trim()) return true;
+    const q = historySearchQuery.toLowerCase();
+    return log.productName.toLowerCase().includes(q) || (log.note && log.note.toLowerCase().includes(q));
+  });
+
   // Open Add Product Modal with reset state
-  const handleOpenAddModal = () => {
+  const handleOpenAddModal = (presetCategory?: string) => {
     setNewName('');
     setNewDescription('');
     setNewGrandmaStory('');
@@ -117,14 +146,15 @@ export const ProductsManagementTab: React.FC = () => {
     setNewSourcingText('');
     setNewQualityGuaranteeText('');
     setNewProcessSteps([...DEFAULT_PROCESS_STEPS]);
-    setNewIngredientsStr('');
+    setNewIngredientsList([]);
+    setIngredientInput('');
     setNewRating(5.0);
     setNewReviewsCount(1);
     setNewInventoryCount(100);
     setNewIsBestSeller(false);
-    setNewIsNewArrival(true); // Default to New Arrival for freshly added products!
+    setNewIsNewArrival(true);
     setNewIsFestival(false);
-    setNewCategory(categories[0]?.name || 'Pickles');
+    setNewCategory(presetCategory || (categoryFilter !== 'All' ? categoryFilter : categories[0]?.name || 'Pickles'));
     setNewSelectedSectionIds(homeSections.map((s) => s.id));
     setShowAddModal(true);
   };
@@ -133,7 +163,8 @@ export const ProductsManagementTab: React.FC = () => {
   const handleOpenEditModal = (prod: Product) => {
     setEditingProduct(prod);
     setEditGalleryInput('');
-    setEditIngredientsStr(prod.ingredients?.join(', ') || '');
+    setEditIngredientsList(prod.ingredients || []);
+    setEditIngredientInput('');
     const containingSecIds = homeSections
       .filter((s) => s.productIds.includes(prod.id))
       .map((s) => s.id);
@@ -163,6 +194,30 @@ export const ProductsManagementTab: React.FC = () => {
     setWeightOpts((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // Stock Action Handlers
+  const handleOpenStockModal = (product: Product, type: 'restock' | 'destock') => {
+    setStockModalState({
+      isOpen: true,
+      type,
+      product,
+      quantity: 10,
+      note: type === 'restock' ? 'Manual Warehouse Restock' : 'Stock Adjustment / Defect',
+    });
+  };
+
+  const handleConfirmStockChange = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stockModalState.product || stockModalState.quantity <= 0) return;
+
+    if (stockModalState.type === 'restock') {
+      restockProduct(stockModalState.product.id, stockModalState.quantity, stockModalState.note);
+    } else {
+      destockProduct(stockModalState.product.id, stockModalState.quantity, stockModalState.note);
+    }
+
+    setStockModalState((prev) => ({ ...prev, isOpen: false }));
+  };
+
   // Create New Category Handler
   const handleCreateCategorySubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -190,10 +245,11 @@ export const ProductsManagementTab: React.FC = () => {
     const newProdId = `prod-${Date.now()}`;
     const primaryImg = newGallery[0] || 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=800&auto=format&fit=crop';
 
-    const parsedIngredients = newIngredientsStr
-      .split(',')
-      .map((i) => i.trim())
-      .filter(Boolean);
+    // Add any remaining text in ingredient input
+    let finalIngredients = [...newIngredientsList];
+    if (ingredientInput.trim()) {
+      finalIngredients.push(ingredientInput.trim());
+    }
 
     addProduct({
       name: newName,
@@ -204,7 +260,7 @@ export const ProductsManagementTab: React.FC = () => {
       image: primaryImg,
       gallery: newGallery,
       description: newDescription || 'Fresh handcrafted homemade food item prepared with traditional ingredients.',
-      ingredients: parsedIngredients.length > 0 ? parsedIngredients : undefined,
+      ingredients: finalIngredients.length > 0 ? finalIngredients : undefined,
       grandmaStory: newGrandmaStory.trim() || undefined,
       howWeDoText: newHowWeDoText.trim() || undefined,
       sourcingText: newSourcingText.trim() || undefined,
@@ -241,16 +297,16 @@ export const ProductsManagementTab: React.FC = () => {
 
     const primaryImg = editingProduct.gallery?.[0] || editingProduct.image;
 
-    const parsedIngredients = editIngredientsStr
-      .split(',')
-      .map((i) => i.trim())
-      .filter(Boolean);
+    let finalIngredients = [...editIngredientsList];
+    if (editIngredientInput.trim()) {
+      finalIngredients.push(editIngredientInput.trim());
+    }
 
     updateProduct(editingProduct.id, {
       name: editingProduct.name,
       category: editingProduct.category,
       description: editingProduct.description,
-      ingredients: parsedIngredients,
+      ingredients: finalIngredients,
       grandmaStory: editingProduct.grandmaStory,
       howWeDoText: editingProduct.howWeDoText,
       sourcingText: editingProduct.sourcingText,
@@ -297,10 +353,20 @@ export const ProductsManagementTab: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-200 pb-4">
         <div>
           <h2 className="text-xl font-extrabold text-black tracking-tight">Product Catalog & Categories</h2>
-          <p className="text-xs text-neutral-500">Configure products, create new categories, choose homepage showcase collections & New Arrival flags.</p>
+          <p className="text-xs text-neutral-500">Configure products, create new categories, restock inventory & audit history logs.</p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          {/* Stock History Audit Log Button */}
+          <button
+            onClick={() => setShowHistoryModal(true)}
+            className="px-3.5 py-2.5 bg-neutral-100 hover:bg-neutral-200 border border-neutral-300 text-black text-xs font-bold rounded-2xl transition-all flex items-center gap-1.5 cursor-pointer"
+            title="View Restock & Destock History Logs"
+          >
+            <History className="w-4 h-4 text-black" />
+            <span>Stock History Log ({stockHistoryLogs.length})</span>
+          </button>
+
           <button
             onClick={() => {
               setTargetModalForNewCategory('add');
@@ -312,13 +378,24 @@ export const ProductsManagementTab: React.FC = () => {
             <span>Add New Category</span>
           </button>
 
-          <button
-            onClick={handleOpenAddModal}
-            className="px-4 py-2.5 bg-black text-white text-xs font-extrabold rounded-2xl hover:bg-neutral-800 transition-all flex items-center gap-2 shadow-subtle shrink-0 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add New Product</span>
-          </button>
+          {/* Category Specific Add Product Button */}
+          {categoryFilter !== 'All' ? (
+            <button
+              onClick={() => handleOpenAddModal(categoryFilter)}
+              className="px-4 py-2.5 bg-neutral-900 text-white text-xs font-extrabold rounded-2xl hover:bg-black transition-all flex items-center gap-2 shadow-subtle shrink-0 cursor-pointer border border-neutral-700"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Add Product to {categoryFilter}</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => handleOpenAddModal()}
+              className="px-4 py-2.5 bg-black text-white text-xs font-extrabold rounded-2xl hover:bg-neutral-800 transition-all flex items-center gap-2 shadow-subtle shrink-0 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add New Product</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -337,13 +414,13 @@ export const ProductsManagementTab: React.FC = () => {
               .map((p) => (
                 <span
                   key={p.id}
-                  onClick={() => handleOpenEditModal(p)}
+                  onClick={() => handleOpenStockModal(p, 'restock')}
                   className={`px-2.5 py-1 rounded-xl text-[11px] font-mono cursor-pointer border hover:underline ${
                     p.outOfStock ? 'bg-rose-100 text-rose-800 border-rose-300 font-black' : 'bg-amber-100 text-amber-900 border-amber-300'
                   }`}
-                  title="Click to edit stock count"
+                  title="Click to Restock Stock"
                 >
-                  {p.name}: <strong>{p.outOfStock ? 'Out of Stock' : `${p.inventoryCount} left`}</strong>
+                  {p.name}: <strong>{p.outOfStock ? 'Out of Stock' : `${p.inventoryCount} left`}</strong> (+ Restock)
                 </span>
               ))}
           </div>
@@ -351,7 +428,7 @@ export const ProductsManagementTab: React.FC = () => {
       )}
 
       {/* Search & Filter Bar */}
-      <div className="flex flex-col sm:flex-row items-center gap-3">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="relative flex-1 w-full">
           <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
@@ -386,6 +463,22 @@ export const ProductsManagementTab: React.FC = () => {
         </div>
       </div>
 
+      {/* Category Specific Notice when Category Selected */}
+      {categoryFilter !== 'All' && (
+        <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-2xl flex items-center justify-between text-xs">
+          <span className="font-bold text-black">
+            Showing products for category: <span className="underline font-black">{categoryFilter}</span> ({filteredProducts.length} items)
+          </span>
+          <button
+            onClick={() => handleOpenAddModal(categoryFilter)}
+            className="px-3 py-1.5 bg-black text-white text-[11px] font-extrabold rounded-xl hover:bg-neutral-800 transition-all flex items-center gap-1 cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>+ Add Product to {categoryFilter}</span>
+          </button>
+        </div>
+      )}
+
       {/* Product List Table */}
       <div className="bg-white border border-neutral-200 rounded-3xl overflow-hidden shadow-subtle">
         <div className="overflow-x-auto">
@@ -396,13 +489,14 @@ export const ProductsManagementTab: React.FC = () => {
                 <th className="py-3.5 px-4">Category</th>
                 <th className="py-3.5 px-4">Dietary</th>
                 <th className="py-3.5 px-4">Gram Weights & Cost (₹)</th>
-                <th className="py-3.5 px-4">Stock</th>
+                <th className="py-3.5 px-4">Inventory Stock & Audit</th>
                 <th className="py-3.5 px-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
               {filteredProducts.map((prod) => {
                 const photosCount = prod.gallery?.length || 1;
+                const stockCount = prod.inventoryCount ?? 100;
                 return (
                   <tr key={prod.id} className="hover:bg-neutral-50/80 transition-colors">
                     
@@ -449,13 +543,40 @@ export const ProductsManagementTab: React.FC = () => {
                       </div>
                     </td>
 
-                    {/* Stock */}
+                    {/* Stock Count & Restock / Destock Action Buttons */}
                     <td className="py-3.5 px-4">
-                      {prod.outOfStock ? (
-                        <span className="text-[10px] font-extrabold uppercase text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">Out of Stock</span>
-                      ) : (
-                        <span className="text-xs font-bold text-black">{prod.inventoryCount || 100} units</span>
-                      )}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          {prod.outOfStock ? (
+                            <span className="text-[10px] font-extrabold uppercase text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200">
+                              Out of Stock
+                            </span>
+                          ) : (
+                            <span className={`text-xs font-black font-mono ${stockCount < 10 ? 'text-amber-600' : 'text-black'}`}>
+                              {stockCount} units
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleOpenStockModal(prod, 'restock')}
+                            className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 text-[10px] font-extrabold rounded-md flex items-center gap-0.5 cursor-pointer transition-all"
+                            title="Restock units"
+                          >
+                            <TrendingUp className="w-3 h-3 text-emerald-600" />
+                            <span>+ Restock</span>
+                          </button>
+                          <button
+                            onClick={() => handleOpenStockModal(prod, 'destock')}
+                            className="px-2 py-0.5 bg-rose-50 hover:bg-rose-100 border border-rose-300 text-rose-800 text-[10px] font-extrabold rounded-md flex items-center gap-0.5 cursor-pointer transition-all"
+                            title="Destock units"
+                          >
+                            <TrendingDown className="w-3 h-3 text-rose-600" />
+                            <span>- Destock</span>
+                          </button>
+                        </div>
+                      </div>
                     </td>
 
                     {/* Actions */}
@@ -512,6 +633,169 @@ export const ProductsManagementTab: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* RESTOCK / DESTOCK MODAL */}
+      {stockModalState.isOpen && stockModalState.product && (
+        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <motion.form
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onSubmit={handleConfirmStockChange}
+            className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-modal text-left"
+          >
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2">
+                {stockModalState.type === 'restock' ? (
+                  <TrendingUp className="w-5 h-5 text-emerald-600" />
+                ) : (
+                  <TrendingDown className="w-5 h-5 text-rose-600" />
+                )}
+                <h3 className="text-base font-extrabold text-black">
+                  {stockModalState.type === 'restock' ? 'Restock Inventory Stock' : 'Destock Inventory Units'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setStockModalState((prev) => ({ ...prev, isOpen: false }))}
+                className="text-neutral-400 hover:text-black"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-3 bg-neutral-50 rounded-2xl border border-neutral-200 flex items-center gap-3">
+              <img src={stockModalState.product.image} alt="" className="w-10 h-10 rounded-xl object-cover border" />
+              <div>
+                <h4 className="text-xs font-extrabold text-black">{stockModalState.product.name}</h4>
+                <p className="text-[11px] text-neutral-500">
+                  Current Stock: <strong className="text-black font-mono">{stockModalState.product.inventoryCount ?? 100} units</strong>
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3 text-xs font-bold">
+              <div>
+                <label className="block text-neutral-500 mb-1">
+                  Quantity to {stockModalState.type === 'restock' ? 'Add (+)' : 'Remove (-)'} *
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  value={stockModalState.quantity}
+                  onChange={(e) => setStockModalState({ ...stockModalState, quantity: Number(e.target.value) })}
+                  className="w-full p-3 rounded-2xl border border-neutral-300 font-mono text-base font-black"
+                />
+              </div>
+
+              <div>
+                <label className="block text-neutral-500 mb-1">Reason / Audit Note (Optional)</label>
+                <input
+                  type="text"
+                  value={stockModalState.note}
+                  onChange={(e) => setStockModalState({ ...stockModalState, note: e.target.value })}
+                  placeholder="e.g. Received new shipment batch from kitchen..."
+                  className="w-full p-3 rounded-2xl border border-neutral-300 font-normal"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setStockModalState((prev) => ({ ...prev, isOpen: false }))}
+                className="flex-1 py-3 border border-neutral-200 hover:bg-neutral-100 rounded-2xl text-xs font-bold text-black cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className={`flex-1 py-3 text-white rounded-2xl text-xs font-extrabold cursor-pointer shadow-subtle ${
+                  stockModalState.type === 'restock' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'
+                }`}
+              >
+                Confirm {stockModalState.type === 'restock' ? 'Restock' : 'Destock'}
+              </button>
+            </div>
+          </motion.form>
+        </div>
+      )}
+
+      {/* STOCK HISTORY AUDIT LOG MODAL */}
+      {showHistoryModal && (
+        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl p-6 max-w-2xl w-full space-y-4 shadow-modal text-left max-h-[85vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2">
+                <History className="w-5 h-5 text-black" />
+                <h3 className="text-base font-extrabold text-black">Inventory Restock & Destock History Audit Log</h3>
+              </div>
+              <button onClick={() => setShowHistoryModal(false)} className="text-neutral-400 hover:text-black">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="relative">
+              <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={historySearchQuery}
+                onChange={(e) => setHistorySearchQuery(e.target.value)}
+                placeholder="Search audit log by product name or note..."
+                className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-neutral-200 text-xs font-medium focus:outline-none focus:border-black bg-neutral-50"
+              />
+            </div>
+
+            <div className="bg-neutral-50 rounded-2xl border border-neutral-200 overflow-hidden">
+              {filteredHistoryLogs.length > 0 ? (
+                <div className="divide-y divide-neutral-200 text-xs">
+                  {filteredHistoryLogs.map((log) => (
+                    <div key={log.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-white transition-colors">
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`px-2.5 py-1 rounded-xl text-[10px] font-black uppercase font-mono border ${
+                            log.type === 'restock'
+                              ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                              : 'bg-rose-100 text-rose-900 border-rose-300'
+                          }`}
+                        >
+                          {log.type === 'restock' ? `+${log.quantity} Restock` : `-${log.quantity} Destock`}
+                        </span>
+                        <div>
+                          <h4 className="font-extrabold text-black">{log.productName}</h4>
+                          <p className="text-[11px] text-neutral-500 font-medium">{log.note || 'No note provided'}</p>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span className="block font-mono text-[11px] font-bold text-neutral-800">{log.date}</span>
+                        <span className="block font-mono text-[10px] text-neutral-400">{log.time}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-8 text-center text-xs text-neutral-400">
+                  No stock history logs recorded yet. Restock or destock items to build audit trail.
+                </div>
+              )}
+            </div>
+
+            <div className="pt-2 text-right">
+              <button
+                onClick={() => setShowHistoryModal(false)}
+                className="px-5 py-2.5 bg-black text-white text-xs font-extrabold rounded-2xl hover:bg-neutral-800 transition-all cursor-pointer"
+              >
+                Close Audit Logs
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* ADD PRODUCT MODAL */}
       {showAddModal && (
@@ -577,15 +861,56 @@ export const ProductsManagementTab: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-neutral-500 mb-1">Ingredients & Recipe (Comma-separated list)</label>
-                <input
-                  type="text"
-                  value={newIngredientsStr}
-                  onChange={(e) => setNewIngredientsStr(e.target.value)}
-                  placeholder="e.g. Whole Cashews, Sugar, Pure Ghee, Edible Silver Foil"
-                  className="w-full p-3 rounded-2xl border border-neutral-300 font-sans"
-                />
+              {/* Editable Ingredients Checklist Tag System */}
+              <div className="space-y-2">
+                <label className="block text-neutral-500">Ingredients & Recipe Checklist</label>
+                
+                {/* Tag Pills */}
+                {newIngredientsList.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pb-1">
+                    {newIngredientsList.map((ing, idx) => (
+                      <span key={idx} className="bg-neutral-100 border border-neutral-300 text-black px-2.5 py-1 rounded-xl text-xs font-bold flex items-center gap-1">
+                        <span>{ing}</span>
+                        <button
+                          type="button"
+                          onClick={() => setNewIngredientsList(newIngredientsList.filter((_, i) => i !== idx))}
+                          className="hover:text-rose-600 text-neutral-400 cursor-pointer"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={ingredientInput}
+                    onChange={(e) => setIngredientInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if ((e.key === 'Enter' || e.key === ',') && ingredientInput.trim()) {
+                        e.preventDefault();
+                        setNewIngredientsList([...newIngredientsList, ingredientInput.trim().replace(/,/g, '')]);
+                        setIngredientInput('');
+                      }
+                    }}
+                    placeholder="Type ingredient and press Enter or Comma..."
+                    className="flex-1 p-3 rounded-2xl border border-neutral-300 font-sans"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (ingredientInput.trim()) {
+                        setNewIngredientsList([...newIngredientsList, ingredientInput.trim().replace(/,/g, '')]);
+                        setIngredientInput('');
+                      }
+                    }}
+                    className="px-4 py-3 bg-black text-white rounded-2xl text-xs font-bold cursor-pointer"
+                  >
+                    + Add Tag
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
@@ -743,7 +1068,6 @@ export const ProductsManagementTab: React.FC = () => {
                   <span>Product Feature Flags & Homepage Showcases</span>
                 </span>
 
-                {/* 3 Checkboxes: Best Seller, New Arrival, Festival */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <label className="flex items-center gap-2 p-2.5 bg-white border border-neutral-200 rounded-xl cursor-pointer hover:border-black">
                     <input
@@ -985,15 +1309,55 @@ export const ProductsManagementTab: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-neutral-500 mb-1">Ingredients & Recipe (Comma-separated list)</label>
-                <input
-                  type="text"
-                  value={editIngredientsStr}
-                  onChange={(e) => setEditIngredientsStr(e.target.value)}
-                  placeholder="e.g. Whole Cashews, Sugar, Pure Ghee, Edible Silver Foil"
-                  className="w-full p-3 rounded-2xl border border-neutral-300 font-sans"
-                />
+              {/* Edit Ingredients Checklist Tag System */}
+              <div className="space-y-2">
+                <label className="block text-neutral-500">Ingredients & Recipe Checklist</label>
+
+                {editIngredientsList.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pb-1">
+                    {editIngredientsList.map((ing, idx) => (
+                      <span key={idx} className="bg-neutral-100 border border-neutral-300 text-black px-2.5 py-1 rounded-xl text-xs font-bold flex items-center gap-1">
+                        <span>{ing}</span>
+                        <button
+                          type="button"
+                          onClick={() => setEditIngredientsList(editIngredientsList.filter((_, i) => i !== idx))}
+                          className="hover:text-rose-600 text-neutral-400 cursor-pointer"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={editIngredientInput}
+                    onChange={(e) => setEditIngredientInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if ((e.key === 'Enter' || e.key === ',') && editIngredientInput.trim()) {
+                        e.preventDefault();
+                        setEditIngredientsList([...editIngredientsList, editIngredientInput.trim().replace(/,/g, '')]);
+                        setEditIngredientInput('');
+                      }
+                    }}
+                    placeholder="Type ingredient and press Enter or Comma..."
+                    className="flex-1 p-3 rounded-2xl border border-neutral-300 font-sans"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (editIngredientInput.trim()) {
+                        setEditIngredientsList([...editIngredientsList, editIngredientInput.trim().replace(/,/g, '')]);
+                        setEditIngredientInput('');
+                      }
+                    }}
+                    className="px-4 py-3 bg-black text-white rounded-2xl text-xs font-bold cursor-pointer"
+                  >
+                    + Add Tag
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3">

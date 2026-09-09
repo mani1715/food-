@@ -82,11 +82,9 @@ const MainLayout: React.FC = () => {
       {/* Footer (Hidden on Admin routes) */}
       {!isAdminRoute && <Footer />}
 
-      {/* Mobile Bottom Navigation Bar (Hidden on Admin routes) */}
+      {/* Customer Footer & Bottom Mobile Navigation (Hidden on Admin routes) */}
+      {!isAdminRoute && <Footer />}
       {!isAdminRoute && <MobileBottomNav />}
-
-      {/* Floating Bundle Savings Widget (Hidden on Admin routes) */}
-      {!isAdminRoute && <FloatingBundleWidget />}
 
       {/* Search Experience Modal */}
       <SearchModal

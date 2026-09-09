@@ -10,28 +10,32 @@ interface BestSellersProps {
 
 export const BestSellers: React.FC<BestSellersProps> = ({ products }) => {
   const navigate = useNavigate();
-  const bestSellers = products.filter((p) => p.isBestSeller).slice(0, 4);
+  const bestSellers = products.filter((p) => p.isBestSeller);
+  const itemsToRender = bestSellers.length > 0 ? bestSellers : products.slice(0, 8);
 
   return (
-    <section className="py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-left space-y-8 bg-neutral-50 border-y border-neutral-200">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-neutral-200 pb-4">
+    <section className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-left space-y-6 bg-neutral-50 border-y border-neutral-200">
+      <div className="flex items-center justify-between border-b border-neutral-200 pb-3">
         <div>
           <span className="text-xs font-bold uppercase tracking-widest text-neutral-400">Customer Favorites</span>
-          <h2 className="text-3xl font-extrabold text-black tracking-tight mt-1">Best Selling Homemade Products</h2>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-black tracking-tight mt-0.5">Best Selling Homemade Products</h2>
         </div>
 
         <button
           onClick={() => navigate('/products')}
-          className="text-xs font-bold text-black hover:underline flex items-center gap-1 self-start sm:self-auto"
+          className="text-xs font-bold text-black hover:underline flex items-center gap-1 cursor-pointer"
         >
-          <span>Browse All Best Sellers</span>
+          <span>Browse All</span>
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {bestSellers.map((product) => (
-          <ProductCard key={product.id} product={product} />
+      {/* Horizontal Side-by-Side Scroll Container when > 5 items */}
+      <div className="flex overflow-x-auto gap-4 sm:gap-6 pb-4 scrollbar-none snap-x snap-mandatory">
+        {itemsToRender.map((product) => (
+          <div key={product.id} className="min-w-[220px] sm:min-w-[270px] max-w-[280px] shrink-0 snap-start">
+            <ProductCard product={product} />
+          </div>
         ))}
       </div>
     </section>

@@ -11,6 +11,10 @@ import {
   AlertTriangle,
   CheckCircle,
   BarChart3,
+  Calendar,
+  CreditCard,
+  Wallet,
+  X,
 } from 'lucide-react';
 
 export const AnalyticsManagementTab: React.FC = () => {
@@ -18,17 +22,24 @@ export const AnalyticsManagementTab: React.FC = () => {
     products,
     categories,
     orders,
-    deliveryCities,
-    citySuggestions,
     addToast,
   } = useApp();
 
-  const [timeRange, setTimeRange] = useState<'all' | '30d' | '7d' | 'today'>('all');
+  const [timeRange, setTimeRange] = useState<'all' | '30d' | '7d' | 'today' | 'custom'>('all');
+  const [selectedDate, setSelectedDate] = useState<string>('');
 
-  // Filter orders based on time range
+  // Filter orders based on selected date calendar picker or quick time range
   const filteredOrders = useMemo(() => {
     const now = new Date();
     return orders.filter((order) => {
+      // Specific Calendar Date Filter
+      if (selectedDate && timeRange === 'custom') {
+        if (!order.date) return false;
+        // Match order date string yyyy-mm-dd or formatted ISO date
+        const oDateStr = new Date(order.date).toISOString().split('T')[0];
+        return oDateStr === selectedDate || order.date.includes(selectedDate);
+      }
+
       if (!order.date) return true;
       const orderDate = new Date(order.date);
       const diffTime = Math.abs(now.getTime() - orderDate.getTime());
@@ -39,7 +50,7 @@ export const AnalyticsManagementTab: React.FC = () => {
       if (timeRange === '30d') return diffDays <= 30;
       return true;
     });
-  }, [orders, timeRange]);
+  }, [orders, timeRange, selectedDate]);
 
   // Analytical Metrics Calculation
   const totalRevenue = useMemo(() => {
@@ -51,7 +62,7 @@ export const AnalyticsManagementTab: React.FC = () => {
   }, [filteredOrders]);
 
   const activeOrdersCount = useMemo(() => {
-    return filteredOrders.filter((o) => o.status === 'Active' || o.orderStatus !== 'delivered').length;
+    return filteredOrders.filter((o) => o.status === 'Active' || (o.orderStatus && o.orderStatus !== 'delivered' && o.orderStatus !== 'cancelled')).length;
   }, [filteredOrders]);
 
   const averageOrderValue = useMemo(() => {
@@ -61,7 +72,7 @@ export const AnalyticsManagementTab: React.FC = () => {
 
   // Inventory & Stock Health Metrics
   const outOfStockCount = useMemo(() => {
-    return products.filter((p) => !p.inStock || p.inventoryCount === 0).length;
+    return products.filter((p) => !p.inStock || p.inventoryCount === 0 || p.outOfStock).length;
   }, [products]);
 
   // Sales per Category
@@ -129,19 +140,27 @@ export const AnalyticsManagementTab: React.FC = () => {
       .sort((a, b) => b.count - a.count);
   }, [filteredOrders]);
 
-  // Payment Gateway Distribution
+  // Payment Gateway Revenue Breakdown (UPI vs Card vs COD)
   const paymentBreakdown = useMemo(() => {
-    const map: Record<string, number> = {};
+    const map: Record<string, { count: number; totalRevenue: number }> = {};
+
     filteredOrders.forEach((o) => {
-      const method = o.paymentMethod || 'UPI / GPay';
-      map[method] = (map[method] || 0) + 1;
+      const method = o.paymentMethod || 'UPI / PhonePe';
+      if (!map[method]) {
+        map[method] = { count: 0, totalRevenue: 0 };
+      }
+      map[method].count += 1;
+      map[method].totalRevenue += (o.total || 0);
     });
-    return Object.entries(map).map(([method, count]) => ({
+
+    return Object.entries(map).map(([method, data]) => ({
       method,
-      count,
-      percentage: Math.round((count / (filteredOrders.length || 1)) * 100),
+      count: data.count,
+      revenue: data.totalRevenue,
+      percentage: Math.round((data.count / (filteredOrders.length || 1)) * 100),
+      revenuePercentage: Math.round((data.totalRevenue / (totalRevenue || 1)) * 100),
     }));
-  }, [filteredOrders]);
+  }, [filteredOrders, totalRevenue]);
 
   const handlePrintReport = () => {
     addToast('Printing Analytics Summary', 'Preparing clean print view of sales report...', 'info');
@@ -158,9 +177,9 @@ export const AnalyticsManagementTab: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-black" />
-            <h2 className="text-xl font-extrabold text-black tracking-tight">Store Analytics & Insights</h2>
+            <h2 className="text-xl font-extrabold text-black tracking-tight">Store Analytics & Revenue Insights</h2>
           </div>
-          <p className="text-xs text-neutral-500 mt-1">Real-time revenue, order fulfillment, regional metrics & inventory health.</p>
+          <p className="text-xs text-neutral-500 mt-1">Real-time revenue, order fulfillment, regional metrics & payment gateway breakdown.</p>
         </div>
 
         <div className="flex items-center flex-wrap gap-2">
@@ -169,9 +188,12 @@ export const AnalyticsManagementTab: React.FC = () => {
             {(['all', '30d', '7d', 'today'] as const).map((range) => (
               <button
                 key={range}
-                onClick={() => setTimeRange(range)}
+                onClick={() => {
+                  setTimeRange(range);
+                  setSelectedDate('');
+                }}
                 className={`px-3 py-1.5 text-[11px] font-bold rounded-xl transition-all capitalize ${
-                  timeRange === range
+                  timeRange === range && !selectedDate
                     ? 'bg-black text-white shadow-subtle'
                     : 'text-neutral-600 hover:text-black hover:bg-neutral-100'
                 }`}
@@ -181,9 +203,39 @@ export const AnalyticsManagementTab: React.FC = () => {
             ))}
           </div>
 
+          {/* Specific Date Calendar Picker */}
+          <div className="flex items-center gap-1.5 bg-white border border-neutral-200 px-3 py-1.5 rounded-2xl shadow-subtle text-xs font-bold">
+            <Calendar className="w-4 h-4 text-neutral-500 shrink-0" />
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => {
+                setSelectedDate(e.target.value);
+                if (e.target.value) {
+                  setTimeRange('custom');
+                } else {
+                  setTimeRange('all');
+                }
+              }}
+              className="bg-transparent text-black text-xs font-bold focus:outline-none cursor-pointer"
+            />
+            {selectedDate && (
+              <button
+                onClick={() => {
+                  setSelectedDate('');
+                  setTimeRange('all');
+                }}
+                className="text-neutral-400 hover:text-black cursor-pointer"
+                title="Clear selected date"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
           <button
             onClick={handlePrintReport}
-            className="px-3.5 py-2 bg-white border border-neutral-200 hover:border-black text-black text-xs font-bold rounded-2xl transition-all flex items-center gap-1.5 shadow-subtle"
+            className="px-3.5 py-2 bg-white border border-neutral-200 hover:border-black text-black text-xs font-bold rounded-2xl transition-all flex items-center gap-1.5 shadow-subtle cursor-pointer"
           >
             <Printer className="w-3.5 h-3.5" />
             <span>Print Report</span>
@@ -191,10 +243,29 @@ export const AnalyticsManagementTab: React.FC = () => {
         </div>
       </div>
 
+      {/* Selected Custom Date Notification */}
+      {selectedDate && (
+        <div className="p-3 bg-neutral-900 text-white rounded-2xl flex items-center justify-between text-xs font-bold shadow-subtle">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-amber-400" />
+            <span>Filtering Analytics for Specific Date: <strong>{selectedDate}</strong></span>
+          </div>
+          <button
+            onClick={() => {
+              setSelectedDate('');
+              setTimeRange('all');
+            }}
+            className="text-xs text-neutral-300 hover:text-white underline cursor-pointer"
+          >
+            Show All Dates
+          </button>
+        </div>
+      )}
+
       {/* Printable Title header (Only in print) */}
       <div className="hidden print:block text-center border-b pb-4 mb-4">
         <h1 className="text-2xl font-bold">Aura Homemade Foods — Analytics & Performance Summary</h1>
-        <p className="text-xs text-neutral-600">Generated on {new Date().toLocaleDateString('en-IN')} | Period: {timeRange.toUpperCase()}</p>
+        <p className="text-xs text-neutral-600">Generated on {new Date().toLocaleDateString('en-IN')} | Period: {selectedDate ? `Date: ${selectedDate}` : timeRange.toUpperCase()}</p>
       </div>
 
       {/* KPI Cards Grid */}
@@ -212,7 +283,7 @@ export const AnalyticsManagementTab: React.FC = () => {
             <div className="text-2xl font-black text-black">₹{totalRevenue.toFixed(2)}</div>
             <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 mt-1">
               <ArrowUpRight className="w-3.5 h-3.5" />
-              <span>+18.4% vs last period</span>
+              <span>Verified Sales Total</span>
             </div>
           </div>
         </div>
@@ -327,25 +398,39 @@ export const AnalyticsManagementTab: React.FC = () => {
         {/* Payment Gateways & Order Status Distribution */}
         <div className="lg:col-span-4 space-y-6">
           
-          {/* Payment Method Distribution */}
+          {/* Payment Method Distribution Card */}
           <div className="bg-white p-6 rounded-3xl border border-neutral-200 shadow-subtle space-y-4">
-            <h3 className="text-base font-extrabold text-black tracking-tight">Payment Preferences</h3>
+            <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
+              <h3 className="text-base font-extrabold text-black tracking-tight flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-black" />
+                <span>Payment Gateways</span>
+              </h3>
+              <span className="text-[10px] font-extrabold uppercase text-neutral-400 font-mono">Revenue Split</span>
+            </div>
 
             <div className="space-y-3">
-              {paymentBreakdown.map((item) => (
-                <div key={item.method} className="p-3 bg-neutral-50 rounded-2xl border border-neutral-100 space-y-1">
-                  <div className="flex items-center justify-between text-xs font-bold">
-                    <span className="text-black">{item.method}</span>
-                    <span className="text-black font-mono">{item.percentage}%</span>
+              {paymentBreakdown.length > 0 ? (
+                paymentBreakdown.map((item) => (
+                  <div key={item.method} className="p-3 bg-neutral-50 rounded-2xl border border-neutral-200 space-y-1.5">
+                    <div className="flex items-center justify-between text-xs font-bold">
+                      <span className="text-black">{item.method}</span>
+                      <span className="text-black font-mono font-black">₹{item.revenue.toFixed(2)} ({item.revenuePercentage}%)</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] text-neutral-500">
+                      <span>{item.count} checkouts</span>
+                      <span className="font-mono">{item.percentage}% order volume</span>
+                    </div>
+                    <div className="w-full bg-neutral-200 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="bg-black h-full rounded-full transition-all duration-500"
+                        style={{ width: `${item.revenuePercentage}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="w-full bg-neutral-200 rounded-full h-2 overflow-hidden">
-                    <div
-                      className="bg-black h-full rounded-full"
-                      style={{ width: `${item.percentage}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-xs text-neutral-400 text-center py-4">No payment method data available.</p>
+              )}
             </div>
           </div>
 
@@ -371,7 +456,7 @@ export const AnalyticsManagementTab: React.FC = () => {
               <div className="flex items-center justify-between text-neutral-300">
                 <span>Completed Deliveries</span>
                 <span className="font-extrabold text-emerald-400 font-mono">
-                  {orders.filter((o) => o.status === 'Delivered').length} Delivered
+                  {orders.filter((o) => o.status === 'Delivered' || o.orderStatus === 'delivered').length} Delivered
                 </span>
               </div>
               <div className="flex items-center justify-between text-neutral-300">

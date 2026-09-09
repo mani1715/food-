@@ -59,12 +59,12 @@ export const HomePage: React.FC = () => {
       ? heroBanners.filter((b) => b.enabled)
       : heroSlides;
 
-  // Auto-scrolling Hero Banner effect (scrolls every 6 seconds)
+  // Auto-scrolling Hero Banner effect (scrolls every 3 seconds)
   useEffect(() => {
     if (activeHeroSlides.length === 0) return;
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % activeHeroSlides.length);
-    }, 6000);
+    }, 3000);
     return () => clearInterval(timer);
   }, [activeHeroSlides.length]);
 

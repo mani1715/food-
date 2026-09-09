@@ -10,7 +10,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { cartItems, wishlistProductIds, headerAnnouncements, siteLogo, categories } = useApp();
+  const { cartItems, wishlistProductIds, headerAnnouncements, siteLogo, categories, headerSettings } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const cartCount = cartItems.reduce((acc, i) => acc + i.quantity, 0);
@@ -26,13 +26,15 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
         ];
 
   const categoryMenus = [
-    ...(categories || []).map((cat) => ({
-      label: cat.name,
-      path: `/products?category=${encodeURIComponent(cat.name)}`,
-      subCategories: [
-        { label: `All ${cat.name} Collection`, path: `/products?category=${encodeURIComponent(cat.name)}` },
-      ],
-    })),
+    ...(categories || [])
+      .filter((cat) => !(headerSettings?.disabledCategoryNames || []).includes(cat.name))
+      .map((cat) => ({
+        label: cat.name,
+        path: `/products?category=${encodeURIComponent(cat.name)}`,
+        subCategories: [
+          { label: `All ${cat.name} Collection`, path: `/products?category=${encodeURIComponent(cat.name)}` },
+        ],
+      })),
     {
       label: 'BEST SELLERS',
       path: '/products',
@@ -155,62 +157,72 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
         </nav>
 
         {/* Right Side: Action Icons (Search, Wishlist, Profile, Track, Cart) */}
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center justify-end gap-2 sm:gap-3 shrink-0 ml-auto">
           
           {/* Search Icon */}
-          <button
-            onClick={onOpenSearch}
-            className="p-2.5 text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer"
-            title="Search Store"
-          >
-            <Search className="w-6 h-6" />
-          </button>
+          {headerSettings?.showSearch !== false && (
+            <button
+              onClick={onOpenSearch}
+              className="p-2 sm:p-2.5 text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer"
+              title="Search Store"
+            >
+              <Search className="w-5 h-5 sm:w-6 sm:h-6" />
+            </button>
+          )}
 
           {/* Wishlist Icon */}
-          <button
-            onClick={() => navigate('/wishlist')}
-            className="relative p-2.5 text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer"
-            title="Wishlist"
-          >
-            <Heart className="w-6 h-6" />
-            {wishlistProductIds.length > 0 && (
-              <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black text-white text-[9px] font-bold flex items-center justify-center">
-                {wishlistProductIds.length}
-              </span>
-            )}
-          </button>
+          {headerSettings?.showWishlist !== false && (
+            <button
+              onClick={() => navigate('/wishlist')}
+              className="relative p-2 sm:p-2.5 text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer"
+              title="Wishlist"
+            >
+              <Heart className="w-5 h-5 sm:w-6 sm:h-6" />
+              {wishlistProductIds.length > 0 && (
+                <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black text-white text-[9px] font-bold flex items-center justify-center">
+                  {wishlistProductIds.length}
+                </span>
+              )}
+            </button>
+          )}
 
           {/* Profile / Account Icon */}
-          <button
-            onClick={() => navigate('/profile')}
-            className="p-2.5 text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer"
-            title="Account Profile"
-          >
-            <User className="w-6 h-6" />
-          </button>
+          {headerSettings?.showAccount !== false && (
+            <button
+              onClick={() => navigate('/profile')}
+              className="p-2 sm:p-2.5 text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer"
+              title="Account Profile"
+            >
+              <User className="w-5 h-5 sm:w-6 sm:h-6" />
+            </button>
+          )}
 
           {/* Track Order Icon */}
-          <button
-            onClick={() => navigate('/track-order')}
-            className="p-2.5 text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer hidden sm:block"
-            title="Track Order"
-          >
-            <Package className="w-6 h-6" />
-          </button>
+          {headerSettings?.showTrackOrder !== false && (
+            <button
+              onClick={() => navigate('/track-order')}
+              className="p-2 sm:p-2.5 text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer hidden sm:block"
+              title="Track Order"
+            >
+              <Package className="w-5 h-5 sm:w-6 sm:h-6" />
+            </button>
+          )}
 
           {/* Cart Icon */}
-          <button
-            onClick={() => navigate('/cart')}
-            className="relative p-2.5 text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer"
-            title="Shopping Cart"
-          >
-            <ShoppingBag className="w-6 h-6" />
-            {cartCount > 0 && (
-              <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black text-white text-[9px] font-bold flex items-center justify-center">
-                {cartCount}
-              </span>
-            )}
-          </button>
+          {headerSettings?.showCart !== false && (
+            <button
+              onClick={() => navigate('/cart')}
+              className="relative p-2 sm:p-2.5 text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer"
+              title="Shopping Cart"
+            >
+              <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6" />
+              {cartCount > 0 && (
+                <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black text-white text-[9px] font-bold flex items-center justify-center">
+                  {cartCount}
+                </span>
+              )}
+            </button>
+          )}
 
         </div>
 

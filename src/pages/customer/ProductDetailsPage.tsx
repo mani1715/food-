@@ -186,17 +186,17 @@ export const ProductDetailsPage: React.FC = () => {
               <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={() => addToCart(product, selectedWeight, quantity)}
-                  className="flex-1 py-4 bg-black text-white text-xs font-extrabold rounded-2xl hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 shadow-subtle cursor-pointer"
+                  className="flex-1 py-4 sm:py-5 bg-black text-white text-sm sm:text-base font-black rounded-2xl hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 shadow-modal cursor-pointer"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-5 h-5" />
                   <span>Add To Cart • ₹{currentPrice * quantity}</span>
                 </button>
 
                 <button
                   onClick={handleBuyNow}
-                  className="flex-1 py-4 bg-white border-2 border-black text-black text-xs font-extrabold rounded-2xl hover:bg-neutral-100 transition-all cursor-pointer"
+                  className="flex-1 py-4 sm:py-5 bg-white border-2 border-black text-black text-sm sm:text-base font-black rounded-2xl hover:bg-neutral-100 transition-all cursor-pointer shadow-subtle"
                 >
-                  Buy Now
+                  ⚡ Buy Now
                 </button>
 
                 <button

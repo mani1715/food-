@@ -203,3 +203,34 @@ export type AdminTab =
   | 'settings'
   | 'newsletter'
   | 'profile';
+
+export interface HeaderSettings {
+  showSearch: boolean;
+  showWishlist: boolean;
+  showAccount: boolean;
+  showTrackOrder: boolean;
+  showCart: boolean;
+  disabledCategoryNames: string[];
+}
+
+export interface StockHistoryLog {
+  id: string;
+  productId: string;
+  productName: string;
+  type: 'restock' | 'destock';
+  quantity: number;
+  date: string;
+  time: string;
+  note?: string;
+  adminName?: string;
+}
+
+export interface SubAdmin {
+  id: string;
+  name: string;
+  email: string;
+  password: string;
+  roleTitle: string;
+  allowedTabs: AdminTab[];
+  createdAt: string;
+}

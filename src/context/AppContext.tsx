@@ -15,6 +15,9 @@ import {
   HeroBannerSlide,
   HeaderAnnouncement,
   Coupon,
+  HeaderSettings,
+  StockHistoryLog,
+  SubAdmin,
 } from '../types';
 import {
   MOCK_PRODUCTS,
@@ -57,6 +60,9 @@ interface AppContextType {
   heroBanners: HeroBannerSlide[];
   headerAnnouncements: HeaderAnnouncement[];
   coupons: Coupon[];
+  headerSettings: HeaderSettings;
+  stockHistoryLogs: StockHistoryLog[];
+  subAdmins: SubAdmin[];
 
   // Coupon Actions
   addCoupon: (coupon: Omit<Coupon, 'id' | 'usageCount'>) => void;
@@ -139,6 +145,12 @@ interface AppContextType {
 
   // Settings & WhatsApp Admin
   setPaymentEnabled: (enabled: boolean) => void;
+  updateHeaderSettings: (settings: Partial<HeaderSettings>) => void;
+  restockProduct: (productId: string, quantity: number, note?: string) => void;
+  destockProduct: (productId: string, quantity: number, note?: string) => void;
+  addSubAdmin: (subAdmin: Omit<SubAdmin, 'id' | 'createdAt'>) => void;
+  updateSubAdmin: (id: string, updated: Partial<SubAdmin>) => void;
+  deleteSubAdmin: (id: string) => void;
   addWhatsAppContact: (name: string, phone: string) => void;
   updateWhatsAppContact: (id: string, updated: Partial<WhatsAppContact>) => void;
   deleteWhatsAppContact: (id: string) => void;
@@ -383,6 +395,121 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [coupons, setCoupons] = useState<Coupon[]>(() =>
     getInitialState('aura_coupons', MOCK_COUPONS)
   );
+  const [headerSettings, setHeaderSettings] = useState<HeaderSettings>(() =>
+    getInitialState('aura_header_settings', {
+      showSearch: true,
+      showWishlist: true,
+      showAccount: true,
+      showTrackOrder: true,
+      showCart: true,
+      disabledCategoryNames: [],
+    })
+  );
+  const [stockHistoryLogs, setStockHistoryLogs] = useState<StockHistoryLog[]>(() =>
+    getInitialState('aura_stock_history_logs', [])
+  );
+  const [subAdmins, setSubAdmins] = useState<SubAdmin[]>(() =>
+    getInitialState('aura_sub_admins', [])
+  );
+
+  useEffect(() => {
+    localStorage.setItem('aura_header_settings', JSON.stringify(headerSettings));
+  }, [headerSettings]);
+
+  useEffect(() => {
+    localStorage.setItem('aura_stock_history_logs', JSON.stringify(stockHistoryLogs));
+  }, [stockHistoryLogs]);
+
+  useEffect(() => {
+    localStorage.setItem('aura_sub_admins', JSON.stringify(subAdmins));
+  }, [subAdmins]);
+
+  const updateHeaderSettings = (settings: Partial<HeaderSettings>) => {
+    setHeaderSettings((prev) => ({ ...prev, ...settings }));
+    addToast('Header Display Updated ⚙️', 'Header layout updated.', 'success');
+  };
+
+  const restockProduct = (productId: string, quantity: number, note = 'Inventory Restock') => {
+    let prodName = '';
+    setProducts((prev) =>
+      prev.map((p) => {
+        if (p.id === productId) {
+          prodName = p.name;
+          const newQty = (p.inventoryCount ?? 0) + quantity;
+          return { ...p, inventoryCount: newQty, outOfStock: false, inStock: true };
+        }
+        return p;
+      })
+    );
+
+    const now = new Date();
+    const newLog: StockHistoryLog = {
+      id: `log-${Date.now()}`,
+      productId,
+      productName: prodName || 'Product',
+      type: 'restock',
+      quantity,
+      date: now.toISOString().split('T')[0],
+      time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      note,
+      adminName: 'Store Admin',
+    };
+
+    setStockHistoryLogs((prev) => [newLog, ...prev]);
+    addToast('Stock Restocked ✅', `Added +${quantity} units to ${prodName || 'Product'}.`, 'success');
+  };
+
+  const destockProduct = (productId: string, quantity: number, note = 'Inventory Destock') => {
+    let prodName = '';
+    setProducts((prev) =>
+      prev.map((p) => {
+        if (p.id === productId) {
+          prodName = p.name;
+          const current = p.inventoryCount ?? 0;
+          const newQty = Math.max(0, current - quantity);
+          const isOut = newQty <= 0;
+          return { ...p, inventoryCount: newQty, outOfStock: isOut, inStock: !isOut };
+        }
+        return p;
+      })
+    );
+
+    const now = new Date();
+    const newLog: StockHistoryLog = {
+      id: `log-${Date.now()}`,
+      productId,
+      productName: prodName || 'Product',
+      type: 'destock',
+      quantity,
+      date: now.toISOString().split('T')[0],
+      time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      note,
+      adminName: 'Store Admin',
+    };
+
+    setStockHistoryLogs((prev) => [newLog, ...prev]);
+    addToast('Stock Destocked 🔻', `Removed -${quantity} units from ${prodName || 'Product'}.`, 'info');
+  };
+
+  const addSubAdmin = (subAdmin: Omit<SubAdmin, 'id' | 'createdAt'>) => {
+    const newSubAdmin: SubAdmin = {
+      ...subAdmin,
+      id: `sub-${Date.now()}`,
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+    setSubAdmins((prev) => [...prev, newSubAdmin]);
+    addToast('Sub-Admin Created 👤', `Account for ${subAdmin.name} added.`, 'success');
+  };
+
+  const updateSubAdmin = (id: string, updated: Partial<SubAdmin>) => {
+    setSubAdmins((prev) => prev.map((s) => (s.id === id ? { ...s, ...updated } : s)));
+    addToast('Sub-Admin Updated', 'Permissions updated.', 'success');
+  };
+
+  const deleteSubAdmin = (id: string) => {
+    setSubAdmins((prev) => prev.filter((s) => s.id !== id));
+    addToast('Sub-Admin Deleted', 'Account removed.', 'info');
+  };
 
   // Admin Specific State (with 4-hour automatic session expiration)
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
@@ -1136,6 +1263,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         heroBanners,
         headerAnnouncements,
         coupons,
+        headerSettings,
+        stockHistoryLogs,
+        subAdmins,
         isAdminAuthenticated,
         deliveryCities,
         citySuggestions,
@@ -1194,6 +1324,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updatePaymentStatus,
         cancelOrder,
         setPaymentEnabled,
+        updateHeaderSettings,
+        restockProduct,
+        destockProduct,
+        addSubAdmin,
+        updateSubAdmin,
+        deleteSubAdmin,
         addWhatsAppContact,
         updateWhatsAppContact,
         deleteWhatsAppContact,

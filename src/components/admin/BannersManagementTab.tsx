@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { HeroBannerSlide, HeaderAnnouncement } from '../../types';
 import { Image as ImageIcon, Volume2, Plus, Edit3, Trash2, Eye, EyeOff, Check, X, Clock } from 'lucide-react';
+import { DragDropImagePicker } from './DragDropImagePicker';
 
 export const BannersManagementTab: React.FC = () => {
   const {
@@ -346,6 +347,13 @@ export const BannersManagementTab: React.FC = () => {
                   className="w-full px-4 py-2.5 bg-white border border-neutral-300 rounded-2xl text-xs focus:ring-2 focus:ring-black focus:outline-none"
                 />
               </div>
+
+              <DragDropImagePicker
+                label="Hero Banner Photo Upload"
+                value={bannerForm.image}
+                onChange={(url) => setBannerForm({ ...bannerForm, image: url })}
+                helperText="Drag & drop high resolution banner image or browse from files/folders."
+              />
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
