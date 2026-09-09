@@ -108,7 +108,7 @@ interface AppContextType {
   addCategory: (name: string, image?: string, description?: string) => ProductCategory;
   updateCategory: (id: string, updated: Partial<ProductCategory>) => void;
   deleteCategory: (id: string) => void;
-  addProduct: (product: Omit<Product, 'id'>) => void;
+  addProduct: (product: Omit<Product, 'id'> & { id?: string }) => Product;
   updateProduct: (id: string, updated: Partial<Product>) => void;
   deleteProduct: (id: string) => void;
   toggleProductBestSeller: (id: string) => void;
@@ -836,10 +836,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast('Category Removed', 'Category deleted from store.', 'info');
   };
 
-  const addProduct = (product: Omit<Product, 'id'>) => {
-    const newProd: Product = { ...product, id: `prod-${Date.now()}` };
+  const addProduct = (product: Omit<Product, 'id'> & { id?: string }): Product => {
+    const newProd: Product = { ...product, id: product.id || `prod-${Date.now()}` };
     setProducts((prev) => [newProd, ...prev]);
     addToast('Product Created', `${newProd.name} added to catalog.`, 'success');
+    return newProd;
   };
 
   const updateProduct = (id: string, updated: Partial<Product>) => {

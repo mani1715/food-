@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Product, WeightOption, ProcessStep } from '../../types';
+import { Product, ProductCategory, WeightOption, ProcessStep } from '../../types';
 import { Plus, Edit2, Trash2, Search, X, Star, Tag, Scale, Image as ImageIcon, LayoutGrid, Check, Sparkles, BookOpen, Layers, History, TrendingUp, TrendingDown } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { DragDropImagePicker } from './DragDropImagePicker';
@@ -43,6 +43,8 @@ export const ProductsManagementTab: React.FC = () => {
     products,
     categories,
     addCategory,
+    updateCategory,
+    deleteCategory,
     addProduct,
     updateProduct,
     deleteProduct,
@@ -120,6 +122,7 @@ export const ProductsManagementTab: React.FC = () => {
 
   // Add New Category Modal State
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<ProductCategory | null>(null);
   const [targetModalForNewCategory, setTargetModalForNewCategory] = useState<'add' | 'edit'>('add');
   const [newCatName, setNewCatName] = useState('');
   const [newCatImage, setNewCatImage] = useState('');
@@ -251,7 +254,8 @@ export const ProductsManagementTab: React.FC = () => {
       finalIngredients.push(ingredientInput.trim());
     }
 
-    addProduct({
+    const createdProduct = addProduct({
+      id: newProdId,
       name: newName,
       category: newCategory,
       price: newWeightOptions[0]?.price || 299,
@@ -463,19 +467,55 @@ export const ProductsManagementTab: React.FC = () => {
         </div>
       </div>
 
-      {/* Category Specific Notice when Category Selected */}
+      {/* Category Specific Notice & Controls when Category Selected */}
       {categoryFilter !== 'All' && (
-        <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-2xl flex items-center justify-between text-xs">
-          <span className="font-bold text-black">
-            Showing products for category: <span className="underline font-black">{categoryFilter}</span> ({filteredProducts.length} items)
-          </span>
-          <button
-            onClick={() => handleOpenAddModal(categoryFilter)}
-            className="px-3 py-1.5 bg-black text-white text-[11px] font-extrabold rounded-xl hover:bg-neutral-800 transition-all flex items-center gap-1 cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>+ Add Product to {categoryFilter}</span>
-          </button>
+        <div className="p-3.5 bg-neutral-50 border border-neutral-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-subtle">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-black">
+              Showing Category: <span className="underline font-black">{categoryFilter}</span> ({filteredProducts.length} products)
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            {categories.find((c) => c.name === categoryFilter) && (
+              <>
+                <button
+                  onClick={() => {
+                    const cat = categories.find((c) => c.name === categoryFilter);
+                    if (cat) setEditingCategory(cat);
+                  }}
+                  className="px-3 py-1.5 bg-white border border-neutral-300 hover:border-black text-black text-[11px] font-extrabold rounded-xl transition-all flex items-center gap-1 cursor-pointer"
+                  title="Edit Category Details"
+                >
+                  <Edit2 className="w-3.5 h-3.5 text-black" />
+                  <span>Edit Category</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    const cat = categories.find((c) => c.name === categoryFilter);
+                    if (cat) {
+                      deleteCategory(cat.id);
+                      setCategoryFilter('All');
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-[11px] font-extrabold rounded-xl transition-all flex items-center gap-1 cursor-pointer"
+                  title="Delete Category"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Delete Category</span>
+                </button>
+              </>
+            )}
+
+            <button
+              onClick={() => handleOpenAddModal(categoryFilter)}
+              className="px-3.5 py-1.5 bg-black text-white text-[11px] font-extrabold rounded-xl hover:bg-neutral-800 transition-all flex items-center gap-1 cursor-pointer shadow-subtle shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>+ Add Product to {categoryFilter}</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -1804,6 +1844,80 @@ export const ProductsManagementTab: React.FC = () => {
                 className="flex-1 py-3 bg-black hover:bg-neutral-800 text-white rounded-2xl text-xs font-extrabold transition-all cursor-pointer shadow-subtle"
               >
                 Create Category
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* EDIT CATEGORY MODAL */}
+      {editingCategory && (
+        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!editingCategory.name.trim()) return;
+              updateCategory(editingCategory.id, {
+                name: editingCategory.name.trim(),
+                image: editingCategory.image,
+                description: editingCategory.description,
+              });
+              setCategoryFilter(editingCategory.name.trim());
+              setEditingCategory(null);
+            }}
+            className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-5 shadow-modal text-left"
+          >
+            <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
+              <h3 className="text-lg font-black text-black">Edit Category: {editingCategory.name}</h3>
+              <button type="button" onClick={() => setEditingCategory(null)} className="text-neutral-400 hover:text-black">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs font-bold">
+              <div>
+                <label className="block text-neutral-500 mb-1">Category Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={editingCategory.name}
+                  onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
+                  className="w-full p-3 rounded-2xl border border-neutral-300 font-extrabold text-sm"
+                />
+              </div>
+
+              <DragDropImagePicker
+                label="Category Cover Image"
+                value={editingCategory.image || ''}
+                onChange={(url) => setEditingCategory({ ...editingCategory, image: url })}
+                helperText="Upload or select category banner image."
+              />
+
+              <div>
+                <label className="block text-neutral-500 mb-1">Description</label>
+                <input
+                  type="text"
+                  value={editingCategory.description || ''}
+                  onChange={(e) => setEditingCategory({ ...editingCategory, description: e.target.value })}
+                  placeholder="Brief description of this food category..."
+                  className="w-full p-3 rounded-2xl border border-neutral-300 font-sans"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setEditingCategory(null)}
+                className="flex-1 py-3 border border-neutral-200 hover:bg-neutral-100 rounded-2xl text-xs font-bold text-black transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="flex-1 py-3 bg-black hover:bg-neutral-800 text-white rounded-2xl text-xs font-extrabold transition-all cursor-pointer shadow-subtle"
+              >
+                Save Category
               </button>
             </div>
           </form>

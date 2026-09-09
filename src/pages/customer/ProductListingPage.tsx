@@ -33,11 +33,34 @@ export const ProductListingPage: React.FC = () => {
     }
   }, [searchParams]);
 
+  const handleCategorySelect = (catName: string) => {
+    setSelectedCategory(catName);
+    const newParams = new URLSearchParams(searchParams);
+    if (catName === 'All') {
+      newParams.delete('category');
+    } else {
+      newParams.set('category', catName);
+    }
+    setSearchParams(newParams);
+  };
+
+  const handleDietarySelect = (diet: string) => {
+    setSelectedDietary(diet);
+    const newParams = new URLSearchParams(searchParams);
+    if (diet === 'All') {
+      newParams.delete('dietary');
+    } else {
+      newParams.set('dietary', diet);
+    }
+    setSearchParams(newParams);
+  };
+
   const filteredProducts = useMemo(() => {
     return products
       .filter((p) => {
         const matchesCategory =
-          selectedCategory === 'All' || p.category.toLowerCase() === selectedCategory.toLowerCase();
+          selectedCategory === 'All' ||
+          p.category.toLowerCase().trim() === selectedCategory.toLowerCase().trim();
         
         const matchesDietary =
           selectedDietary === 'All' ||
@@ -128,7 +151,7 @@ export const ProductListingPage: React.FC = () => {
         {['All', 'Veg', 'Non-Veg'].map((diet) => (
           <button
             key={diet}
-            onClick={() => setSelectedDietary(diet)}
+            onClick={() => handleDietarySelect(diet)}
             className={`px-4 py-2 rounded-2xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
               selectedDietary === diet
                 ? 'bg-black text-white border-black shadow-subtle'
@@ -177,7 +200,7 @@ export const ProductListingPage: React.FC = () => {
             <label className="block text-xs font-bold uppercase text-neutral-500">Category</label>
             <div className="space-y-1 max-h-48 overflow-y-auto pr-1 text-xs">
               <button
-                onClick={() => setSelectedCategory('All')}
+                onClick={() => handleCategorySelect('All')}
                 className={`w-full text-left py-1.5 px-3 rounded-xl font-bold transition-all cursor-pointer ${
                   selectedCategory === 'All' ? 'bg-black text-white' : 'text-neutral-600 hover:bg-neutral-200'
                 }`}
@@ -187,7 +210,7 @@ export const ProductListingPage: React.FC = () => {
               {categories.map((cat) => (
                 <button
                   key={cat.id}
-                  onClick={() => setSelectedCategory(cat.name)}
+                  onClick={() => handleCategorySelect(cat.name)}
                   className={`w-full text-left py-1.5 px-3 rounded-xl font-bold transition-all cursor-pointer ${
                     selectedCategory.toLowerCase() === cat.name.toLowerCase() ? 'bg-black text-white' : 'text-neutral-600 hover:bg-neutral-200'
                   }`}
@@ -255,7 +278,7 @@ export const ProductListingPage: React.FC = () => {
                   {['All', 'Veg', 'Non-Veg'].map((d) => (
                     <button
                       key={d}
-                      onClick={() => setSelectedDietary(d)}
+                      onClick={() => handleDietarySelect(d)}
                       className={`flex-1 py-2 rounded-xl text-xs font-bold border cursor-pointer ${
                         selectedDietary === d ? 'bg-black text-white border-black' : 'bg-neutral-50 text-black border-neutral-200'
                       }`}
@@ -270,7 +293,7 @@ export const ProductListingPage: React.FC = () => {
                 <label className="block text-xs font-bold uppercase text-neutral-500 mb-1">Select Category</label>
                 <div className="flex flex-wrap gap-2">
                   <button
-                    onClick={() => setSelectedCategory('All')}
+                    onClick={() => handleCategorySelect('All')}
                     className={`px-3 py-1.5 rounded-xl border text-xs font-bold cursor-pointer ${
                       selectedCategory === 'All' ? 'bg-black text-white border-black' : 'bg-neutral-50 text-black border-neutral-200'
                     }`}
@@ -280,9 +303,9 @@ export const ProductListingPage: React.FC = () => {
                   {categories.map((c) => (
                     <button
                       key={c.id}
-                      onClick={() => setSelectedCategory(c.name)}
+                      onClick={() => handleCategorySelect(c.name)}
                       className={`px-3 py-1.5 rounded-xl border text-xs font-bold cursor-pointer ${
-                        selectedCategory === c.name ? 'bg-black text-white border-black' : 'bg-neutral-50 text-black border-neutral-200'
+                        selectedCategory.toLowerCase() === c.name.toLowerCase() ? 'bg-black text-white border-black' : 'bg-neutral-50 text-black border-neutral-200'
                       }`}
                     >
                       {c.name}
