@@ -155,6 +155,7 @@ export const ProductsManagementTab: React.FC = () => {
     setNewProcessSteps([...DEFAULT_PROCESS_STEPS]);
     setNewIngredientsList([]);
     setIngredientInput('');
+    setNewGallery([]);
     setNewRating(5.0);
     setNewReviewsCount(1);
     setNewInventoryCount(100);
@@ -266,7 +267,7 @@ export const ProductsManagementTab: React.FC = () => {
       rating: newRating || 5.0,
       reviewsCount: newReviewsCount || 1,
       image: primaryImg,
-      gallery: newGallery,
+      gallery: newGallery.length > 0 ? newGallery : [primaryImg],
       description: newDescription || 'Fresh handcrafted homemade food item prepared with traditional ingredients.',
       ingredients: finalIngredients.length > 0 ? finalIngredients : undefined,
       grandmaStory: newGrandmaStory.trim() || undefined,
