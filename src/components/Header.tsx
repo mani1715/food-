@@ -106,12 +106,12 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
           </button>
 
           <div onClick={() => navigate('/')} className="flex items-center cursor-pointer group shrink-0 relative z-30 -mb-4 sm:-mb-6 lg:-mb-10">
-            {/* Dynamic Overhanging Circular Store Logo - Rangvarsha Signature Emblem */}
-            <div className="w-20 h-20 sm:w-28 sm:h-28 lg:w-36 lg:h-36 xl:w-40 xl:h-40 rounded-full overflow-hidden border-4 border-black bg-white flex items-center justify-center shadow-xl group-hover:scale-105 transition-all duration-300 shrink-0">
+            {/* Dynamic Overhanging Circular Store Logo - Full Black Emblem Fill */}
+            <div className="w-20 h-20 sm:w-28 sm:h-28 lg:w-36 lg:h-36 xl:w-40 xl:h-40 rounded-full overflow-hidden border-3 border-black bg-black flex items-center justify-center shadow-2xl group-hover:scale-105 transition-all duration-300 shrink-0">
               <img
                 src={siteLogo || '/aishu-logo.jpg'}
                 alt="Aishu Foods Logo"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover scale-105 rounded-full"
               />
             </div>
           </div>
