@@ -1,23 +1,41 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { WeeklyHighlights, HighlightItem, HomeSection } from '../../types';
-import { Star, Tag, Flame, Save, Plus, Trash2, Check, Eye, EyeOff, LayoutGrid, ChevronUp } from 'lucide-react';
+import { Star, Tag, Flame, Save, Plus, Trash2, Check, Eye, EyeOff, LayoutGrid, ChevronUp, ChevronDown, Search, Filter, Layers } from 'lucide-react';
 
-// Per-section draft editor so title/badge/subtitle changes don't spam toasts
+// Per-section draft editor with category dropdown and filter
 const SectionEditor: React.FC<{
   sec: HomeSection;
   secIdx: number;
   products: ReturnType<typeof useApp>['products'];
+  categories: ReturnType<typeof useApp>['categories'];
   onToggleProduct: (secId: string, prodId: string) => void;
   onToggleVisible: (secId: string, enabled: boolean) => void;
   onSave: (secId: string, updates: Partial<HomeSection>) => void;
   onDelete: (secId: string) => void;
-}> = ({ sec, secIdx, products, onToggleProduct, onToggleVisible, onSave, onDelete }) => {
+}> = ({ sec, secIdx, products, categories, onToggleProduct, onToggleVisible, onSave, onDelete }) => {
   const [draftBadge, setDraftBadge] = useState(sec.badge || '');
   const [draftTitle, setDraftTitle] = useState(sec.title);
   const [draftSubtitle, setDraftSubtitle] = useState(sec.subtitle || '');
   const [isDirty, setIsDirty] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  
+  // Category Filter & Dropdown State
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsCategoryDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     setDraftBadge(sec.badge || '');
@@ -34,6 +52,13 @@ const SectionEditor: React.FC<{
     });
     setIsDirty(false);
   };
+
+  // Filter products by selected category and search query
+  const filteredProducts = products.filter((p) => {
+    const matchesCategory = selectedCategory === 'All' || p.category.toLowerCase() === selectedCategory.toLowerCase();
+    const matchesSearch = !searchQuery.trim() || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.category.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
 
   return (
     <div className={`bg-neutral-50 border rounded-3xl p-6 space-y-6 shadow-subtle transition-all ${isDirty ? 'border-black ring-2 ring-black/10' : 'border-neutral-200 hover:border-neutral-400'}`}>
@@ -140,19 +165,151 @@ const SectionEditor: React.FC<{
         </div>
       </div>
 
-      {/* Product Assignment Picker — click immediately updates homepage */}
-      <div className="space-y-3 pt-2">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-extrabold uppercase tracking-wider text-neutral-400">
-            Click products to add/remove from "{sec.title}" on Homepage
-          </span>
-          <span className="text-[10px] font-mono text-neutral-400 bg-neutral-200 px-2 py-0.5 rounded-full">
-            {sec.productIds.length} selected
+      {/* Product Assignment Picker with Category Dropdown & Filter */}
+      <div className="space-y-4 pt-2 border-t border-neutral-200">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <span className="text-xs font-extrabold uppercase tracking-wider text-black flex items-center gap-1.5">
+              <Layers className="w-4 h-4 text-neutral-600" />
+              <span>Select Products for "{sec.title}"</span>
+            </span>
+            <p className="text-[11px] text-neutral-500">Filter by category or search to choose products for this homepage section.</p>
+          </div>
+          <span className="text-[11px] font-mono text-black font-bold bg-neutral-200 px-3 py-1 rounded-full shrink-0 self-start sm:self-auto">
+            {sec.productIds.length} Total Selected
           </span>
         </div>
+
+        {/* Category Selector Controls: Dropdown + Search */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          {/* Category Dropdown with Arrow */}
+          <div className="relative" ref={dropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+              className="w-full sm:w-auto px-4 py-2.5 bg-white border border-neutral-300 hover:border-black rounded-2xl text-xs font-extrabold text-black flex items-center justify-between gap-2 transition-all cursor-pointer shadow-sm"
+            >
+              <div className="flex items-center gap-1.5">
+                <Filter className="w-3.5 h-3.5 text-neutral-500" />
+                <span>Category: <strong className="underline">{selectedCategory}</strong></span>
+                <span className="text-[10px] text-neutral-400 font-mono">
+                  ({selectedCategory === 'All' ? products.length : products.filter(p => p.category.toLowerCase() === selectedCategory.toLowerCase()).length})
+                </span>
+              </div>
+              {isCategoryDropdownOpen ? (
+                <ChevronUp className="w-4 h-4 text-black shrink-0" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-black shrink-0" />
+              )}
+            </button>
+
+            {/* Dropdown Menu */}
+            {isCategoryDropdownOpen && (
+              <div className="absolute left-0 top-full mt-1.5 w-64 bg-white rounded-2xl border border-neutral-200 shadow-xl z-30 py-2 space-y-0.5 max-h-60 overflow-y-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCategory('All');
+                    setIsCategoryDropdownOpen(false);
+                  }}
+                  className={`w-full px-4 py-2 text-left text-xs font-bold flex items-center justify-between hover:bg-neutral-100 cursor-pointer ${
+                    selectedCategory === 'All' ? 'bg-black text-white hover:bg-neutral-800' : 'text-black'
+                  }`}
+                >
+                  <span>All Categories</span>
+                  <span className="text-[10px] font-mono opacity-70">({products.length} products)</span>
+                </button>
+                {categories.map((cat) => {
+                  const catCount = products.filter((p) => p.category.toLowerCase() === cat.name.toLowerCase()).length;
+                  const selectedInCat = products.filter((p) => p.category.toLowerCase() === cat.name.toLowerCase() && sec.productIds.includes(p.id)).length;
+                  const isCatSelected = selectedCategory.toLowerCase() === cat.name.toLowerCase();
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory(cat.name);
+                        setIsCategoryDropdownOpen(false);
+                      }}
+                      className={`w-full px-4 py-2 text-left text-xs font-bold flex items-center justify-between hover:bg-neutral-100 cursor-pointer ${
+                        isCatSelected ? 'bg-black text-white hover:bg-neutral-800' : 'text-black'
+                      }`}
+                    >
+                      <span>{cat.name}</span>
+                      <span className="text-[10px] font-mono opacity-70">
+                        {selectedInCat > 0 ? `(${selectedInCat}/${catCount})` : `(${catCount})`}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Quick Category Pills Scrollable Bar */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+            <button
+              type="button"
+              onClick={() => setSelectedCategory('All')}
+              className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold border whitespace-nowrap cursor-pointer transition-all ${
+                selectedCategory === 'All'
+                  ? 'bg-black text-white border-black'
+                  : 'bg-white text-neutral-600 border-neutral-200 hover:border-black'
+              }`}
+            >
+              All ({products.length})
+            </button>
+            {categories.map((c) => {
+              const count = products.filter((p) => p.category.toLowerCase() === c.name.toLowerCase()).length;
+              const isSelected = selectedCategory.toLowerCase() === c.name.toLowerCase();
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setSelectedCategory(c.name)}
+                  className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold border whitespace-nowrap cursor-pointer transition-all ${
+                    isSelected
+                      ? 'bg-black text-white border-black'
+                      : 'bg-white text-neutral-600 border-neutral-200 hover:border-black'
+                  }`}
+                >
+                  {c.name} ({count})
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Product Search */}
+          <div className="relative sm:ml-auto w-full sm:w-56">
+            <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search products..."
+              className="w-full pl-8 pr-3 py-2 bg-white border border-neutral-300 rounded-xl text-xs font-medium focus:outline-none focus:border-black"
+            />
+          </div>
+        </div>
+
+        {/* Showing Filter Info */}
+        <div className="flex items-center justify-between text-[11px] text-neutral-500 font-medium">
+          <span>
+            Showing <strong>{filteredProducts.length}</strong> product(s) {selectedCategory !== 'All' && <span>in <strong className="text-black">{selectedCategory}</strong></span>}
+          </span>
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="text-black font-bold hover:underline cursor-pointer"
+            >
+              Clear search
+            </button>
+          )}
+        </div>
         
+        {/* Product Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {products.map((prod) => {
+          {filteredProducts.map((prod) => {
             const isSelected = sec.productIds.includes(prod.id);
             return (
               <div
@@ -177,9 +334,11 @@ const SectionEditor: React.FC<{
           })}
         </div>
 
-        {sec.productIds.length === 0 && (
-          <div className="py-6 text-center text-xs text-neutral-400 border-2 border-dashed border-neutral-200 rounded-2xl">
-            No products selected. Click any product above to add it to this homepage section.
+        {filteredProducts.length === 0 && (
+          <div className="py-8 text-center text-xs text-neutral-400 border-2 border-dashed border-neutral-200 rounded-2xl">
+            {searchQuery
+              ? `No products found matching "${searchQuery}" in ${selectedCategory}.`
+              : `No products in the "${selectedCategory}" category yet.`}
           </div>
         )}
       </div>
@@ -203,6 +362,7 @@ const SectionEditor: React.FC<{
 export const FeaturedManagementTab: React.FC = () => {
   const {
     products,
+    categories,
     weeklyHighlights,
     updateWeeklyHighlights,
     toggleProductBestSeller,
@@ -280,6 +440,7 @@ export const FeaturedManagementTab: React.FC = () => {
               sec={sec}
               secIdx={secIdx}
               products={products}
+              categories={categories}
               onToggleProduct={(secId, prodId) => toggleProductInHomeSection(secId, prodId)}
               onToggleVisible={(secId, enabled) => updateHomeSection(secId, { enabled })}
               onSave={(secId, updates) => updateHomeSection(secId, updates)}
