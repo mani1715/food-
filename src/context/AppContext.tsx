@@ -41,8 +41,40 @@ import {
   validateIndianPhone,
   rateLimiter,
 } from '../utils/security';
+import { isSupabaseConfigured, supabase } from '../lib/supabase/client';
+import {
+  fetchAllProducts,
+  fetchAllCategories,
+  createProductInDb,
+  updateProductInDb,
+  deleteProductFromDb,
+  createCategoryInDb,
+  updateCategoryInDb,
+  deleteCategoryFromDb,
+} from '../lib/supabase/products';
+import {
+  fetchAllOrders,
+  createOrderInDb,
+  updateOrderStatusInDb,
+  updatePaymentStatusInDb,
+  cancelOrderInDb,
+} from '../lib/supabase/orders';
+import { fetchStockHistoryLogs, logStockMovementInDb } from '../lib/supabase/inventory';
+import {
+  fetchHomeSections,
+  fetchHeroBanners,
+  fetchHeaderAnnouncements,
+  fetchCoupons,
+  fetchStoreSettings,
+  saveStoreSettingsInDb,
+} from '../lib/supabase/home';
+import { fetchUserProfile, logoutSupabaseUser } from '../lib/supabase/auth';
 
 interface AppContextType {
+  // Supabase State
+  isSupabaseConnected: boolean;
+  supabaseUser: any;
+
   // Catalog & State
   products: Product[];
   categories: ProductCategory[];
@@ -102,7 +134,7 @@ interface AppContextType {
   removeToast: (id: string) => void;
 
   // Actions - Admin
-  loginAdmin: (email: string, pass: string) => boolean;
+  loginAdmin: (email: string, pass: string) => Promise<boolean> | boolean;
   logoutAdmin: () => void;
   updateSiteLogo: (logoUrl: string) => void;
   addCategory: (name: string, image?: string, description?: string) => ProductCategory;
@@ -343,6 +375,9 @@ const INITIAL_MOCK_ORDERS: Order[] = [
 ];
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [isSupabaseConnected, setIsSupabaseConnected] = useState<boolean>(isSupabaseConfigured());
+  const [supabaseUser, setSupabaseUser] = useState<any>(null);
+
   const [products, setProducts] = useState<Product[]>(() =>
     getInitialState('aura_products', MOCK_PRODUCTS)
   );
@@ -395,6 +430,83 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [coupons, setCoupons] = useState<Coupon[]>(() =>
     getInitialState('aura_coupons', MOCK_COUPONS)
   );
+
+  // Load data from Supabase when configured
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+
+    let isMounted = true;
+
+    const loadSupabaseData = async () => {
+      try {
+        const [
+          dbProducts,
+          dbCategories,
+          dbOrders,
+          dbSections,
+          dbBanners,
+          dbAnnouncements,
+          dbCoupons,
+          dbLogs,
+          dbSettings,
+        ] = await Promise.all([
+          fetchAllProducts(),
+          fetchAllCategories(),
+          fetchAllOrders(),
+          fetchHomeSections(),
+          fetchHeroBanners(),
+          fetchHeaderAnnouncements(),
+          fetchCoupons(),
+          fetchStockHistoryLogs(),
+          fetchStoreSettings(),
+        ]);
+
+        if (!isMounted) return;
+
+        if (dbProducts.length > 0) setProducts(dbProducts);
+        if (dbCategories.length > 0) setCategories(dbCategories);
+        if (dbOrders.length > 0) setOrders(dbOrders);
+        if (dbSections.length > 0) setHomeSections(dbSections);
+        if (dbBanners.length > 0) setHeroBanners(dbBanners);
+        if (dbAnnouncements.length > 0) setHeaderAnnouncements(dbAnnouncements);
+        if (dbCoupons.length > 0) setCoupons(dbCoupons);
+        if (dbLogs.length > 0) setStockHistoryLogs(dbLogs);
+        if (dbSettings?.logoUrl) setSiteLogo(dbSettings.logoUrl);
+        if (dbSettings?.headerSettings) setHeaderSettings(dbSettings.headerSettings);
+      } catch (err) {
+        console.warn('Could not load data from Supabase DB, using default state:', err);
+      }
+    };
+
+    loadSupabaseData();
+
+    // Subscribe to Auth State Changes
+    const { data: authSub } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return;
+
+      if (session?.user) {
+        setSupabaseUser(session.user);
+        const profile = await fetchUserProfile(session.user.id);
+        if (profile && isMounted) {
+          setUserProfile((prev) => ({
+            ...prev,
+            id: session.user.id,
+            name: profile.full_name || prev.name,
+            email: session.user.email || prev.email,
+            phone: profile.phone_number || prev.phone,
+            role: profile.role,
+          }));
+        }
+      } else {
+        setSupabaseUser(null);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      authSub.subscription.unsubscribe();
+    };
+  }, []);
   const [headerSettings, setHeaderSettings] = useState<HeaderSettings>(() =>
     getInitialState('aura_header_settings', {
       showSearch: true,
@@ -425,22 +537,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [subAdmins]);
 
   const updateHeaderSettings = (settings: Partial<HeaderSettings>) => {
-    setHeaderSettings((prev) => ({ ...prev, ...settings }));
+    setHeaderSettings((prev) => {
+      const updated = { ...prev, ...settings };
+      if (isSupabaseConfigured()) {
+        saveStoreSettingsInDb(undefined, updated).catch((err) =>
+          console.warn('Could not save header settings to Supabase:', err)
+        );
+      }
+      return updated;
+    });
     addToast('Header Display Updated ⚙️', 'Header layout updated.', 'success');
   };
 
   const restockProduct = (productId: string, quantity: number, note = 'Inventory Restock') => {
     let prodName = '';
+    let newQty = 0;
     setProducts((prev) =>
       prev.map((p) => {
         if (p.id === productId) {
           prodName = p.name;
-          const newQty = (p.inventoryCount ?? 0) + quantity;
+          newQty = (p.inventoryCount ?? 0) + quantity;
           return { ...p, inventoryCount: newQty, outOfStock: false, inStock: true };
         }
         return p;
       })
     );
+
+    if (isSupabaseConfigured()) {
+      updateProductInDb(productId, { inventoryCount: newQty, outOfStock: false }).catch((err) =>
+        console.warn('Could not update inventory in Supabase:', err)
+      );
+      logStockMovementInDb(productId, prodName || 'Product', 'restock', quantity, note).catch((err) =>
+        console.warn('Could not log restock in Supabase:', err)
+      );
+    }
 
     const now = new Date();
     const newLog: StockHistoryLog = {
@@ -461,18 +591,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const destockProduct = (productId: string, quantity: number, note = 'Inventory Destock') => {
     let prodName = '';
+    let newQty = 0;
+    let isOut = false;
     setProducts((prev) =>
       prev.map((p) => {
         if (p.id === productId) {
           prodName = p.name;
           const current = p.inventoryCount ?? 0;
-          const newQty = Math.max(0, current - quantity);
-          const isOut = newQty <= 0;
+          newQty = Math.max(0, current - quantity);
+          isOut = newQty <= 0;
           return { ...p, inventoryCount: newQty, outOfStock: isOut, inStock: !isOut };
         }
         return p;
       })
     );
+
+    if (isSupabaseConfigured()) {
+      updateProductInDb(productId, { inventoryCount: newQty, outOfStock: isOut }).catch((err) =>
+        console.warn('Could not update inventory in Supabase:', err)
+      );
+      logStockMovementInDb(productId, prodName || 'Product', 'destock', quantity, note).catch((err) =>
+        console.warn('Could not log destock in Supabase:', err)
+      );
+    }
 
     const now = new Date();
     const newLog: StockHistoryLog = {
@@ -754,6 +895,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setOrders((prev) => [newOrder, ...prev]);
+
+    if (isSupabaseConfigured()) {
+      createOrderInDb(paymentMethod, deliveryAddress, cartItems, subtotal, deliveryFee, 0, total, {
+        name: finalName,
+        phone: finalPhone,
+        email: finalEmail,
+        userId: supabaseUser?.id,
+      }).catch((err) => console.warn('Could not insert order to Supabase:', err));
+    }
+
     clearCart();
     return newOrder;
   };
@@ -763,8 +914,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast('Profile Updated', 'Your details have been saved.', 'success');
   };
 
-  // ADMIN ACTIONS (Security-hardened login with rate limiting & session timing)
-  const loginAdmin = (email: string, pass: string): boolean => {
+  // ADMIN ACTIONS (Security-hardened login with rate limiting & Supabase Auth)
+  const loginAdmin = async (email: string, pass: string): Promise<boolean> => {
     const cleanEmail = sanitizeInput(email).trim().toLowerCase();
 
     // Brute-force Prevention: Max 5 failed attempts per 5 mins; locks for 15 mins if exceeded
@@ -778,12 +929,60 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
 
+    if (isSupabaseConfigured()) {
+      try {
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password: pass,
+        });
+
+        if (authError || !authData.user) {
+          rateLimiter.recordAttempt('admin_login_rate');
+          addToast('Authentication Failed ❌', authError?.message || 'Invalid admin credentials.', 'error');
+          return false;
+        }
+
+        // Check public.admin_profiles table
+        const { data: adminProf } = await supabase
+          .from('admin_profiles')
+          .select('*')
+          .eq('id', authData.user.id)
+          .maybeSingle();
+
+        // Fallback check on public.profiles role
+        const { data: userProf } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', authData.user.id)
+          .maybeSingle();
+
+        const isAuthorizedAdmin = Boolean(adminProf) || ['admin', 'owner', 'super_admin'].includes(userProf?.role || '');
+
+        if (!isAuthorizedAdmin) {
+          await supabase.auth.signOut();
+          addToast('Access Denied 🚫', 'Your account is not authorized as an Administrator in public.admin_profiles.', 'error');
+          return false;
+        }
+
+        rateLimiter.reset('admin_login_rate');
+        setIsAdminAuthenticated(true);
+        setSupabaseUser(authData.user);
+        localStorage.setItem('aura_admin_auth', 'true');
+        localStorage.setItem('aura_admin_auth_time', Date.now().toString());
+        addToast('Admin Authenticated 🔒', `Welcome back, ${adminProf?.name || authData.user.email}!`, 'success');
+        return true;
+      } catch (err: any) {
+        addToast('Login Error', err?.message || 'Could not authenticate with Supabase.', 'error');
+        return false;
+      }
+    }
+
     if (cleanEmail === 'admin@aura.com' && pass === 'admin123') {
       rateLimiter.reset('admin_login_rate');
       setIsAdminAuthenticated(true);
       localStorage.setItem('aura_admin_auth', 'true');
       localStorage.setItem('aura_admin_auth_time', Date.now().toString());
-      addToast('Admin Authenticated 🔒', 'Welcome to Aura Admin Portal. Session expires in 4 hours.', 'success');
+      addToast('Admin Authenticated 🔒', 'Welcome to Aura Admin Portal (Demo Mode).', 'success');
       return true;
     }
 
@@ -797,8 +996,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return false;
   };
 
-  const logoutAdmin = () => {
+  const logoutAdmin = async () => {
+    if (isSupabaseConfigured()) {
+      try {
+        await supabase.auth.signOut();
+      } catch (err) {
+        console.warn('Error signing out Supabase user:', err);
+      }
+    }
     setIsAdminAuthenticated(false);
+    setSupabaseUser(null);
     localStorage.removeItem('aura_admin_auth');
     localStorage.removeItem('aura_admin_auth_time');
     addToast('Signed Out 🔒', 'Admin session terminated safely.', 'info');
@@ -822,55 +1029,138 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return [...prev, newCat];
     });
 
+    if (isSupabaseConfigured()) {
+      createCategoryInDb(trimmedName, image, description).catch((err) =>
+        console.warn('Could not persist category to Supabase:', err)
+      );
+    }
+
     addToast('Category Created', `Category "${trimmedName}" added to catalog.`, 'success');
     return newCat;
   };
 
   const updateCategory = (id: string, updated: Partial<ProductCategory>) => {
     setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, ...updated } : c)));
+
+    if (isSupabaseConfigured()) {
+      updateCategoryInDb(id, updated).catch((err) =>
+        console.warn('Could not update category in Supabase:', err)
+      );
+    }
+
     addToast('Category Updated', 'Category details updated.', 'success');
   };
 
   const deleteCategory = (id: string) => {
     setCategories((prev) => prev.filter((c) => c.id !== id));
+
+    if (isSupabaseConfigured()) {
+      deleteCategoryFromDb(id).catch((err) =>
+        console.warn('Could not delete category in Supabase:', err)
+      );
+    }
+
     addToast('Category Removed', 'Category deleted from store.', 'info');
   };
 
   const addProduct = (product: Omit<Product, 'id'> & { id?: string }): Product => {
     const newProd: Product = { ...product, id: product.id || `prod-${Date.now()}` };
     setProducts((prev) => [newProd, ...prev]);
+
+    if (isSupabaseConfigured()) {
+      createProductInDb(newProd).catch((err) =>
+        console.warn('Could not persist product to Supabase:', err)
+      );
+    }
+
     addToast('Product Created', `${newProd.name} added to catalog.`, 'success');
     return newProd;
   };
 
   const updateProduct = (id: string, updated: Partial<Product>) => {
     setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updated } : p)));
+
+    if (isSupabaseConfigured()) {
+      updateProductInDb(id, updated).catch((err) =>
+        console.warn('Could not update product in Supabase:', err)
+      );
+    }
+
     addToast('Product Updated', 'Product changes saved successfully.', 'success');
   };
 
   const deleteProduct = (id: string) => {
     setProducts((prev) => prev.filter((p) => p.id !== id));
+
+    if (isSupabaseConfigured()) {
+      deleteProductFromDb(id).catch((err) =>
+        console.warn('Could not delete product in Supabase:', err)
+      );
+    }
+
     addToast('Product Deleted', 'Product removed from catalog.', 'info');
   };
 
   const toggleProductBestSeller = (id: string) => {
+    let newValue = false;
     setProducts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, isBestSeller: !p.isBestSeller } : p))
+      prev.map((p) => {
+        if (p.id === id) {
+          newValue = !p.isBestSeller;
+          return { ...p, isBestSeller: newValue };
+        }
+        return p;
+      })
     );
+
+    if (isSupabaseConfigured()) {
+      updateProductInDb(id, { isBestSeller: newValue }).catch((err) =>
+        console.warn('Could not toggle bestseller in Supabase:', err)
+      );
+    }
+
     addToast('Best Seller Toggled', 'Best seller status updated.', 'success');
   };
 
   const toggleProductNewArrival = (id: string) => {
+    let newValue = false;
     setProducts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, isNewArrival: !p.isNewArrival } : p))
+      prev.map((p) => {
+        if (p.id === id) {
+          newValue = !p.isNewArrival;
+          return { ...p, isNewArrival: newValue };
+        }
+        return p;
+      })
     );
+
+    if (isSupabaseConfigured()) {
+      updateProductInDb(id, { isNewArrival: newValue }).catch((err) =>
+        console.warn('Could not toggle new arrival in Supabase:', err)
+      );
+    }
+
     addToast('New Arrival Toggled', 'New arrival status updated.', 'success');
   };
 
   const toggleProductFestival = (id: string) => {
+    let newValue = false;
     setProducts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, isFestival: !p.isFestival } : p))
+      prev.map((p) => {
+        if (p.id === id) {
+          newValue = !p.isFestival;
+          return { ...p, isFestival: newValue };
+        }
+        return p;
+      })
     );
+
+    if (isSupabaseConfigured()) {
+      updateProductInDb(id, { isFestival: newValue }).catch((err) =>
+        console.warn('Could not toggle festival item in Supabase:', err)
+      );
+    }
+
     addToast('Festival Item Toggled', 'Festival status updated.', 'success');
   };
 
@@ -1194,6 +1484,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       );
     }
 
+    if (isSupabaseConfigured()) {
+      updateOrderStatusInDb(orderId, status, notes).catch((err) =>
+        console.warn('Could not update order status in Supabase:', err)
+      );
+    }
+
     addToast('Order Status Updated', `Order set to ${status}.`, 'success');
   };
 
@@ -1201,6 +1497,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setOrders((prev) =>
       prev.map((o) => (o.id === orderId || o.orderNumber === orderId ? { ...o, paymentStatus } : o))
     );
+
+    if (isSupabaseConfigured()) {
+      updatePaymentStatusInDb(orderId, paymentStatus).catch((err) =>
+        console.warn('Could not update payment status in Supabase:', err)
+      );
+    }
+
     addToast('Payment Status Updated', `Payment status updated to ${paymentStatus}.`, 'success');
   };
 
@@ -1208,10 +1511,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setOrders((prev) =>
       prev.map((o) =>
         o.id === orderId || o.orderNumber === orderId
-          ? { ...o, status: 'Cancelled', cancelReason: reason }
+          ? { ...o, orderStatus: 'cancelled', status: 'Cancelled', cancelReason: reason }
           : o
       )
     );
+
+    if (isSupabaseConfigured()) {
+      cancelOrderInDb(orderId, reason).catch((err) =>
+        console.warn('Could not cancel order in Supabase:', err)
+      );
+    }
     addToast('Order Cancelled', 'Order has been cancelled.', 'info');
   };
 
@@ -1248,6 +1557,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   return (
     <AppContext.Provider
       value={{
+        isSupabaseConnected,
+        supabaseUser,
         products,
         categories,
         siteLogo,

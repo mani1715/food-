@@ -15,16 +15,22 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
   const { loginAdmin } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanEmail = sanitizeInput(email);
-    const success = loginAdmin(cleanEmail, password);
-    if (success) {
-      if (onSuccess) onSuccess();
-      onClose();
+    setIsSubmitting(true);
+    try {
+      const cleanEmail = sanitizeInput(email);
+      const success = await loginAdmin(cleanEmail, password);
+      if (success) {
+        if (onSuccess) onSuccess();
+        onClose();
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -86,10 +92,20 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
 
             <button
               type="submit"
-              className="w-full py-4 bg-black text-white text-xs font-extrabold rounded-2xl hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 shadow-subtle mt-2"
+              disabled={isSubmitting}
+              className="w-full py-4 bg-black text-white text-xs font-extrabold rounded-2xl hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 shadow-subtle mt-2 cursor-pointer disabled:opacity-50"
             >
-              <span>Authenticate & Access Portal</span>
-              <ArrowRight className="w-4 h-4" />
+              {isSubmitting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Authenticating with Supabase...</span>
+                </>
+              ) : (
+                <>
+                  <span>Authenticate & Access Portal</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
           </form>
 

@@ -1,5 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { UploadCloud, Link as LinkIcon } from 'lucide-react';
+import { isSupabaseConfigured } from '../../lib/supabase/client';
+import { uploadImageToSupabase } from '../../lib/supabase/storage';
 
 interface DragDropImagePickerProps {
   label?: string;
@@ -36,7 +38,7 @@ export const DragDropImagePicker: React.FC<DragDropImagePickerProps> = ({
     setIsDragging(false);
   };
 
-  const processFiles = (files: FileList | File[]) => {
+  const processFiles = async (files: FileList | File[]) => {
     if (!files || files.length === 0) return;
     setIsProcessing(true);
 
@@ -49,7 +51,16 @@ export const DragDropImagePicker: React.FC<DragDropImagePickerProps> = ({
 
     const readPromises = imageFiles.map(
       (file) =>
-        new Promise<string>((resolve) => {
+        new Promise<string>(async (resolve) => {
+          if (isSupabaseConfigured()) {
+            try {
+              const url = await uploadImageToSupabase(file);
+              resolve(url);
+              return;
+            } catch (err) {
+              console.warn('Supabase image upload failed, falling back to local base64:', err);
+            }
+          }
           const reader = new FileReader();
           reader.onload = (event) => {
             resolve(event.target?.result as string);
@@ -58,15 +69,18 @@ export const DragDropImagePicker: React.FC<DragDropImagePickerProps> = ({
         })
     );
 
-    Promise.all(readPromises).then((dataUrls) => {
+    try {
+      const urls = await Promise.all(readPromises);
       setIsProcessing(false);
       if (multiple && onMultipleChange) {
-        onMultipleChange(dataUrls);
-      } else if (dataUrls.length > 0) {
-        onChange(dataUrls[0]);
-        setUrlInput(dataUrls[0]);
+        onMultipleChange(urls);
+      } else if (urls.length > 0) {
+        onChange(urls[0]);
+        setUrlInput(urls[0]);
       }
-    });
+    } catch (err) {
+      setIsProcessing(false);
+    }
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {

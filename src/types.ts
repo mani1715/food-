@@ -94,11 +94,13 @@ export interface WhatsAppContact {
 }
 
 export interface UserProfile {
+  id?: string;
   name: string;
   email: string;
   phone: string;
   avatar: string;
   joinedDate: string;
+  role?: string;
 }
 
 export interface Order {
