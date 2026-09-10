@@ -120,6 +120,10 @@ export const ProductsManagementTab: React.FC = () => {
   const [editIngredientInput, setEditIngredientInput] = useState('');
   const [editSelectedSectionIds, setEditSelectedSectionIds] = useState<string[]>([]);
 
+  // Delete Confirmation Modal State
+  const [deleteProductConfirm, setDeleteProductConfirm] = useState<Product | null>(null);
+  const [deleteCategoryConfirm, setDeleteCategoryConfirm] = useState<ProductCategory | null>(null);
+
   // Add New Category Modal State
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<ProductCategory | null>(null);
@@ -382,22 +386,14 @@ export const ProductsManagementTab: React.FC = () => {
             <span>Add New Category</span>
           </button>
 
-          {/* Category Specific Add Product Button */}
-          {categoryFilter !== 'All' ? (
+          {/* Only show Add Product button in top bar when a specific category is selected */}
+          {categoryFilter !== 'All' && (
             <button
               onClick={() => handleOpenAddModal(categoryFilter)}
-              className="px-4 py-2.5 bg-neutral-900 text-white text-xs font-extrabold rounded-2xl hover:bg-black transition-all flex items-center gap-2 shadow-subtle shrink-0 cursor-pointer border border-neutral-700"
-            >
-              <Plus className="w-4 h-4" />
-              <span>+ Add Product to {categoryFilter}</span>
-            </button>
-          ) : (
-            <button
-              onClick={() => handleOpenAddModal()}
               className="px-4 py-2.5 bg-black text-white text-xs font-extrabold rounded-2xl hover:bg-neutral-800 transition-all flex items-center gap-2 shadow-subtle shrink-0 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Add New Product</span>
+              <span>+ Add to {categoryFilter}</span>
             </button>
           )}
         </div>
@@ -494,10 +490,7 @@ export const ProductsManagementTab: React.FC = () => {
                 <button
                   onClick={() => {
                     const cat = categories.find((c) => c.name === categoryFilter);
-                    if (cat) {
-                      deleteCategory(cat.id);
-                      setCategoryFilter('All');
-                    }
+                    if (cat) setDeleteCategoryConfirm(cat);
                   }}
                   className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-[11px] font-extrabold rounded-xl transition-all flex items-center gap-1 cursor-pointer"
                   title="Delete Category"
@@ -513,7 +506,7 @@ export const ProductsManagementTab: React.FC = () => {
               className="px-3.5 py-1.5 bg-black text-white text-[11px] font-extrabold rounded-xl hover:bg-neutral-800 transition-all flex items-center gap-1 cursor-pointer shadow-subtle shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>+ Add Product to {categoryFilter}</span>
+              <span>+ Add New Product to {categoryFilter}</span>
             </button>
           </div>
         </div>
@@ -657,8 +650,8 @@ export const ProductsManagementTab: React.FC = () => {
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => deleteProduct(prod.id)}
-                          className="p-2 rounded-xl border border-neutral-200 hover:border-red-600 hover:text-red-600 text-neutral-400 cursor-pointer"
+                          onClick={() => setDeleteProductConfirm(prod)}
+                          className="p-2 rounded-xl border border-neutral-200 hover:border-red-600 hover:bg-rose-50 hover:text-red-600 text-neutral-400 cursor-pointer transition-all"
                           title="Delete Product"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -673,6 +666,96 @@ export const ProductsManagementTab: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* DELETE PRODUCT CONFIRMATION MODAL */}
+      {deleteProductConfirm && (
+        <div className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-modal text-left space-y-5"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-black">Delete Product?</h3>
+                <p className="text-xs text-neutral-500">This action cannot be undone.</p>
+              </div>
+            </div>
+            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-3">
+              <img src={deleteProductConfirm.image} alt="" className="w-10 h-10 rounded-xl object-cover border border-neutral-200 shrink-0" />
+              <div>
+                <p className="text-xs font-extrabold text-black">{deleteProductConfirm.name}</p>
+                <p className="text-[11px] text-neutral-500">{deleteProductConfirm.category} · ₹{deleteProductConfirm.price}</p>
+              </div>
+            </div>
+            <p className="text-xs text-neutral-600">
+              Are you sure you want to permanently delete <strong>"{deleteProductConfirm.name}"</strong> from the catalog? It will also be removed from all homepage showcase sections.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDeleteProductConfirm(null)}
+                className="flex-1 py-3 border border-neutral-200 hover:bg-neutral-100 rounded-2xl text-xs font-bold text-black cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  deleteProduct(deleteProductConfirm.id);
+                  setDeleteProductConfirm(null);
+                }}
+                className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl text-xs font-extrabold cursor-pointer"
+              >
+                Yes, Delete Product
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* DELETE CATEGORY CONFIRMATION MODAL */}
+      {deleteCategoryConfirm && (
+        <div className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-modal text-left space-y-5"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-black">Delete Category?</h3>
+                <p className="text-xs text-neutral-500">Products in this category will not be deleted.</p>
+              </div>
+            </div>
+            <p className="text-xs text-neutral-600">
+              Are you sure you want to permanently delete the <strong>"{deleteCategoryConfirm.name}"</strong> category? Products assigned to this category will remain in the catalog.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDeleteCategoryConfirm(null)}
+                className="flex-1 py-3 border border-neutral-200 hover:bg-neutral-100 rounded-2xl text-xs font-bold text-black cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  deleteCategory(deleteCategoryConfirm.id);
+                  setCategoryFilter('All');
+                  setDeleteCategoryConfirm(null);
+                }}
+                className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl text-xs font-extrabold cursor-pointer"
+              >
+                Yes, Delete Category
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* RESTOCK / DESTOCK MODAL */}
       {stockModalState.isOpen && stockModalState.product && (
