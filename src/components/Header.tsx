@@ -117,8 +117,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
           </div>
         </div>
 
-        {/* Center: Category Navigation Links with Dropdown Carets (Desktop) */}
-        <nav className="hidden lg:flex items-center gap-6 text-xs font-extrabold text-neutral-900">
+        {/* Center: Category Navigation Links (Desktop - Wrapping & Centered like Rangvarsha) */}
+        <nav className="hidden lg:flex flex-1 flex-wrap items-center justify-center gap-x-5 gap-y-1.5 px-4 text-xs font-extrabold text-neutral-900 max-w-[950px]">
           {categoryMenus.map((menu) => {
             const hasSub = menu.subCategories && menu.subCategories.length > 0;
             const isActive = location.pathname + location.search === menu.path;
@@ -127,7 +127,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
               <div key={menu.label} className="relative group">
                 <button
                   onClick={() => navigate(menu.path)}
-                  className={`flex items-center gap-1.5 py-2 hover:text-black transition-colors cursor-pointer whitespace-nowrap tracking-wider uppercase ${
+                  className={`flex items-center gap-1.5 py-1 text-xs hover:text-black transition-colors cursor-pointer whitespace-nowrap tracking-wider uppercase ${
                     isActive ? 'text-black font-black border-b-2 border-black' : ''
                   }`}
                 >
@@ -139,7 +139,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
 
                 {/* Hover Dropdown Sub-Menu */}
                 {hasSub && (
-                  <div className="absolute top-full left-0 mt-0.5 w-56 bg-white border border-neutral-200 rounded-2xl shadow-modal opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 p-2 space-y-1 text-left">
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 w-56 bg-white border border-neutral-200 rounded-2xl shadow-modal opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 p-2 space-y-1 text-left">
                     {menu.subCategories?.map((sub) => (
                       <button
                         key={sub.label}
