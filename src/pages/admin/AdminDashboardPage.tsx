@@ -71,7 +71,7 @@ export const AdminDashboardPage: React.FC = () => {
             title="Click to return to Store Homepage"
           >
             <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-black bg-black flex items-center justify-center shadow-subtle group-hover:scale-105 transition-transform">
-              <img src="/aishu-logo.jpg" alt="Aishu Foods Logo" className="w-full h-full object-cover" />
+              <img src="/aishu-logo.png" alt="Aishu Foods Logo" className="w-full h-full object-cover scale-105" />
             </div>
             <div>
               <span className="text-base font-extrabold text-black tracking-tight group-hover:text-neutral-700 transition-colors">
@@ -98,7 +98,7 @@ export const AdminDashboardPage: React.FC = () => {
             className="w-24 h-24 rounded-full border-4 border-black overflow-hidden shadow-modal cursor-pointer hover:scale-105 transition-transform relative group"
             title="Click to visit Store Homepage"
           >
-            <img src="/aishu-logo.jpg" alt="Aishu Foods Logo" className="w-full h-full object-cover" />
+            <img src="/aishu-logo.png" alt="Aishu Foods Logo" className="w-full h-full object-cover scale-105" />
           </div>
 
           <div className="space-y-2">

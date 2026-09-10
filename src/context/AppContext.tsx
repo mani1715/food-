@@ -384,9 +384,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [categories, setCategories] = useState<ProductCategory[]>(() =>
     getInitialState('aura_categories', MOCK_CATEGORIES)
   );
-  const [siteLogo, setSiteLogo] = useState<string>(() =>
-    getInitialState('aura_site_logo', '/aishu-logo.jpg')
-  );
+  const [siteLogo, setSiteLogo] = useState<string>(() => {
+    const val = getInitialState<string>('aura_site_logo', '/aishu-logo.png');
+    return val === '/aishu-logo.jpg' ? '/aishu-logo.png' : val;
+  });
 
   useEffect(() => {
     localStorage.setItem('aura_site_logo', siteLogo);
