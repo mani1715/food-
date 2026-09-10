@@ -1678,32 +1678,32 @@ export const ProductsManagementTab: React.FC = () => {
                   ))}
                 </div>
 
-                <div className="flex gap-2 pt-1">
-                  <input
-                    type="url"
-                    value={editGalleryInput}
-                    onChange={(e) => setEditGalleryInput(e.target.value)}
-                    placeholder="Paste Photo URL (e.g. https://...)"
-                    className="flex-1 p-2.5 rounded-xl border border-neutral-300 bg-white text-xs font-bold"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (editGalleryInput.trim()) {
-                        const currentGal = editingProduct.gallery || [editingProduct.image];
-                        setEditingProduct({
-                          ...editingProduct,
-                          gallery: [...currentGal, editGalleryInput.trim()],
-                        });
-                        setEditGalleryInput('');
-                      }
-                    }}
-                    className="px-3 py-2 bg-black text-white text-xs font-extrabold rounded-xl flex items-center gap-1 shrink-0 cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Add Photo</span>
-                  </button>
-                </div>
+                <DragDropImagePicker
+                  label="Add Photo to Gallery"
+                  value=""
+                  onChange={(url) => {
+                    if (url) {
+                      const currentGal = editingProduct.gallery || [editingProduct.image];
+                      setEditingProduct({
+                        ...editingProduct,
+                        image: editingProduct.image || url,
+                        gallery: [...currentGal, url],
+                      });
+                    }
+                  }}
+                  multiple={true}
+                  onMultipleChange={(urls) => {
+                    if (urls.length > 0) {
+                      const currentGal = editingProduct.gallery || [editingProduct.image];
+                      setEditingProduct({
+                        ...editingProduct,
+                        image: editingProduct.image || urls[0],
+                        gallery: [...currentGal, ...urls],
+                      });
+                    }
+                  }}
+                  helperText="Drag & drop product images from your computer or click to select files/folders."
+                />
               </div>
 
               {/* Edit Package Gram Weights & Price Tiers */}
