@@ -106,8 +106,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
           </button>
 
           <div onClick={() => navigate('/')} className="flex items-center cursor-pointer group shrink-0">
-            {/* Dynamic Circular Store Logo */}
-            <div className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 rounded-full overflow-hidden border-2 border-black bg-black flex items-center justify-center shadow-subtle group-hover:scale-105 transition-transform shrink-0">
+            {/* Dynamic Circular Store Logo - Prominent & Large */}
+            <div className="w-16 h-16 sm:w-20 sm:h-20 lg:w-28 lg:h-28 rounded-full overflow-hidden border-2 border-black bg-black flex items-center justify-center shadow-md group-hover:scale-105 transition-all duration-300 shrink-0">
               <img
                 src={siteLogo || '/aishu-logo.jpg'}
                 alt="Aishu Foods Logo"
