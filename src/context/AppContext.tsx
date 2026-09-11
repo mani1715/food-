@@ -194,11 +194,18 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 const getInitialState = <T,>(key: string, fallback: T): T => {
   try {
     const saved = localStorage.getItem(key);
-    if (saved) {
-      return JSON.parse(saved);
+    if (saved !== null && saved !== undefined) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        // If it's a plain string (like "/aishu-logo.png" or raw text), return directly
+        if (typeof fallback === 'string') {
+          return saved as unknown as T;
+        }
+      }
     }
   } catch (err) {
-    console.error(`Error reading ${key} from localStorage:`, err);
+    // ignore
   }
   return fallback;
 };

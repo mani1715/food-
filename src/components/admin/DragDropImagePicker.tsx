@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { UploadCloud, Link as LinkIcon } from 'lucide-react';
+import { UploadCloud, Link as LinkIcon, Check, Loader2 } from 'lucide-react';
 import { isSupabaseConfigured } from '../../lib/supabase/client';
 import { uploadImageToSupabase } from '../../lib/supabase/storage';
 
@@ -42,7 +42,9 @@ export const DragDropImagePicker: React.FC<DragDropImagePickerProps> = ({
     if (!files || files.length === 0) return;
     setIsProcessing(true);
 
-    const imageFiles = Array.from(files).filter((file) => file.type.startsWith('image/'));
+    const imageFiles = Array.from(files).filter(
+      (file) => file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif|svg|avif)$/i.test(file.name)
+    );
 
     if (imageFiles.length === 0) {
       setIsProcessing(false);
@@ -55,15 +57,20 @@ export const DragDropImagePicker: React.FC<DragDropImagePickerProps> = ({
           if (isSupabaseConfigured()) {
             try {
               const url = await uploadImageToSupabase(file);
-              resolve(url);
-              return;
+              if (url) {
+                resolve(url);
+                return;
+              }
             } catch (err) {
               console.warn('Supabase image upload failed, falling back to local base64:', err);
             }
           }
           const reader = new FileReader();
           reader.onload = (event) => {
-            resolve(event.target?.result as string);
+            resolve((event.target?.result as string) || '');
+          };
+          reader.onerror = () => {
+            resolve('');
           };
           reader.readAsDataURL(file);
         })
@@ -71,15 +78,23 @@ export const DragDropImagePicker: React.FC<DragDropImagePickerProps> = ({
 
     try {
       const urls = await Promise.all(readPromises);
+      const validUrls = urls.filter((u) => Boolean(u) && u.trim().length > 0);
       setIsProcessing(false);
-      if (multiple && onMultipleChange) {
-        onMultipleChange(urls);
-      } else if (urls.length > 0) {
-        onChange(urls[0]);
-        setUrlInput(urls[0]);
+
+      if (validUrls.length > 0) {
+        if (multiple && onMultipleChange) {
+          onMultipleChange(validUrls);
+        }
+        onChange(validUrls[0]);
+        setUrlInput(validUrls[0]);
       }
     } catch (err) {
+      console.error('Error processing files:', err);
       setIsProcessing(false);
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -100,7 +115,12 @@ export const DragDropImagePicker: React.FC<DragDropImagePickerProps> = ({
 
   const handleApplyUrl = () => {
     if (urlInput.trim()) {
-      onChange(urlInput.trim());
+      const cleanUrl = urlInput.trim();
+      onChange(cleanUrl);
+      if (multiple && onMultipleChange) {
+        onMultipleChange([cleanUrl]);
+      }
+      setUrlInput('');
     }
   };
 
@@ -143,7 +163,7 @@ export const DragDropImagePicker: React.FC<DragDropImagePickerProps> = ({
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          className={`relative border-2 border-dashed rounded-3xl p-5 text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-2 ${
+          className={`relative border-2 border-dashed rounded-3xl p-6 text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-2 select-none ${
             isDragging
               ? 'border-black bg-neutral-100 scale-[1.01]'
               : 'border-neutral-300 bg-neutral-50 hover:bg-neutral-100/70 hover:border-neutral-400'
@@ -154,11 +174,12 @@ export const DragDropImagePicker: React.FC<DragDropImagePickerProps> = ({
             type="file"
             accept="image/*"
             multiple={multiple}
+            onClick={(e) => e.stopPropagation()}
             onChange={handleFileSelect}
             className="hidden"
           />
 
-          {value ? (
+          {value && !multiple ? (
             <div className="relative group w-full flex items-center justify-center">
               <img
                 src={value}
@@ -184,9 +205,9 @@ export const DragDropImagePicker: React.FC<DragDropImagePickerProps> = ({
           )}
 
           {isProcessing && (
-            <div className="absolute inset-0 bg-white/90 rounded-3xl flex items-center justify-center gap-2 text-xs font-bold text-black">
-              <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-              <span>Processing File...</span>
+            <div className="absolute inset-0 bg-white/95 backdrop-blur-xs rounded-3xl flex items-center justify-center gap-2.5 text-xs font-extrabold text-black shadow-modal">
+              <Loader2 className="w-5 h-5 text-black animate-spin" />
+              <span>Uploading & Processing Photos...</span>
             </div>
           )}
         </div>
@@ -196,6 +217,12 @@ export const DragDropImagePicker: React.FC<DragDropImagePickerProps> = ({
             type="text"
             value={urlInput}
             onChange={(e) => setUrlInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleApplyUrl();
+              }
+            }}
             placeholder="Paste image URL (https://...)"
             className="flex-1 px-3.5 py-2.5 rounded-2xl border border-neutral-300 text-xs font-medium focus:outline-none focus:border-black bg-white"
           />
