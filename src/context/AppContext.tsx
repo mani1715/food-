@@ -441,16 +441,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const loadSupabaseData = async () => {
       try {
         const [
-          dbProducts,
-          dbCategories,
-          dbOrders,
-          dbSections,
-          dbBanners,
-          dbAnnouncements,
-          dbCoupons,
-          dbLogs,
-          dbSettings,
-        ] = await Promise.all([
+          dbProductsResult,
+          dbCategoriesResult,
+          dbOrdersResult,
+          dbSectionsResult,
+          dbBannersResult,
+          dbAnnouncementsResult,
+          dbCouponsResult,
+          dbLogsResult,
+          dbSettingsResult,
+        ] = await Promise.allSettled([
           fetchAllProducts(),
           fetchAllCategories(),
           fetchAllOrders(),
@@ -464,16 +464,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         if (!isMounted) return;
 
-        if (dbProducts.length > 0) setProducts(dbProducts);
-        if (dbCategories.length > 0) setCategories(dbCategories);
-        if (dbOrders.length > 0) setOrders(dbOrders);
-        if (dbSections.length > 0) setHomeSections(dbSections);
-        if (dbBanners.length > 0) setHeroBanners(dbBanners);
-        if (dbAnnouncements.length > 0) setHeaderAnnouncements(dbAnnouncements);
-        if (dbCoupons.length > 0) setCoupons(dbCoupons);
-        if (dbLogs.length > 0) setStockHistoryLogs(dbLogs);
-        if (dbSettings?.logoUrl) setSiteLogo(dbSettings.logoUrl);
-        if (dbSettings?.headerSettings) setHeaderSettings(dbSettings.headerSettings);
+        if (dbProductsResult.status === 'fulfilled') {
+          setProducts(dbProductsResult.value);
+        }
+        if (dbCategoriesResult.status === 'fulfilled' && dbCategoriesResult.value.length > 0) {
+          setCategories(dbCategoriesResult.value);
+        }
+        if (dbOrdersResult.status === 'fulfilled') {
+          setOrders(dbOrdersResult.value);
+        }
+        if (dbSectionsResult.status === 'fulfilled' && dbSectionsResult.value.length > 0) {
+          setHomeSections(dbSectionsResult.value);
+        }
+        if (dbBannersResult.status === 'fulfilled' && dbBannersResult.value.length > 0) {
+          setHeroBanners(dbBannersResult.value);
+        }
+        if (dbAnnouncementsResult.status === 'fulfilled' && dbAnnouncementsResult.value.length > 0) {
+          setHeaderAnnouncements(dbAnnouncementsResult.value);
+        }
+        if (dbCouponsResult.status === 'fulfilled' && dbCouponsResult.value.length > 0) {
+          setCoupons(dbCouponsResult.value);
+        }
+        if (dbLogsResult.status === 'fulfilled' && dbLogsResult.value.length > 0) {
+          setStockHistoryLogs(dbLogsResult.value);
+        }
+        if (dbSettingsResult.status === 'fulfilled' && dbSettingsResult.value) {
+          if (dbSettingsResult.value.logoUrl) setSiteLogo(dbSettingsResult.value.logoUrl);
+          if (dbSettingsResult.value.headerSettings) setHeaderSettings(dbSettingsResult.value.headerSettings);
+        }
       } catch (err) {
         console.warn('Could not load data from Supabase DB, using default state:', err);
       }
@@ -1092,6 +1110,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteProduct = (id: string) => {
     setProducts((prev) => prev.filter((p) => p.id !== id));
+    setHomeSections((prev) =>
+      prev.map((s) => ({
+        ...s,
+        productIds: s.productIds.filter((pId) => pId !== id),
+      }))
+    );
+    setCartItems((prev) => prev.filter((item) => item.product.id !== id));
+    setWishlistProductIds((prev) => prev.filter((pId) => pId !== id));
+    setRecentlyViewedIds((prev) => prev.filter((pId) => pId !== id));
 
     if (isSupabaseConfigured()) {
       deleteProductFromDb(id).catch((err) =>

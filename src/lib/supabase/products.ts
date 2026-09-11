@@ -230,6 +230,11 @@ export const updateProductInDb = async (id: string, updated: Partial<Product>) =
 };
 
 export const deleteProductFromDb = async (id: string) => {
+  // Delete associated child records first
+  await supabase.from('product_gallery').delete().eq('product_id', id);
+  await supabase.from('product_weight_options').delete().eq('product_id', id);
+  await supabase.from('product_ingredients').delete().eq('product_id', id);
+
   const { error } = await supabase.from('products').delete().eq('id', id);
   if (error) throw error;
 };
