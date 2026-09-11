@@ -1,20 +1,23 @@
 /// <reference types="vite/client" />
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || 'https://akublyjmyrcoeemuxugr.supabase.co';
+const DEFAULT_SUPABASE_URL = 'https://akublyjmyrcoeemuxugr.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_KREZO8qrQFap24pBhrQuuw_q8nlcOrs';
+
+const supabaseUrl =
+  (import.meta as any).env?.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+
 const supabaseAnonKey =
   (import.meta as any).env?.VITE_SUPABASE_ANON_KEY ||
   (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY ||
-  'your-anon-key-here';
+  DEFAULT_SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = () => {
-  const env = (import.meta as any).env;
-  const key = env?.VITE_SUPABASE_ANON_KEY || env?.VITE_SUPABASE_PUBLISHABLE_KEY;
   return (
-    Boolean(env?.VITE_SUPABASE_URL) &&
-    Boolean(key) &&
-    key !== 'your-anon-key-here' &&
-    key !== 'your-anon-publishable-key-here'
+    Boolean(supabaseUrl) &&
+    Boolean(supabaseAnonKey) &&
+    supabaseAnonKey !== 'your-anon-key-here' &&
+    supabaseAnonKey !== 'your-anon-publishable-key-here'
   );
 };
 
