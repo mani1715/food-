@@ -131,3 +131,61 @@ export const saveStoreSettingsInDb = async (siteLogoUrl?: string, headerSettings
   const { error } = await supabase.from('store_settings').upsert([payload]);
   if (error) console.warn('Could not save store settings to Supabase:', error.message);
 };
+
+export const saveHomeSectionInDb = async (section: HomeSection, displayOrder = 0) => {
+  const { error: secErr } = await supabase.from('home_sections').upsert([
+    {
+      id: section.id,
+      title: section.title,
+      subtitle: section.subtitle || null,
+      badge: section.badge || null,
+      category_filter: section.categoryFilter || 'all',
+      is_enabled: section.enabled,
+      display_order: displayOrder,
+    },
+  ]);
+
+  if (secErr) {
+    console.warn('Error saving home section in Supabase:', secErr.message);
+    return;
+  }
+
+  // Sync assigned product IDs in home_section_products
+  await supabase.from('home_section_products').delete().eq('section_id', section.id);
+
+  if (section.productIds && section.productIds.length > 0) {
+    const productRows = section.productIds.map((prodId, idx) => ({
+      section_id: section.id,
+      product_id: prodId,
+      display_order: idx,
+    }));
+    await supabase.from('home_section_products').insert(productRows);
+  }
+};
+
+export const deleteHomeSectionFromDb = async (id: string) => {
+  await supabase.from('home_section_products').delete().eq('section_id', id);
+  await supabase.from('home_sections').delete().eq('id', id);
+};
+
+export const saveHeroBannersInDb = async (banners: HeroBannerSlide[]) => {
+  for (let idx = 0; idx < banners.length; idx++) {
+    const b = banners[idx];
+    await supabase.from('hero_banners').upsert([
+      {
+        id: b.id,
+        image_url: b.image,
+        badge: b.badge || null,
+        title: b.title,
+        subtitle: b.subtitle || null,
+        cta_text: b.ctaText || 'Shop Now',
+        cta_link: b.ctaLink || '/products',
+        is_enabled: b.enabled,
+        display_order: idx,
+        object_position: b.objectPosition || 'center',
+        object_fit: b.objectFit || 'cover',
+      },
+    ]);
+  }
+};
+

@@ -283,15 +283,42 @@ export const HomePage: React.FC = () => {
       {homeSections
         .filter((sec) => sec.enabled)
         .map((sec) => {
-          const sectionProducts = products.filter((p) => {
-            if (sec.productIds && sec.productIds.length > 0) {
-              return sec.productIds.includes(p.id);
+          // 1. Explicitly assigned products that exist in current catalog
+          const explicitlyAssigned = products.filter((p) =>
+            (sec.productIds || []).includes(p.id)
+          );
+
+          // 2. Category-matched products if section has a specific category filter
+          const categoryMatched =
+            sec.categoryFilter && sec.categoryFilter !== 'all'
+              ? products.filter(
+                  (p) => p.category.toLowerCase() === (sec.categoryFilter || '').toLowerCase()
+                )
+              : sec.title.toLowerCase().includes('pickle')
+              ? products.filter((p) => p.category.toLowerCase() === 'pickles')
+              : sec.title.toLowerCase().includes('sweet')
+              ? products.filter((p) => p.category.toLowerCase() === 'sweets')
+              : sec.title.toLowerCase().includes('snack') || sec.title.toLowerCase().includes('savor')
+              ? products.filter((p) => p.category.toLowerCase() === 'snacks')
+              : [];
+
+          // 3. Combine without duplicates
+          const combined = [...explicitlyAssigned];
+          categoryMatched.forEach((p) => {
+            if (!combined.some((item) => item.id === p.id)) {
+              combined.push(p);
             }
-            if (sec.categoryFilter && sec.categoryFilter !== 'all') {
-              return p.category.toLowerCase() === sec.categoryFilter.toLowerCase();
-            }
-            return true;
           });
+
+          // 4. Fallback for bestseller / general showcase sections
+          const sectionProducts =
+            combined.length > 0
+              ? combined
+              : sec.id === 'sec-bestsellers' || sec.title.toLowerCase().includes('best selling')
+              ? products.filter((p) => p.isBestSeller).length > 0
+                ? products.filter((p) => p.isBestSeller)
+                : products.slice(0, 4)
+              : [];
 
           if (sectionProducts.length === 0) return null;
 

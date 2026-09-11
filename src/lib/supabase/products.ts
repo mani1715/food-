@@ -173,8 +173,35 @@ export const createProductInDb = async (product: Omit<Product, 'id'> & { id?: st
 };
 
 export const updateProductInDb = async (id: string, updated: Partial<Product>) => {
+  // Check if product exists in Supabase
+  const { data: existing } = await supabase.from('products').select('id').eq('id', id).maybeSingle();
+  if (!existing) {
+    const fullProd: any = {
+      id,
+      name: updated.name || 'Homemade Specialty',
+      category: updated.category || 'General',
+      price: updated.price || 299,
+      ...updated,
+    };
+    await createProductInDb(fullProd);
+    return;
+  }
+
   const payload: Partial<DbProduct> = {};
-  if (updated.name !== undefined) payload.name = updated.name;
+  if (updated.name !== undefined) {
+    payload.name = updated.name;
+    payload.slug = updated.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  }
+  if (updated.category !== undefined) {
+    const { data: catData } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('name', updated.category)
+      .maybeSingle();
+    if (catData) {
+      payload.category_id = catData.id;
+    }
+  }
   if (updated.description !== undefined) payload.description = updated.description;
   if (updated.isVeg !== undefined) payload.is_veg = updated.isVeg;
   if (updated.inventoryCount !== undefined) payload.inventory_count = updated.inventoryCount;

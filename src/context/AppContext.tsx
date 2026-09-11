@@ -62,7 +62,10 @@ import {
 import { fetchStockHistoryLogs, logStockMovementInDb } from '../lib/supabase/inventory';
 import {
   fetchHomeSections,
+  saveHomeSectionInDb,
+  deleteHomeSectionFromDb,
   fetchHeroBanners,
+  saveHeroBannersInDb,
   fetchHeaderAnnouncements,
   fetchCoupons,
   fetchStoreSettings,
@@ -1226,23 +1229,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addHomeSection = (section: Omit<HomeSection, 'id'>) => {
     const newSec: HomeSection = { ...section, id: `sec-${Date.now()}` };
-    setHomeSections((prev) => [...prev, newSec]);
+    setHomeSections((prev) => {
+      const updatedList = [...prev, newSec];
+      if (isSupabaseConfigured()) {
+        saveHomeSectionInDb(newSec, updatedList.length - 1).catch(console.warn);
+      }
+      return updatedList;
+    });
     addToast('Section Created', `"${newSec.title}" showcase section added to homepage.`, 'success');
   };
 
   const updateHomeSection = (id: string, updated: Partial<HomeSection>) => {
-    setHomeSections((prev) => prev.map((s) => (s.id === id ? { ...s, ...updated } : s)));
+    setHomeSections((prev) => {
+      const updatedList = prev.map((s) => (s.id === id ? { ...s, ...updated } : s));
+      const targetSec = updatedList.find((s) => s.id === id);
+      if (targetSec && isSupabaseConfigured()) {
+        const order = updatedList.findIndex((s) => s.id === id);
+        saveHomeSectionInDb(targetSec, order >= 0 ? order : 0).catch(console.warn);
+      }
+      return updatedList;
+    });
     addToast('Section Updated', 'Showcase section title & options updated.', 'success');
   };
 
   const deleteHomeSection = (id: string) => {
-    setHomeSections((prev) => prev.filter((s) => s.id !== id));
+    setHomeSections((prev) => {
+      const updatedList = prev.filter((s) => s.id !== id);
+      if (isSupabaseConfigured()) {
+        deleteHomeSectionFromDb(id).catch(console.warn);
+      }
+      return updatedList;
+    });
     addToast('Section Removed', 'Showcase section removed from homepage.', 'info');
   };
 
   const toggleProductInHomeSection = (sectionId: string, productId: string) => {
-    setHomeSections((prev) =>
-      prev.map((s) => {
+    setHomeSections((prev) => {
+      const updatedList = prev.map((s) => {
         if (s.id === sectionId) {
           const exists = s.productIds.includes(productId);
           const updatedProductIds = exists
@@ -1251,25 +1274,49 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return { ...s, productIds: updatedProductIds };
         }
         return s;
-      })
-    );
+      });
+      const targetSec = updatedList.find((s) => s.id === sectionId);
+      if (targetSec && isSupabaseConfigured()) {
+        const order = updatedList.findIndex((s) => s.id === sectionId);
+        saveHomeSectionInDb(targetSec, order >= 0 ? order : 0).catch(console.warn);
+      }
+      return updatedList;
+    });
     addToast('Section Updated', 'Product assigned to showcase section.', 'success');
   };
 
   // Hero Banners & Announcements Admin
   const addHeroBanner = (banner: Omit<HeroBannerSlide, 'id'>) => {
     const newBanner: HeroBannerSlide = { ...banner, id: `banner-${Date.now()}` };
-    setHeroBanners((prev) => [...prev, newBanner]);
+    setHeroBanners((prev) => {
+      const updatedList = [...prev, newBanner];
+      if (isSupabaseConfigured()) {
+        saveHeroBannersInDb(updatedList).catch(console.warn);
+      }
+      return updatedList;
+    });
     addToast('Banner Added', 'New hero slide added.', 'success');
   };
 
   const updateHeroBanner = (id: string, updated: Partial<HeroBannerSlide>) => {
-    setHeroBanners((prev) => prev.map((b) => (b.id === id ? { ...b, ...updated } : b)));
+    setHeroBanners((prev) => {
+      const updatedList = prev.map((b) => (b.id === id ? { ...b, ...updated } : b));
+      if (isSupabaseConfigured()) {
+        saveHeroBannersInDb(updatedList).catch(console.warn);
+      }
+      return updatedList;
+    });
     addToast('Banner Updated', 'Hero slide updated successfully.', 'success');
   };
 
   const deleteHeroBanner = (id: string) => {
-    setHeroBanners((prev) => prev.filter((b) => b.id !== id));
+    setHeroBanners((prev) => {
+      const updatedList = prev.filter((b) => b.id !== id);
+      if (isSupabaseConfigured()) {
+        saveHeroBannersInDb(updatedList).catch(console.warn);
+      }
+      return updatedList;
+    });
     addToast('Banner Removed', 'Hero slide removed.', 'info');
   };
 
