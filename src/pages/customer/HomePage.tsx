@@ -82,11 +82,20 @@ export const HomePage: React.FC = () => {
   const currentBanner = activeHeroSlides[safeSlideIndex] || heroSlides[0];
 
   const categoriesScrollRef = useRef<HTMLDivElement>(null);
+  const sectionScrollRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   const scrollCategories = (direction: 'left' | 'right') => {
     if (categoriesScrollRef.current) {
       const scrollAmount = direction === 'left' ? -260 : 260;
       categoriesScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
+  const scrollSection = (secId: string, direction: 'left' | 'right') => {
+    const el = sectionScrollRefs.current[secId];
+    if (el) {
+      const scrollAmount = direction === 'left' ? -320 : 320;
+      el.scrollBy({ left: scrollAmount, behavior: 'smooth' });
     }
   };
 
@@ -400,32 +409,63 @@ export const HomePage: React.FC = () => {
           };
 
           return (
-            <section key={sec.id} className="py-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-left space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-neutral-200 pb-4">
+            <section key={sec.id} className="py-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-left space-y-4">
+              <div className="flex items-center justify-between border-b border-neutral-200 pb-3">
                 <div>
                   {sec.badge && (
-                    <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-neutral-400">
-                      <Flame className="w-4 h-4 text-black" />
+                    <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-widest text-neutral-400 mb-0.5">
+                      <Flame className="w-3.5 h-3.5 text-black" />
                       <span>{sec.badge}</span>
                     </div>
                   )}
-                  <h2 className="text-2xl sm:text-3xl font-black text-black tracking-tight mt-1">{sec.title}</h2>
-                  {sec.subtitle && <p className="text-xs text-neutral-500 font-medium mt-1">{sec.subtitle}</p>}
+                  <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-black tracking-tight">{sec.title}</h2>
+                  {sec.subtitle && <p className="text-xs text-neutral-500 font-medium mt-0.5">{sec.subtitle}</p>}
                 </div>
 
-                <button
-                  onClick={() => navigate(getViewAllLink())}
-                  className="text-xs font-extrabold text-black hover:underline flex items-center gap-1 self-start sm:self-auto cursor-pointer shrink-0"
-                >
-                  <span>View All ({sectionProducts.length})</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                  {/* Scroll Left Button */}
+                  <button
+                    onClick={() => scrollSection(sec.id, 'left')}
+                    className="p-2 rounded-full border border-neutral-300 hover:bg-black hover:text-white transition-colors cursor-pointer text-black"
+                    title="Scroll Left"
+                    aria-label={`Scroll ${sec.title} Left`}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+
+                  {/* Scroll Right Button */}
+                  <button
+                    onClick={() => scrollSection(sec.id, 'right')}
+                    className="p-2 rounded-full border border-neutral-300 hover:bg-black hover:text-white transition-colors cursor-pointer text-black"
+                    title="Scroll Right"
+                    aria-label={`Scroll ${sec.title} Right`}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+
+                  <button
+                    onClick={() => navigate(getViewAllLink())}
+                    className="text-xs font-extrabold text-black hover:underline flex items-center gap-1 cursor-pointer pl-1 sm:pl-2"
+                  >
+                    <span className="hidden sm:inline">View All</span>
+                    <span>({sectionProducts.length})</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
 
-              {/* Mobile Friendly Grid: Exactly 2 Items Per Row on Mobile (`grid-cols-2 gap-3`) */}
-              <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
+              {/* Single-Line Side-by-Side Horizontal Scroll Container (Scrolls Left to Right) */}
+              <div
+                ref={(el) => (sectionScrollRefs.current[sec.id] = el)}
+                className="flex flex-nowrap items-stretch gap-3.5 sm:gap-5 md:gap-6 overflow-x-auto no-scrollbar scroll-smooth py-3 px-1 snap-x snap-mandatory w-full"
+              >
                 {sectionProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} />
+                  <div
+                    key={product.id}
+                    className="w-[210px] sm:w-[260px] md:w-[280px] lg:w-[290px] shrink-0 flex-shrink-0 snap-start select-none flex flex-col"
+                  >
+                    <ProductCard product={product} />
+                  </div>
                 ))}
               </div>
             </section>

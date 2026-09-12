@@ -37,7 +37,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const isOutOfStock = Boolean(product.outOfStock) || product.inStock === false || (product.inventoryCount ?? 100) <= 0;
 
   return (
-    <div className={`bg-white border border-neutral-200 rounded-3xl p-4 shadow-subtle hover:border-black transition-all flex flex-col justify-between group text-left ${isOutOfStock ? 'opacity-90' : ''}`}>
+    <div className={`bg-white border border-neutral-200 rounded-3xl p-4 shadow-subtle hover:border-black transition-all flex flex-col justify-between group text-left h-full ${isOutOfStock ? 'opacity-90' : ''}`}>
       
       {/* Product Image & Badges */}
       <div className="relative rounded-2xl overflow-hidden aspect-square mb-3 bg-neutral-100 cursor-pointer" onClick={handleCardClick}>
