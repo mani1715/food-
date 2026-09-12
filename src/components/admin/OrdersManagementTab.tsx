@@ -1,16 +1,19 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Order } from '../../types';
-import { Search, Edit2, Save, XCircle, Printer, Download, Calendar, Copy, Check } from 'lucide-react';
+import { Search, Edit2, Save, XCircle, Printer, Download, Calendar as CalendarIcon, Copy, Check, Filter, X, ChevronDown } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { OrderPrintInvoiceModal } from './OrderPrintInvoiceModal';
+import { AdminTimeframe, getTodayDateStr, getYesterdayDateStr, formatDisplayDate, isDateMatch } from '../../utils/dateFilters';
 
 export const OrdersManagementTab: React.FC = () => {
   const { orders, updateOrderStatus, updatePaymentStatus, cancelOrder, addToast } = useApp();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'placed' | 'processing' | 'ready_to_ship' | 'shipped' | 'delivered' | 'cancelled'>('all');
-  const [timeframeFilter, setTimeframeFilter] = useState<'all' | 'today' | 'weekly' | 'monthly'>('all');
+  const [timeframeFilter, setTimeframeFilter] = useState<AdminTimeframe>('all');
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<string>('');
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
   const [editStatus, setEditStatus] = useState<Order['orderStatus']>('placed');
@@ -27,32 +30,10 @@ export const OrdersManagementTab: React.FC = () => {
   const [cancelReason, setCancelReason] = useState('Requested by customer via hotline.');
   const [copiedNotice, setCopiedNotice] = useState(false);
 
-  // Timeframe calculation
+  // Timeframe calculation using unified isDateMatch
   const timeframeOrders = useMemo(() => {
-    const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
-
-    const oneWeekAgo = new Date(now);
-    oneWeekAgo.setDate(now.getDate() - 7);
-
-    const oneMonthAgo = new Date(now);
-    oneMonthAgo.setMonth(now.getMonth() - 1);
-
-    return orders.filter((o) => {
-      if (timeframeFilter === 'today') {
-        return o.date === todayStr;
-      }
-      if (timeframeFilter === 'weekly') {
-        const oDate = new Date(o.date);
-        return oDate >= oneWeekAgo;
-      }
-      if (timeframeFilter === 'monthly') {
-        const oDate = new Date(o.date);
-        return oDate >= oneMonthAgo;
-      }
-      return true;
-    });
-  }, [orders, timeframeFilter]);
+    return orders.filter((o) => isDateMatch(o.date, timeframeFilter, selectedCalendarDate));
+  }, [orders, timeframeFilter, selectedCalendarDate]);
 
   const filteredOrders = useMemo(() => {
     return timeframeOrders.filter((o) => {
@@ -60,7 +41,8 @@ export const OrdersManagementTab: React.FC = () => {
         !searchTerm.trim() ||
         o.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
         o.deliveryAddress.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (o.customerName && o.customerName.toLowerCase().includes(searchTerm.toLowerCase()));
+        (o.customerName && o.customerName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (o.customerPhone && o.customerPhone.includes(searchTerm.trim()));
 
       const matchStatus =
         statusFilter === 'all' ||
@@ -119,6 +101,39 @@ export const OrdersManagementTab: React.FC = () => {
     }
   };
 
+  const handleSelectTimeframe = (tf: AdminTimeframe) => {
+    setTimeframeFilter(tf);
+    if (tf === 'today') {
+      setSelectedCalendarDate(getTodayDateStr());
+    } else if (tf === 'yesterday') {
+      setSelectedCalendarDate(getYesterdayDateStr());
+    } else if (tf !== 'custom') {
+      setSelectedCalendarDate('');
+    }
+  };
+
+  const handleDateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (val) {
+      setSelectedCalendarDate(val);
+      setTimeframeFilter('custom');
+    }
+  };
+
+  const handleClearCalendarDate = () => {
+    setSelectedCalendarDate('');
+    setTimeframeFilter('all');
+  };
+
+  const getTimeframeLabel = () => {
+    if (timeframeFilter === 'today') return `Today (${formatDisplayDate(getTodayDateStr())})`;
+    if (timeframeFilter === 'yesterday') return `Yesterday (${formatDisplayDate(getYesterdayDateStr())})`;
+    if (timeframeFilter === 'weekly') return 'This Week (7 Days)';
+    if (timeframeFilter === 'monthly') return 'This Month';
+    if (timeframeFilter === 'custom' && selectedCalendarDate) return `Calendar Date: ${formatDisplayDate(selectedCalendarDate)}`;
+    return 'All Time';
+  };
+
   // CSV Report Generator Download
   const handleDownloadCSVReport = () => {
     const headers = ['Order Number', 'Date', 'Customer Name', 'Phone', 'City', 'Subtotal', 'Delivery Fee', 'Total', 'Payment Method', 'Payment Status', 'Order Status', 'Items Purchased', 'Cancellation Reason'];
@@ -143,11 +158,12 @@ export const OrdersManagementTab: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `Aishu_Foods_Orders_Report_${timeframeFilter}_${new Date().toISOString().split('T')[0]}.csv`);
+    const fileTag = selectedCalendarDate || timeframeFilter;
+    link.setAttribute('download', `Aishu_Foods_Orders_Report_${fileTag}_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    addToast('Report Downloaded 📥', `${timeframeFilter.toUpperCase()} Orders CSV report generated successfully.`, 'success');
+    addToast('Report Downloaded 📥', `Orders CSV report for ${getTimeframeLabel()} generated successfully.`, 'success');
   };
 
   return (
@@ -165,33 +181,119 @@ export const OrdersManagementTab: React.FC = () => {
           className="px-4 py-2.5 bg-black text-white text-xs font-extrabold rounded-2xl flex items-center gap-2 hover:bg-neutral-800 transition-all cursor-pointer shadow-subtle shrink-0"
         >
           <Download className="w-4 h-4" />
-          <span>Download {timeframeFilter.toUpperCase()} Report (CSV)</span>
+          <span>Download {selectedCalendarDate ? formatDisplayDate(selectedCalendarDate) : timeframeFilter.toUpperCase()} Report (CSV)</span>
         </button>
       </div>
 
-      {/* Timeframe Period Filter Tabs */}
-      <div className="flex items-center gap-2 bg-neutral-100 p-1.5 rounded-2xl w-fit">
-        <span className="text-xs font-extrabold text-neutral-500 px-3 flex items-center gap-1">
-          <Calendar className="w-3.5 h-3.5" />
-          <span>Timeframe:</span>
-        </span>
-        {(['all', 'today', 'weekly', 'monthly'] as const).map((period) => (
+      {/* Timeframe Period Filter Bar: Today, Yesterday, This Week, This Month, All Time + Calendar Date Picker */}
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-neutral-100 p-3 rounded-2xl">
+        
+        {/* Quick Timeframe Buttons */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 flex-wrap">
+          <span className="text-xs font-extrabold text-neutral-500 flex items-center gap-1 mr-1">
+            <Filter className="w-3.5 h-3.5" />
+            <span>Timeframe:</span>
+          </span>
+
           <button
-            key={period}
-            onClick={() => setTimeframeFilter(period)}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold uppercase transition-all cursor-pointer ${
-              timeframeFilter === period ? 'bg-black text-white shadow-sm' : 'text-neutral-600 hover:text-black'
+            type="button"
+            onClick={() => handleSelectTimeframe('all')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+              timeframeFilter === 'all' && !selectedCalendarDate ? 'bg-black text-white shadow-sm' : 'bg-white text-neutral-700 hover:bg-neutral-200'
             }`}
           >
-            {period === 'today' ? 'Daily (Today)' : period === 'weekly' ? 'Weekly' : period === 'monthly' ? 'Monthly' : 'All Time'}
+            All Time
           </button>
-        ))}
+
+          <button
+            type="button"
+            onClick={() => handleSelectTimeframe('today')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+              timeframeFilter === 'today' ? 'bg-black text-white shadow-sm' : 'bg-white text-neutral-700 hover:bg-neutral-200'
+            }`}
+          >
+            Today
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleSelectTimeframe('yesterday')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+              timeframeFilter === 'yesterday' ? 'bg-black text-white shadow-sm' : 'bg-white text-neutral-700 hover:bg-neutral-200'
+            }`}
+          >
+            Yesterday
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleSelectTimeframe('weekly')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+              timeframeFilter === 'weekly' ? 'bg-black text-white shadow-sm' : 'bg-white text-neutral-700 hover:bg-neutral-200'
+            }`}
+          >
+            This Week
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleSelectTimeframe('monthly')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+              timeframeFilter === 'monthly' ? 'bg-black text-white shadow-sm' : 'bg-white text-neutral-700 hover:bg-neutral-200'
+            }`}
+          >
+            This Month
+          </button>
+        </div>
+
+        {/* Interactive Calendar Date Picker Input */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex items-center">
+            <button
+              type="button"
+              onClick={() => dateInputRef.current?.showPicker ? dateInputRef.current.showPicker() : dateInputRef.current?.focus()}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold border flex items-center gap-2 cursor-pointer transition-all ${
+                timeframeFilter === 'custom' || selectedCalendarDate
+                  ? 'bg-black text-white border-black shadow-sm'
+                  : 'bg-white text-neutral-800 border-neutral-300 hover:border-black'
+              }`}
+            >
+              <CalendarIcon className="w-4 h-4 text-amber-500" />
+              <span>
+                {selectedCalendarDate ? formatDisplayDate(selectedCalendarDate) : 'Calendar Date Picker'}
+              </span>
+              <ChevronDown className="w-3.5 h-3.5 opacity-70" />
+            </button>
+
+            <input
+              ref={dateInputRef}
+              type="date"
+              value={selectedCalendarDate}
+              onChange={handleDateInputChange}
+              className="sr-only"
+            />
+          </div>
+
+          {selectedCalendarDate && (
+            <button
+              type="button"
+              onClick={handleClearCalendarDate}
+              className="p-1.5 bg-neutral-200 hover:bg-neutral-300 rounded-lg text-neutral-700 text-xs font-bold transition-all cursor-pointer"
+              title="Clear Date Filter"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
       </div>
 
       {/* Analytics & Status Breakdown Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-neutral-50 border border-neutral-200 rounded-3xl p-5 shadow-subtle space-y-1">
-          <span className="text-[10px] font-extrabold uppercase tracking-widest text-neutral-400">Total Orders ({timeframeFilter.toUpperCase()})</span>
+          <span className="text-[10px] font-extrabold uppercase tracking-widest text-neutral-400">
+            Total Orders ({getTimeframeLabel()})
+          </span>
           <p className="text-2xl font-extrabold text-black">{filteredOrders.length} Orders</p>
           <p className="text-xs text-neutral-500 font-mono">Filtered from {orders.length} total store orders</p>
         </div>
@@ -223,240 +325,234 @@ export const OrdersManagementTab: React.FC = () => {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by order #, customer name, city..."
+            placeholder="Search by Order ID, Phone, Customer Name, or City..."
             className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-neutral-200 text-xs font-medium focus:outline-none focus:border-black bg-white"
           />
         </div>
 
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {(['all', 'placed', 'processing', 'ready_to_ship', 'shipped', 'delivered', 'cancelled'] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setStatusFilter(tab as any)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold uppercase transition-all cursor-pointer ${
-                statusFilter === tab ? 'bg-black text-white' : 'bg-white text-neutral-600 border border-neutral-200'
-              }`}
-            >
-              {tab.replace('_', ' ')}
-            </button>
-          ))}
+        {/* Status Filter Dropdown */}
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as any)}
+            className="px-3.5 py-2.5 bg-white border border-neutral-200 rounded-2xl text-xs font-bold text-black focus:outline-none cursor-pointer w-full sm:w-auto"
+          >
+            <option value="all">All Fulfillment Statuses</option>
+            <option value="placed">Placed / Pending</option>
+            <option value="processing">Processing</option>
+            <option value="ready_to_ship">Ready to Ship</option>
+            <option value="shipped">Shipped / Dispatched</option>
+            <option value="delivered">Delivered Successfully</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
         </div>
       </div>
 
-      {/* Orders List */}
-      <div className="space-y-4">
-        {filteredOrders.map((ord) => (
-          <div key={ord.id} className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-subtle hover:border-black transition-all space-y-4">
-            
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-100 pb-3">
-              <div>
-                <span className="text-sm font-extrabold text-black font-mono">#{ord.orderNumber}</span>
-                <span className="text-xs text-neutral-400 ml-2 font-mono">Placed: {ord.date}</span>
-              </div>
+      {/* Orders Table */}
+      <div className="bg-white border border-neutral-200 rounded-3xl overflow-hidden shadow-subtle">
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs text-left">
+            <thead className="bg-neutral-50 border-b border-neutral-200 text-neutral-500 font-extrabold uppercase tracking-wider">
+              <tr>
+                <th className="py-3.5 px-4">Order ID & Date</th>
+                <th className="py-3.5 px-4">Customer & City</th>
+                <th className="py-3.5 px-4">Items Summary</th>
+                <th className="py-3.5 px-4">Amount</th>
+                <th className="py-3.5 px-4">Payment</th>
+                <th className="py-3.5 px-4">Status</th>
+                <th className="py-3.5 px-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-100">
+              {filteredOrders.map((ord) => {
+                const isEditing = editingOrderId === ord.id;
+                const isCancelled = ord.orderStatus === 'cancelled' || ord.status === 'Cancelled';
 
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className={`text-[10px] font-extrabold uppercase px-3 py-1 rounded-full text-white ${
-                  ord.orderStatus === 'delivered' ? 'bg-emerald-700' :
-                  ord.orderStatus === 'shipped' ? 'bg-purple-700' :
-                  ord.orderStatus === 'ready_to_ship' ? 'bg-indigo-700' :
-                  ord.orderStatus === 'processing' ? 'bg-blue-700' :
-                  ord.orderStatus === 'cancelled' || ord.status === 'Cancelled' ? 'bg-rose-700' : 'bg-black'
-                }`}>
-                  ● {(ord.orderStatus || ord.status).replace('_', ' ')}
-                </span>
-                <span className="text-[10px] font-extrabold uppercase px-3 py-1 rounded-full border border-neutral-300 text-black">
-                  Payment: {ord.paymentStatus || 'completed'}
-                </span>
-                <span className="text-base font-extrabold font-mono text-black">₹{ord.total}</span>
-              </div>
-            </div>
+                return (
+                  <tr key={ord.id} className="hover:bg-neutral-50/80 transition-colors">
+                    <td className="py-3.5 px-4 font-mono">
+                      <span className="font-extrabold text-black block">{ord.orderNumber}</span>
+                      <span className="text-[10px] text-neutral-400">{ord.date}</span>
+                    </td>
 
-            {/* Address & Items */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div>
-                <p className="text-[10px] font-extrabold uppercase text-neutral-400">Customer & Address</p>
-                <p className="font-bold text-black">{ord.customerName || 'Customer'} • {ord.customerPhone || 'N/A'}</p>
-                <p className="text-neutral-600">{ord.deliveryAddress.address}, {ord.deliveryAddress.city} - {ord.deliveryAddress.pincode}</p>
-                <p className="text-neutral-500 mt-1">Payment Method: {ord.paymentMethod}</p>
-              </div>
+                    <td className="py-3.5 px-4">
+                      <p className="font-bold text-black">{ord.customerName || 'Customer'}</p>
+                      <p className="text-[10px] text-neutral-500 truncate max-w-[150px]">{ord.deliveryAddress.city}</p>
+                    </td>
 
-              <div>
-                <p className="text-[10px] font-extrabold uppercase text-neutral-400">Items Ordered</p>
-                {ord.items.map((i, idx) => (
-                  <p key={idx} className="text-neutral-700 font-medium">
-                    {i.quantity}x {i.product.name} ({i.selectedWeight}) — ₹{i.unitPrice * i.quantity}
-                  </p>
-                ))}
-              </div>
-            </div>
+                    <td className="py-3.5 px-4">
+                      <span className="font-bold text-neutral-700 block">{ord.items.length} item(s)</span>
+                      <span className="text-[10px] text-neutral-400 truncate block max-w-[180px]">
+                        {ord.items.map((i) => `${i.quantity}x ${i.product.name}`).join(', ')}
+                      </span>
+                    </td>
 
-            {/* Admin Controls */}
-            {editingOrderId === ord.id ? (
-              <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-200 space-y-3 text-xs font-bold">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-neutral-500 mb-1">Fulfillment Status Workflow</label>
-                    <select
-                      value={editStatus}
-                      onChange={(e) => setEditStatus(e.target.value as any)}
-                      className="w-full p-2.5 bg-white border border-neutral-300 rounded-xl"
-                    >
-                      <option value="placed">Order Placed 📦</option>
-                      <option value="processing">Processing ⚙️</option>
-                      <option value="ready_to_ship">Ready to Shipped 🏷️</option>
-                      <option value="shipped">Shipped 🚚 (Updates Stock)</option>
-                      <option value="delivered">Delivered ✅</option>
-                      <option value="cancelled">Cancelled ❌</option>
-                    </select>
-                  </div>
+                    <td className="py-3.5 px-4 font-black font-mono text-black">₹{ord.total}</td>
 
-                  <div>
-                    <label className="block text-neutral-500 mb-1">Payment Status</label>
-                    <select
-                      value={editPaymentStatus}
-                      onChange={(e) => setEditPaymentStatus(e.target.value as any)}
-                      className="w-full p-2.5 bg-white border border-neutral-300 rounded-xl"
-                    >
-                      <option value="pending">Pending ⏳</option>
-                      <option value="completed">Paid ✅</option>
-                      <option value="failed">Failed ❌</option>
-                    </select>
-                  </div>
-                </div>
+                    <td className="py-3.5 px-4">
+                      {isEditing ? (
+                        <select
+                          value={editPaymentStatus}
+                          onChange={(e) => setEditPaymentStatus(e.target.value as any)}
+                          className="p-1.5 border border-neutral-300 rounded-lg text-[10px] font-bold bg-white"
+                        >
+                          <option value="completed">Completed</option>
+                          <option value="pending">Pending</option>
+                          <option value="failed">Failed</option>
+                        </select>
+                      ) : (
+                        <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
+                          ord.paymentStatus === 'completed' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {ord.paymentStatus || 'completed'}
+                        </span>
+                      )}
+                    </td>
 
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleSaveEdit(ord.id)}
-                    className="px-4 py-2 bg-black text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Save className="w-3.5 h-3.5" />
-                    <span>Save Order Status</span>
-                  </button>
-                  <button
-                    onClick={() => setEditingOrderId(null)}
-                    className="px-4 py-2 bg-neutral-200 text-black text-xs font-bold rounded-xl cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="pt-3 border-t border-neutral-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                <div className="text-neutral-500">
-                  {ord.adminNotes && <span>Notes: {ord.adminNotes}</span>}
-                  {ord.cancelReason && <p className="text-rose-600 font-bold">Cancellation Reason: {ord.cancelReason}</p>}
-                </div>
+                    <td className="py-3.5 px-4">
+                      {isEditing ? (
+                        <select
+                          value={editStatus}
+                          onChange={(e) => setEditStatus(e.target.value as any)}
+                          className="p-1.5 border border-neutral-300 rounded-lg text-[10px] font-bold bg-white"
+                        >
+                          <option value="placed">Placed</option>
+                          <option value="processing">Processing</option>
+                          <option value="ready_to_ship">Ready to Ship</option>
+                          <option value="shipped">Shipped</option>
+                          <option value="delivered">Delivered</option>
+                          <option value="cancelled">Cancelled</option>
+                        </select>
+                      ) : (
+                        <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                          ord.orderStatus === 'delivered' ? 'bg-emerald-100 text-emerald-800' :
+                          ord.orderStatus === 'shipped' ? 'bg-purple-100 text-purple-800' :
+                          ord.orderStatus === 'ready_to_ship' ? 'bg-indigo-100 text-indigo-800' :
+                          ord.orderStatus === 'processing' ? 'bg-blue-100 text-blue-800' :
+                          isCancelled ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {ord.orderStatus || ord.status}
+                        </span>
+                      )}
+                    </td>
 
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    onClick={() => setSelectedPrintOrder(ord)}
-                    className="px-3 py-1.5 bg-black text-white font-bold rounded-xl flex items-center gap-1.5 hover:bg-neutral-800 transition-all cursor-pointer shadow-sm"
-                  >
-                    <Printer className="w-3.5 h-3.5" />
-                    <span>Print Bill & Label</span>
-                  </button>
+                    <td className="py-3.5 px-4 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {isEditing ? (
+                          <button
+                            onClick={() => handleSaveEdit(ord.id)}
+                            className="p-2 bg-black text-white rounded-xl hover:bg-neutral-800 transition-colors cursor-pointer"
+                            title="Save Order Changes"
+                          >
+                            <Save className="w-3.5 h-3.5" />
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleStartEdit(ord)}
+                              className="p-2 text-neutral-600 hover:text-black hover:bg-neutral-100 rounded-xl transition-colors cursor-pointer"
+                              title="Edit Order Status"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
 
-                  <button
-                    onClick={() => handleStartEdit(ord)}
-                    className="px-3 py-1.5 border border-neutral-200 hover:border-black text-black font-bold rounded-xl flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                    <span>Update Status</span>
-                  </button>
+                            <button
+                              onClick={() => setSelectedPrintOrder(ord)}
+                              className="p-2 text-neutral-600 hover:text-black hover:bg-neutral-100 rounded-xl transition-colors cursor-pointer"
+                              title="Print Invoice / Packing Slip"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                            </button>
 
-                  {ord.status !== 'Cancelled' && (
-                    <button
-                      onClick={() => handleOpenCancelModal(ord)}
-                      className="px-3 py-1.5 border border-neutral-200 hover:border-rose-600 text-rose-600 font-bold rounded-xl flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <XCircle className="w-3.5 h-3.5" />
-                      <span>Cancel Order</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
+                            {!isCancelled && (
+                              <button
+                                onClick={() => handleOpenCancelModal(ord)}
+                                className="p-2 text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                                title="Cancel Order"
+                              >
+                                <XCircle className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
 
+        {filteredOrders.length === 0 && (
+          <div className="py-12 text-center text-xs text-neutral-400 border-t border-neutral-100 space-y-2">
+            <CalendarIcon className="w-7 h-7 text-neutral-300 mx-auto" />
+            <p className="font-bold text-neutral-600">No orders found for {getTimeframeLabel()}</p>
+            <p className="text-[11px] text-neutral-400">Try changing the filter timeframe or clearing your search term.</p>
           </div>
-        ))}
+        )}
       </div>
 
-      {/* Printable Invoice & Delivery Label Modal */}
-      <OrderPrintInvoiceModal
-        order={selectedPrintOrder}
-        onClose={() => setSelectedPrintOrder(null)}
-      />
-
-      {/* Cancellation Modal with Presets & Report Text */}
+      {/* Cancellation Modal */}
       {cancelModalOrderId && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-modal text-left">
-            <h3 className="text-base font-extrabold text-black">Cancel Order #{cancelModalOrderId}</h3>
-            <p className="text-xs text-neutral-500">Select preset cancellation reason or type custom details:</p>
-
-            {/* Preset Options */}
-            <div className="space-y-1.5">
-              {[
-                'Customer Request',
-                'Item Out of Stock',
-                'Pincode / Address Unserviceable',
-                'Payment Verification Failed',
-                'Other Custom Reason',
-              ].map((preset) => (
-                <button
-                  key={preset}
-                  type="button"
-                  onClick={() => {
-                    setCancelPreset(preset);
-                    if (preset === 'Customer Request') setCancelReason('Order cancelled per customer request via support.');
-                    else if (preset === 'Item Out of Stock') setCancelReason('One or more items in the order are temporarily out of stock.');
-                    else if (preset === 'Pincode / Address Unserviceable') setCancelReason('Delivery address pincode is outside active courier coverage.');
-                    else if (preset === 'Payment Verification Failed') setCancelReason('Transaction payment verification failed or unconfirmed.');
-                  }}
-                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    cancelPreset === preset ? 'bg-black text-white' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-                  }`}
-                >
-                  {preset}
-                </button>
-              ))}
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-modal text-left">
+            <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
+              <h3 className="text-base font-extrabold text-black">Cancel Store Order</h3>
+              <button onClick={() => setCancelModalOrderId(null)} className="text-neutral-400 hover:text-black">✕</button>
             </div>
 
-            <textarea
-              rows={3}
-              value={cancelReason}
-              onChange={(e) => setCancelReason(e.target.value)}
-              placeholder="Enter custom cancellation notes..."
-              className="w-full p-3 rounded-2xl border border-neutral-300 text-xs font-bold bg-neutral-50"
-            />
+            <div className="space-y-3 text-xs font-bold">
+              <div>
+                <label className="block text-neutral-500 mb-1">Preset Reason</label>
+                <select
+                  value={cancelPreset}
+                  onChange={(e) => setCancelPreset(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-neutral-200 bg-white"
+                >
+                  <option value="Customer Request">Customer Request</option>
+                  <option value="Out of Stock / Ingredient Unavailable">Out of Stock / Ingredient Unavailable</option>
+                  <option value="Delivery Address Unserviceable">Delivery Address Unserviceable</option>
+                  <option value="Payment Issue / Fraud Check">Payment Issue / Fraud Check</option>
+                  <option value="Other">Other Reason</option>
+                </select>
+              </div>
 
-            <div className="p-3 bg-neutral-100 rounded-2xl text-[11px] text-neutral-700 font-mono space-y-1">
-              <span className="font-bold uppercase text-neutral-400 block">Cancellation Notice Text Preview</span>
-              <p className="italic">"Order #{cancelModalOrderId} has been cancelled. Reason: {cancelPreset} - {cancelReason}"</p>
-              <button
-                type="button"
-                onClick={() => {
-                  navigator.clipboard.writeText(`Order #${cancelModalOrderId} has been cancelled. Reason: ${cancelPreset} - ${cancelReason}`);
-                  setCopiedNotice(true);
-                  setTimeout(() => setCopiedNotice(false), 2000);
-                }}
-                className="mt-1 text-xs font-bold text-black flex items-center gap-1 underline cursor-pointer"
-              >
-                {copiedNotice ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copiedNotice ? 'Notice Copied!' : 'Copy Notice Text to Clipboard'}</span>
-              </button>
+              <div>
+                <label className="block text-neutral-500 mb-1">Detailed Reason Notes</label>
+                <textarea
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  rows={3}
+                  className="w-full p-2.5 rounded-xl border border-neutral-200 bg-white text-xs font-sans"
+                />
+              </div>
             </div>
 
             <div className="flex gap-2 pt-2">
-              <button onClick={() => setCancelModalOrderId(null)} className="flex-1 py-3 bg-neutral-100 text-black text-xs font-bold rounded-2xl cursor-pointer">
-                Close
+              <button
+                onClick={() => setCancelModalOrderId(null)}
+                className="flex-1 py-2.5 border border-neutral-200 rounded-xl text-xs font-bold text-black"
+              >
+                Back
               </button>
-              <button onClick={handleConfirmCancel} className="flex-1 py-3 bg-black text-white text-xs font-bold rounded-2xl cursor-pointer shadow-subtle">
+              <button
+                onClick={handleConfirmCancel}
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-extrabold"
+              >
                 Confirm Cancellation
               </button>
             </div>
-          </motion.div>
+          </div>
         </div>
+      )}
+
+      {/* Invoice Modal */}
+      {selectedPrintOrder && (
+        <OrderPrintInvoiceModal
+          order={selectedPrintOrder}
+          onClose={() => setSelectedPrintOrder(null)}
+        />
       )}
 
     </div>

@@ -17,6 +17,8 @@ import {
   X,
 } from 'lucide-react';
 
+import { AdminTimeframe, getTodayDateStr, getYesterdayDateStr, formatDisplayDate, isDateMatch } from '../../utils/dateFilters';
+
 export const AnalyticsManagementTab: React.FC = () => {
   const {
     products,
@@ -25,31 +27,12 @@ export const AnalyticsManagementTab: React.FC = () => {
     addToast,
   } = useApp();
 
-  const [timeRange, setTimeRange] = useState<'all' | '30d' | '7d' | 'today' | 'custom'>('all');
+  const [timeRange, setTimeRange] = useState<AdminTimeframe>('all');
   const [selectedDate, setSelectedDate] = useState<string>('');
 
   // Filter orders based on selected date calendar picker or quick time range
   const filteredOrders = useMemo(() => {
-    const now = new Date();
-    return orders.filter((order) => {
-      // Specific Calendar Date Filter
-      if (selectedDate && timeRange === 'custom') {
-        if (!order.date) return false;
-        // Match order date string yyyy-mm-dd or formatted ISO date
-        const oDateStr = new Date(order.date).toISOString().split('T')[0];
-        return oDateStr === selectedDate || order.date.includes(selectedDate);
-      }
-
-      if (!order.date) return true;
-      const orderDate = new Date(order.date);
-      const diffTime = Math.abs(now.getTime() - orderDate.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-      if (timeRange === 'today') return diffDays <= 1;
-      if (timeRange === '7d') return diffDays <= 7;
-      if (timeRange === '30d') return diffDays <= 30;
-      return true;
-    });
+    return orders.filter((order) => isDateMatch(order.date, timeRange, selectedDate));
   }, [orders, timeRange, selectedDate]);
 
   // Analytical Metrics Calculation
@@ -184,28 +167,78 @@ export const AnalyticsManagementTab: React.FC = () => {
 
         <div className="flex items-center flex-wrap gap-2">
           {/* Time Range Filter Buttons */}
-          <div className="flex items-center bg-white border border-neutral-200 p-1 rounded-2xl shadow-subtle">
-            {(['all', '30d', '7d', 'today'] as const).map((range) => (
-              <button
-                key={range}
-                onClick={() => {
-                  setTimeRange(range);
-                  setSelectedDate('');
-                }}
-                className={`px-3 py-1.5 text-[11px] font-bold rounded-xl transition-all capitalize ${
-                  timeRange === range && !selectedDate
-                    ? 'bg-black text-white shadow-subtle'
-                    : 'text-neutral-600 hover:text-black hover:bg-neutral-100'
-                }`}
-              >
-                {range === 'all' ? 'All Time' : range === '30d' ? 'Last 30 Days' : range === '7d' ? '7 Days' : 'Today'}
-              </button>
-            ))}
+          {/* Time Range Filter Buttons */}
+          <div className="flex items-center gap-1 bg-white border border-neutral-200 p-1 rounded-2xl shadow-subtle flex-wrap">
+            <button
+              onClick={() => {
+                setTimeRange('all');
+                setSelectedDate('');
+              }}
+              className={`px-3 py-1.5 text-[11px] font-bold rounded-xl transition-all ${
+                timeRange === 'all' && !selectedDate
+                  ? 'bg-black text-white shadow-subtle'
+                  : 'text-neutral-600 hover:text-black hover:bg-neutral-100'
+              }`}
+            >
+              All Time
+            </button>
+            <button
+              onClick={() => {
+                setTimeRange('today');
+                setSelectedDate(getTodayDateStr());
+              }}
+              className={`px-3 py-1.5 text-[11px] font-bold rounded-xl transition-all ${
+                timeRange === 'today'
+                  ? 'bg-black text-white shadow-subtle'
+                  : 'text-neutral-600 hover:text-black hover:bg-neutral-100'
+              }`}
+            >
+              Today
+            </button>
+            <button
+              onClick={() => {
+                setTimeRange('yesterday');
+                setSelectedDate(getYesterdayDateStr());
+              }}
+              className={`px-3 py-1.5 text-[11px] font-bold rounded-xl transition-all ${
+                timeRange === 'yesterday'
+                  ? 'bg-black text-white shadow-subtle'
+                  : 'text-neutral-600 hover:text-black hover:bg-neutral-100'
+              }`}
+            >
+              Yesterday
+            </button>
+            <button
+              onClick={() => {
+                setTimeRange('7d');
+                setSelectedDate('');
+              }}
+              className={`px-3 py-1.5 text-[11px] font-bold rounded-xl transition-all ${
+                timeRange === '7d' && !selectedDate
+                  ? 'bg-black text-white shadow-subtle'
+                  : 'text-neutral-600 hover:text-black hover:bg-neutral-100'
+              }`}
+            >
+              7 Days
+            </button>
+            <button
+              onClick={() => {
+                setTimeRange('30d');
+                setSelectedDate('');
+              }}
+              className={`px-3 py-1.5 text-[11px] font-bold rounded-xl transition-all ${
+                timeRange === '30d' && !selectedDate
+                  ? 'bg-black text-white shadow-subtle'
+                  : 'text-neutral-600 hover:text-black hover:bg-neutral-100'
+              }`}
+            >
+              30 Days
+            </button>
           </div>
 
           {/* Specific Date Calendar Picker */}
           <div className="flex items-center gap-1.5 bg-white border border-neutral-200 px-3 py-1.5 rounded-2xl shadow-subtle text-xs font-bold">
-            <Calendar className="w-4 h-4 text-neutral-500 shrink-0" />
+            <Calendar className="w-4 h-4 text-amber-500 shrink-0" />
             <input
               type="date"
               value={selectedDate}
