@@ -21,9 +21,10 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
   const filtered = query.trim()
     ? products.filter(
         (p) =>
-          p.name.toLowerCase().includes(query.toLowerCase()) ||
-          p.category.toLowerCase().includes(query.toLowerCase()) ||
-          p.description.toLowerCase().includes(query.toLowerCase())
+          !p.isHidden &&
+          (p.name.toLowerCase().includes(query.toLowerCase()) ||
+            p.category.toLowerCase().includes(query.toLowerCase()) ||
+            p.description.toLowerCase().includes(query.toLowerCase()))
       )
     : [];
 

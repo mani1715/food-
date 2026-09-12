@@ -35,6 +35,8 @@ export interface Product {
   outOfStock?: boolean;
   availableCities?: string[];
   inStock?: boolean;
+  isHidden?: boolean;
+  statusReason?: string;
   grandmaStory?: string;
   howWeDoText?: string;
   sourcingText?: string;
@@ -252,12 +254,14 @@ export interface StockHistoryLog {
   id: string;
   productId: string;
   productName: string;
-  type: 'restock' | 'destock';
-  quantity: number;
+  type: 'restock' | 'destock' | 'out_of_stock' | 'in_stock' | 'hidden' | 'visible';
+  quantity?: number;
   date: string;
   time: string;
   note?: string;
   adminName?: string;
+  previousStock?: number;
+  newStock?: number;
 }
 
 export interface SubAdmin {

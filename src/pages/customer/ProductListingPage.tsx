@@ -79,7 +79,9 @@ export const ProductListingPage: React.FC = () => {
         const matchesPrice = p.price <= maxPrice;
         const matchesRating = p.rating >= minRating;
 
-        return matchesCategory && matchesDietary && matchesQuery && matchesFilter && matchesPrice && matchesRating;
+        const matchesHidden = !p.isHidden;
+
+        return matchesHidden && matchesCategory && matchesDietary && matchesQuery && matchesFilter && matchesPrice && matchesRating;
       })
       .sort((a, b) => {
         if (sortBy === 'newest') return (b.isNewArrival ? 1 : 0) - (a.isNewArrival ? 1 : 0);

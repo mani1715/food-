@@ -190,6 +190,8 @@ interface AppContextType {
   updateHeaderSettings: (settings: Partial<HeaderSettings>) => void;
   restockProduct: (productId: string, quantity: number, note?: string) => void;
   destockProduct: (productId: string, quantity: number, note?: string) => void;
+  toggleProductOutOfStock: (productId: string, reason?: string) => void;
+  toggleProductVisibility: (productId: string, reason?: string) => void;
   addSubAdmin: (subAdmin: Omit<SubAdmin, 'id' | 'createdAt'>) => void;
   updateSubAdmin: (id: string, updated: Partial<SubAdmin>) => void;
   deleteSubAdmin: (id: string) => void;
@@ -692,6 +694,104 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setStockHistoryLogs((prev) => [newLog, ...prev]);
     addToast('Stock Destocked 🔻', `Removed -${quantity} units from ${prodName || 'Product'}.`, 'info');
+  };
+
+  const toggleProductOutOfStock = (productId: string, reason?: string) => {
+    let prodName = '';
+    let newOutOfStock = false;
+    let currentStock = 0;
+
+    setProducts((prev) =>
+      prev.map((p) => {
+        if (p.id === productId) {
+          prodName = p.name;
+          newOutOfStock = !(p.outOfStock || (p.inventoryCount ?? 100) <= 0);
+          currentStock = p.inventoryCount ?? 100;
+          return {
+            ...p,
+            outOfStock: newOutOfStock,
+            inStock: !newOutOfStock,
+            statusReason: reason || p.statusReason,
+          };
+        }
+        return p;
+      })
+    );
+
+    if (isSupabaseConfigured()) {
+      updateProductInDb(productId, {
+        outOfStock: newOutOfStock,
+        inStock: !newOutOfStock,
+      }).catch((err) => console.warn('Could not toggle out of stock in Supabase:', err));
+    }
+
+    const now = new Date();
+    const formattedTime = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    const newLog: StockHistoryLog = {
+      id: `log-${Date.now()}`,
+      productId,
+      productName: prodName || 'Product',
+      type: newOutOfStock ? 'out_of_stock' : 'in_stock',
+      date: now.toISOString().split('T')[0],
+      time: formattedTime,
+      note: reason || (newOutOfStock ? 'Marked Out of Stock by Admin' : 'Marked In Stock by Admin'),
+      adminName: 'Store Admin',
+      previousStock: currentStock,
+      newStock: newOutOfStock ? 0 : currentStock,
+    };
+
+    setStockHistoryLogs((prev) => [newLog, ...prev]);
+    addToast(
+      newOutOfStock ? 'Marked Out of Stock 🚨' : 'Marked In Stock ✅',
+      `${prodName || 'Product'} is now ${newOutOfStock ? 'marked Out of Stock on storefront' : 'marked In Stock'}.`,
+      newOutOfStock ? 'info' : 'success'
+    );
+  };
+
+  const toggleProductVisibility = (productId: string, reason?: string) => {
+    let prodName = '';
+    let newIsHidden = false;
+
+    setProducts((prev) =>
+      prev.map((p) => {
+        if (p.id === productId) {
+          prodName = p.name;
+          newIsHidden = !p.isHidden;
+          return {
+            ...p,
+            isHidden: newIsHidden,
+            statusReason: reason || p.statusReason,
+          };
+        }
+        return p;
+      })
+    );
+
+    if (isSupabaseConfigured()) {
+      updateProductInDb(productId, {
+        isHidden: newIsHidden,
+      }).catch((err) => console.warn('Could not toggle visibility in Supabase:', err));
+    }
+
+    const now = new Date();
+    const formattedTime = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    const newLog: StockHistoryLog = {
+      id: `log-${Date.now()}`,
+      productId,
+      productName: prodName || 'Product',
+      type: newIsHidden ? 'hidden' : 'visible',
+      date: now.toISOString().split('T')[0],
+      time: formattedTime,
+      note: reason || (newIsHidden ? 'Hidden from storefront by Admin' : 'Restored to storefront by Admin'),
+      adminName: 'Store Admin',
+    };
+
+    setStockHistoryLogs((prev) => [newLog, ...prev]);
+    addToast(
+      newIsHidden ? 'Product Hidden 🙈' : 'Product Made Visible 👁️',
+      `${prodName || 'Product'} is now ${newIsHidden ? 'hidden from storefront & homepage' : 'visible on storefront'}.`,
+      newIsHidden ? 'info' : 'success'
+    );
   };
 
   const addSubAdmin = (subAdmin: Omit<SubAdmin, 'id' | 'createdAt'>) => {
@@ -1764,6 +1864,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateHeaderSettings,
         restockProduct,
         destockProduct,
+        toggleProductOutOfStock,
+        toggleProductVisibility,
         addSubAdmin,
         updateSubAdmin,
         deleteSubAdmin,

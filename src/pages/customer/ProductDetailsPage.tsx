@@ -20,11 +20,13 @@ export const ProductDetailsPage: React.FC = () => {
   const [activeImage, setActiveImage] = useState(product.image);
   const [showLightbox, setShowLightbox] = useState(false);
 
+  const isOutOfStock = Boolean(product.outOfStock) || product.inStock === false || (product.inventoryCount ?? 100) <= 0;
+
   const selectedOption = product.weightOptions.find((w) => w.weight === selectedWeight) || product.weightOptions[0];
   const currentPrice = selectedOption ? selectedOption.price : product.price;
 
   const relatedProducts = products
-    .filter((p) => p.category === product.category && p.id !== product.id)
+    .filter((p) => !p.isHidden && p.category === product.category && p.id !== product.id)
     .slice(0, 4);
 
   const galleryImages = product.gallery && product.gallery.length > 0 ? product.gallery : [product.image];
@@ -163,7 +165,7 @@ export const ProductDetailsPage: React.FC = () => {
             </div>
 
             {/* Action Buttons */}
-            {product.outOfStock || (product.inventoryCount ?? 100) <= 0 ? (
+            {isOutOfStock ? (
               <div className="flex gap-3">
                 <button
                   disabled

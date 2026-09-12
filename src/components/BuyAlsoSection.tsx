@@ -12,9 +12,9 @@ export const BuyAlsoSection: React.FC<BuyAlsoSectionProps> = ({ currentProduct }
   const { products, addToCart, addToast } = useApp();
   const navigate = useNavigate();
 
-  // Find 2 complementary products (different categories or highly rated items)
+  // Find 2 complementary products (different categories or highly rated items and not hidden)
   const complementaryProducts = products
-    .filter((p) => p.id !== currentProduct.id)
+    .filter((p) => !p.isHidden && p.id !== currentProduct.id)
     .slice(0, 2);
 
   const bundleItems = [currentProduct, ...complementaryProducts];

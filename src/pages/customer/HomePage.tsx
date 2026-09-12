@@ -351,23 +351,23 @@ export const HomePage: React.FC = () => {
       {homeSections
         .filter((sec) => sec.enabled)
         .map((sec) => {
-          // 1. Explicitly assigned products that exist in current catalog
+          // 1. Explicitly assigned products that exist in current catalog and are not hidden
           const explicitlyAssigned = products.filter((p) =>
-            (sec.productIds || []).includes(p.id)
+            !p.isHidden && (sec.productIds || []).includes(p.id)
           );
 
           // 2. Category-matched products if section has a specific category filter
           const categoryMatched =
             sec.categoryFilter && sec.categoryFilter !== 'all'
               ? products.filter(
-                  (p) => p.category.toLowerCase() === (sec.categoryFilter || '').toLowerCase()
+                  (p) => !p.isHidden && p.category.toLowerCase() === (sec.categoryFilter || '').toLowerCase()
                 )
               : sec.title.toLowerCase().includes('pickle')
-              ? products.filter((p) => p.category.toLowerCase() === 'pickles')
+              ? products.filter((p) => !p.isHidden && p.category.toLowerCase() === 'pickles')
               : sec.title.toLowerCase().includes('sweet')
-              ? products.filter((p) => p.category.toLowerCase() === 'sweets')
+              ? products.filter((p) => !p.isHidden && p.category.toLowerCase() === 'sweets')
               : sec.title.toLowerCase().includes('snack') || sec.title.toLowerCase().includes('savor')
-              ? products.filter((p) => p.category.toLowerCase() === 'snacks')
+              ? products.filter((p) => !p.isHidden && p.category.toLowerCase() === 'snacks')
               : [];
 
           // 3. Combine without duplicates
@@ -383,9 +383,9 @@ export const HomePage: React.FC = () => {
             combined.length > 0
               ? combined
               : sec.id === 'sec-bestsellers' || sec.title.toLowerCase().includes('best selling')
-              ? products.filter((p) => p.isBestSeller).length > 0
-                ? products.filter((p) => p.isBestSeller)
-                : products.slice(0, 4)
+              ? products.filter((p) => !p.isHidden && p.isBestSeller).length > 0
+                ? products.filter((p) => !p.isHidden && p.isBestSeller)
+                : products.filter((p) => !p.isHidden).slice(0, 4)
               : [];
 
           if (sectionProducts.length === 0) return null;

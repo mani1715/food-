@@ -5,7 +5,7 @@ import { ProductCard } from './ProductCard';
 export const RecentlyViewed: React.FC = () => {
   const { products, recentlyViewedIds } = useApp();
 
-  const recentProducts = products.filter((p) => recentlyViewedIds.includes(p.id)).slice(0, 10);
+  const recentProducts = products.filter((p) => !p.isHidden && recentlyViewedIds.includes(p.id)).slice(0, 10);
 
   if (recentProducts.length === 0) return null;
 

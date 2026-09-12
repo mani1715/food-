@@ -34,22 +34,25 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     navigate('/checkout');
   };
 
+  const isOutOfStock = Boolean(product.outOfStock) || product.inStock === false || (product.inventoryCount ?? 100) <= 0;
+
   return (
-    <div className="bg-white border border-neutral-200 rounded-3xl p-4 shadow-subtle hover:border-black transition-all flex flex-col justify-between group text-left">
+    <div className={`bg-white border border-neutral-200 rounded-3xl p-4 shadow-subtle hover:border-black transition-all flex flex-col justify-between group text-left ${isOutOfStock ? 'opacity-90' : ''}`}>
       
       {/* Product Image & Badges */}
       <div className="relative rounded-2xl overflow-hidden aspect-square mb-3 bg-neutral-100 cursor-pointer" onClick={handleCardClick}>
         <img
           src={product.image}
           alt={product.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${isOutOfStock ? 'grayscale-[30%]' : ''}`}
         />
         
-        {/* Top Left Badges: Best Seller, New, Veg/Non-Veg */}
+        {/* Top Left Badges: Best Seller, New, Veg/Non-Veg, Out of Stock */}
         <div className="absolute top-2 left-2 flex flex-col gap-1 items-start z-10">
-          {product.outOfStock || (product.inventoryCount ?? 100) <= 0 ? (
-            <span className="bg-rose-600 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow-subtle">
-              Out of Stock
+          {isOutOfStock ? (
+            <span className="bg-rose-600 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full shadow-subtle flex items-center gap-1">
+              <span>🚨</span>
+              <span>Out of Stock</span>
             </span>
           ) : (
             <>
@@ -134,7 +137,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             <span className="text-sm font-extrabold font-mono text-black">₹{currentPrice}</span>
           </div>
 
-          {product.outOfStock || (product.inventoryCount ?? 100) <= 0 ? (
+          {isOutOfStock ? (
             <span className="w-full sm:w-auto text-center px-3 py-1.5 bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-extrabold rounded-xl">
               Out of Stock 🚨
             </span>
