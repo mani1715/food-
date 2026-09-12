@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { AdminTab } from '../../types';
 import {
@@ -33,17 +33,45 @@ import { SettingsManagementTab } from '../../components/admin/SettingsManagement
 import { AdminProfileTab } from '../../components/admin/AdminProfileTab';
 import { AdminLoginModal } from '../../components/admin/AdminLoginModal';
 
+const validTabs: AdminTab[] = ['analytics', 'products', 'notifications', 'banners', 'orders', 'locations', 'bestsellers', 'discounts', 'settings', 'newsletter', 'profile'];
+
 export const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const {
     isAdminAuthenticated,
     logoutAdmin,
     products,
     orders,
+    siteLogo,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<AdminTab>('analytics');
+  const [activeTab, setActiveTab] = useState<AdminTab>(() => {
+    const param = searchParams.get('tab') as AdminTab | null;
+    if (param && validTabs.includes(param)) return param;
+    const stored = localStorage.getItem('aura_admin_active_tab') as AdminTab | null;
+    if (stored && validTabs.includes(stored)) return stored;
+    return 'analytics';
+  });
+
   const [showLoginModal, setShowLoginModal] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('aura_admin_active_tab', activeTab);
+    if (searchParams.get('tab') !== activeTab) {
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set('tab', activeTab);
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [activeTab]);
+
+  const handleTabChange = (newTab: AdminTab) => {
+    setActiveTab(newTab);
+    localStorage.setItem('aura_admin_active_tab', newTab);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('tab', newTab);
+    setSearchParams(newParams, { replace: true });
+  };
 
   const alertStockCount = products.filter((p) => (p.inventoryCount ?? 100) < 10 || p.outOfStock).length;
 
@@ -230,7 +258,7 @@ export const AdminDashboardPage: React.FC = () => {
             </label>
             <select
               value={activeTab}
-              onChange={(e) => setActiveTab(e.target.value as AdminTab)}
+              onChange={(e) => handleTabChange(e.target.value as AdminTab)}
               className="w-full p-3 bg-white border border-neutral-300 rounded-2xl text-xs font-extrabold text-black focus:outline-none focus:border-black appearance-none cursor-pointer"
             >
               {tabs.map((tab) => (
@@ -252,7 +280,7 @@ export const AdminDashboardPage: React.FC = () => {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as AdminTab)}
+                  onClick={() => handleTabChange(tab.id as AdminTab)}
                   className={`w-full p-3 rounded-2xl text-xs font-bold transition-all flex items-center justify-between group cursor-pointer ${
                     isActive
                       ? 'bg-black text-white shadow-subtle'

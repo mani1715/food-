@@ -56,7 +56,17 @@ export const BannersManagementTab: React.FC = () => {
   } = useApp();
 
   // Active Sub-Tab
-  const [activeSubTab, setActiveSubTab] = useState<'banners' | 'top_rotating' | 'marquee' | 'categories' | 'icons'>('banners');
+  const [activeSubTab, setActiveSubTab] = useState<'banners' | 'top_rotating' | 'marquee' | 'categories' | 'icons'>(() => {
+    const stored = localStorage.getItem('aura_admin_banner_subtab');
+    if (stored && ['banners', 'top_rotating', 'marquee', 'categories', 'icons'].includes(stored)) {
+      return stored as any;
+    }
+    return 'banners';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('aura_admin_banner_subtab', activeSubTab);
+  }, [activeSubTab]);
 
   // Modal / Form state for Hero Banners
   const [showBannerModal, setShowBannerModal] = useState(false);

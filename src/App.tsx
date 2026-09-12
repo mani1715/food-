@@ -2,13 +2,66 @@ import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 
-// Scroll To Top Component for smooth page transitions
-const ScrollToTop: React.FC = () => {
-  const { pathname, search } = useLocation();
+// Scroll Restoration and Smooth Page Transition Component
+const ScrollRestorationManager: React.FC = () => {
+  const location = useLocation();
+  const prevKeyRef = React.useRef<string>('');
+  const isFirstMountRef = React.useRef(true);
 
   React.useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-  }, [pathname, search]);
+    const currentKey = location.pathname + location.search;
+
+    if (isFirstMountRef.current) {
+      isFirstMountRef.current = false;
+      prevKeyRef.current = currentKey;
+
+      // On initial page load / page refresh (F5), restore saved scroll position
+      const savedPos = sessionStorage.getItem('scroll_pos_' + currentKey);
+      if (savedPos !== null) {
+        const y = parseInt(savedPos, 10);
+        if (!isNaN(y) && y > 0) {
+          requestAnimationFrame(() => {
+            window.scrollTo({ top: y, left: 0, behavior: 'instant' });
+          });
+          setTimeout(() => {
+            window.scrollTo({ top: y, left: 0, behavior: 'instant' });
+          }, 60);
+          setTimeout(() => {
+            window.scrollTo({ top: y, left: 0, behavior: 'instant' });
+          }, 180);
+        }
+      }
+      return;
+    }
+
+    // If navigated to a DIFFERENT route/path, scroll smoothly to top
+    if (prevKeyRef.current !== currentKey) {
+      prevKeyRef.current = currentKey;
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }
+  }, [location.pathname, location.search]);
+
+  // Continuously record scroll position for current page in sessionStorage
+  React.useEffect(() => {
+    const currentKey = location.pathname + location.search;
+
+    let timeoutId: number | undefined;
+    const handleScroll = () => {
+      clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(() => {
+        sessionStorage.setItem('scroll_pos_' + currentKey, window.scrollY.toString());
+      }, 50);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('beforeunload', () => {
+      sessionStorage.setItem('scroll_pos_' + currentKey, window.scrollY.toString());
+    });
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [location.pathname, location.search]);
 
   return null;
 };
@@ -112,7 +165,7 @@ export const App: React.FC = () => {
   return (
     <AppProvider>
       <BrowserRouter>
-        <ScrollToTop />
+        <ScrollRestorationManager />
         <MainLayout />
       </BrowserRouter>
     </AppProvider>
