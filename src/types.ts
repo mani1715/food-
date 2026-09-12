@@ -49,6 +49,9 @@ export interface ProductCategory {
   itemCount: number;
   image: string;
   description: string;
+  imageScale?: number; // Zoom scale (0.5 to 3.0)
+  panOffsetX?: number; // Horizontal pan offset in px
+  panOffsetY?: number; // Vertical pan offset in px
 }
 
 export interface CartItem {

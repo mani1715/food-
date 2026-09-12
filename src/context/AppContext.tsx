@@ -140,7 +140,14 @@ interface AppContextType {
   loginAdmin: (email: string, pass: string) => Promise<boolean> | boolean;
   logoutAdmin: () => void;
   updateSiteLogo: (logoUrl: string) => void;
-  addCategory: (name: string, image?: string, description?: string) => ProductCategory;
+  addCategory: (
+    name: string,
+    image?: string,
+    description?: string,
+    imageScale?: number,
+    panOffsetX?: number,
+    panOffsetY?: number
+  ) => ProductCategory;
   updateCategory: (id: string, updated: Partial<ProductCategory>) => void;
   deleteCategory: (id: string) => void;
   addProduct: (product: Omit<Product, 'id'> & { id?: string }) => Product;
@@ -1066,7 +1073,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast('Signed Out 🔒', 'Admin session terminated safely.', 'info');
   };
 
-  const addCategory = (name: string, image?: string, description?: string): ProductCategory => {
+  const addCategory = (
+    name: string,
+    image?: string,
+    description?: string,
+    imageScale?: number,
+    panOffsetX?: number,
+    panOffsetY?: number
+  ): ProductCategory => {
     const trimmedName = name.trim();
     const slug = trimmedName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     const newCat: ProductCategory = {
@@ -1076,6 +1090,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       itemCount: 0,
       image: image || 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=800&auto=format&fit=crop',
       description: description || `Authentic handcrafted homemade ${trimmedName}.`,
+      imageScale: imageScale ?? 1,
+      panOffsetX: panOffsetX ?? 0,
+      panOffsetY: panOffsetY ?? 0,
     };
 
     setCategories((prev) => {
@@ -1085,7 +1102,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     if (isSupabaseConfigured()) {
-      createCategoryInDb(trimmedName, image, description).catch((err) =>
+      createCategoryInDb(trimmedName, image, description, imageScale, panOffsetX, panOffsetY).catch((err) =>
         console.warn('Could not persist category to Supabase:', err)
       );
     }

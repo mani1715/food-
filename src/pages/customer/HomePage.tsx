@@ -294,43 +294,53 @@ export const HomePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Categories Side-by-Side Horizontal Scroll Container */}
+        {/* Categories Side-by-Side Horizontal Scroll Container (Single Line) */}
         <div
           ref={categoriesScrollRef}
-          className="flex items-start gap-4 sm:gap-6 overflow-x-auto no-scrollbar scroll-smooth py-3 px-1 snap-x"
+          className="flex flex-nowrap items-start gap-4 sm:gap-6 overflow-x-auto no-scrollbar scroll-smooth py-3 px-1 snap-x w-full"
         >
-          {categories.map((cat) => (
-            <div
-              key={cat.id}
-              onClick={() => navigate(`/products?category=${encodeURIComponent(cat.name)}`)}
-              className="group flex flex-col items-center cursor-pointer text-center space-y-2 shrink-0 snap-start select-none w-24 sm:w-28 md:w-32 transition-transform duration-200"
-            >
-              {/* Circular Photo Container */}
-              <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 aspect-square rounded-full overflow-hidden border-2 sm:border-3 border-neutral-200 group-hover:border-black shadow-sm group-hover:shadow-lg group-hover:scale-105 transition-all duration-300 bg-neutral-100 p-0.5 relative">
-                <img
-                  src={cat.image || 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=400&auto=format&fit=crop'}
-                  alt={cat.name}
-                  className="w-full h-full object-cover rounded-full group-hover:rotate-2 transition-transform duration-500"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src =
-                      'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=400&auto=format&fit=crop';
-                  }}
-                />
-              </div>
+          {categories.map((cat) => {
+            const zoomScale = typeof cat.imageScale === 'number' ? cat.imageScale : (Number(cat.imageScale) || 1);
+            const panX = typeof cat.panOffsetX === 'number' ? cat.panOffsetX : (Number(cat.panOffsetX) || 0);
+            const panY = typeof cat.panOffsetY === 'number' ? cat.panOffsetY : (Number(cat.panOffsetY) || 0);
 
-              {/* Bold Title & Count Underneath */}
-              <div className="w-full px-1">
-                <span className="text-xs sm:text-sm font-extrabold text-black group-hover:underline leading-tight block truncate">
-                  {cat.name}
-                </span>
-                {cat.itemCount !== undefined && cat.itemCount > 0 && (
-                  <span className="text-[10px] text-neutral-400 font-medium block mt-0.5">
-                    {cat.itemCount} items
+            return (
+              <div
+                key={cat.id}
+                onClick={() => navigate(`/products?category=${encodeURIComponent(cat.name)}`)}
+                className="group flex flex-col items-center cursor-pointer text-center space-y-2 shrink-0 flex-shrink-0 snap-start select-none w-24 sm:w-28 md:w-32 transition-transform duration-200"
+              >
+                {/* Circular Photo Container */}
+                <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 aspect-square rounded-full overflow-hidden border-2 sm:border-3 border-neutral-200 group-hover:border-black shadow-sm group-hover:shadow-lg transition-all duration-300 bg-neutral-100 p-0.5 relative">
+                  <img
+                    src={cat.image || 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=400&auto=format&fit=crop'}
+                    alt={cat.name}
+                    style={{
+                      transform: `translate(${panX}px, ${panY}px) scale(${zoomScale})`,
+                      transformOrigin: 'center center',
+                    }}
+                    className="w-full h-full object-cover rounded-full transition-transform duration-300"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src =
+                        'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=400&auto=format&fit=crop';
+                    }}
+                  />
+                </div>
+
+                {/* Bold Title & Count Underneath */}
+                <div className="w-full px-1">
+                  <span className="text-xs sm:text-sm font-extrabold text-black group-hover:underline leading-tight block truncate">
+                    {cat.name}
                   </span>
-                )}
+                  {cat.itemCount !== undefined && cat.itemCount > 0 && (
+                    <span className="text-[10px] text-neutral-400 font-medium block mt-0.5">
+                      {cat.itemCount} items
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 

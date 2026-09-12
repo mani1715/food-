@@ -51,13 +51,16 @@ export const fetchAllCategories = async (): Promise<ProductCategory[]> => {
     return [];
   }
 
-  return (data || []).map((c: DbCategory) => ({
+  return (data || []).map((c: any) => ({
     id: c.id,
     name: c.name,
     slug: c.slug,
     itemCount: 0,
     image: c.image_url || 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=800&auto=format&fit=crop',
     description: c.description || '',
+    imageScale: c.image_scale !== undefined && c.image_scale !== null ? Number(c.image_scale) : (c.imageScale !== undefined ? Number(c.imageScale) : 1),
+    panOffsetX: c.pan_offset_x !== undefined && c.pan_offset_x !== null ? Number(c.pan_offset_x) : (c.panOffsetX !== undefined ? Number(c.panOffsetX) : 0),
+    panOffsetY: c.pan_offset_y !== undefined && c.pan_offset_y !== null ? Number(c.pan_offset_y) : (c.panOffsetY !== undefined ? Number(c.panOffsetY) : 0),
   }));
 };
 
@@ -266,44 +269,95 @@ export const deleteProductFromDb = async (id: string) => {
   if (error) throw error;
 };
 
-export const createCategoryInDb = async (name: string, image?: string, description?: string): Promise<ProductCategory> => {
+export const createCategoryInDb = async (
+  name: string,
+  image?: string,
+  description?: string,
+  imageScale?: number,
+  panOffsetX?: number,
+  panOffsetY?: number
+): Promise<ProductCategory> => {
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
   const catId = `cat-${Date.now()}`;
 
-  const { data, error } = await supabase
-    .from('categories')
-    .insert([
-      {
-        id: catId,
+  const payload: any = {
+    id: catId,
+    name,
+    slug,
+    image_url: image || 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=800&auto=format&fit=crop',
+    description: description || `Authentic handcrafted homemade ${name}.`,
+    image_scale: imageScale ?? 1,
+    pan_offset_x: panOffsetX ?? 0,
+    pan_offset_y: panOffsetY ?? 0,
+  };
+
+  try {
+    const { data, error } = await supabase.from('categories').insert([payload]).select().single();
+    if (error) {
+      delete payload.image_scale;
+      delete payload.pan_offset_x;
+      delete payload.pan_offset_y;
+      const { data: fallbackData } = await supabase.from('categories').insert([payload]).select().single();
+      return {
+        id: fallbackData?.id || catId,
         name,
         slug,
-        image_url: image || 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=800&auto=format&fit=crop',
-        description: description || `Authentic handcrafted homemade ${name}.`,
-      },
-    ])
-    .select()
-    .single();
+        itemCount: 0,
+        image: image || payload.image_url,
+        description: description || payload.description,
+        imageScale,
+        panOffsetX,
+        panOffsetY,
+      };
+    }
 
-  if (error) throw error;
-
-  return {
-    id: data.id,
-    name: data.name,
-    slug: data.slug,
-    itemCount: 0,
-    image: data.image_url || '',
-    description: data.description || '',
-  };
+    return {
+      id: data.id,
+      name: data.name,
+      slug: data.slug,
+      itemCount: 0,
+      image: data.image_url || '',
+      description: data.description || '',
+      imageScale,
+      panOffsetX,
+      panOffsetY,
+    };
+  } catch {
+    return {
+      id: catId,
+      name,
+      slug,
+      itemCount: 0,
+      image: image || payload.image_url,
+      description: description || payload.description,
+      imageScale,
+      panOffsetX,
+      panOffsetY,
+    };
+  }
 };
 
 export const updateCategoryInDb = async (id: string, updated: Partial<ProductCategory>) => {
-  const payload: Partial<DbCategory> = {};
+  const payload: any = {};
   if (updated.name !== undefined) payload.name = updated.name;
   if (updated.image !== undefined) payload.image_url = updated.image;
   if (updated.description !== undefined) payload.description = updated.description;
+  if (updated.imageScale !== undefined) payload.image_scale = updated.imageScale;
+  if (updated.panOffsetX !== undefined) payload.pan_offset_x = updated.panOffsetX;
+  if (updated.panOffsetY !== undefined) payload.pan_offset_y = updated.panOffsetY;
+
   if (Object.keys(payload).length > 0) {
-    const { error } = await supabase.from('categories').update(payload).eq('id', id);
-    if (error) throw error;
+    try {
+      const { error } = await supabase.from('categories').update(payload).eq('id', id);
+      if (error) {
+        delete payload.image_scale;
+        delete payload.pan_offset_x;
+        delete payload.pan_offset_y;
+        await supabase.from('categories').update(payload).eq('id', id);
+      }
+    } catch (e) {
+      console.warn('Error updating category in Supabase:', e);
+    }
   }
 };
 

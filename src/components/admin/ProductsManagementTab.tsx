@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Product, ProductCategory, WeightOption, ProcessStep } from '../../types';
-import { Plus, Edit2, Trash2, Search, X, Star, Tag, Scale, Image as ImageIcon, LayoutGrid, Check, Sparkles, BookOpen, Layers, History, TrendingUp, TrendingDown } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, X, Star, Tag, Scale, Image as ImageIcon, LayoutGrid, Check, Sparkles, BookOpen, Layers, History, TrendingUp, TrendingDown, Hand, ZoomIn, ZoomOut, Move, Sliders, RefreshCw, Crosshair } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { DragDropImagePicker } from './DragDropImagePicker';
 
@@ -131,6 +131,11 @@ export const ProductsManagementTab: React.FC = () => {
   const [newCatName, setNewCatName] = useState('');
   const [newCatImage, setNewCatImage] = useState('');
   const [newCatDescription, setNewCatDescription] = useState('');
+  const [newCatScale, setNewCatScale] = useState(1);
+  const [newCatPanX, setNewCatPanX] = useState(0);
+  const [newCatPanY, setNewCatPanY] = useState(0);
+  const [isCatInteracting, setIsCatInteracting] = useState(false);
+  const catDragStartRef = React.useRef<{ x: number; y: number; initialPanX: number; initialPanY: number } | null>(null);
 
   const filteredProducts = products.filter((p) => {
     const matchesCat = categoryFilter === 'All' || p.category === categoryFilter;
@@ -226,12 +231,19 @@ export const ProductsManagementTab: React.FC = () => {
     setStockModalState((prev) => ({ ...prev, isOpen: false }));
   };
 
-  // Create New Category Handler
+  // Create New Category Handler with Logo Zoom & Pan
   const handleCreateCategorySubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCatName.trim()) return;
 
-    const createdCat = addCategory(newCatName.trim(), newCatImage.trim(), newCatDescription.trim());
+    const createdCat = addCategory(
+      newCatName.trim(),
+      newCatImage.trim() || 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=800&auto=format&fit=crop',
+      newCatDescription.trim(),
+      newCatScale || 1,
+      newCatPanX || 0,
+      newCatPanY || 0
+    );
 
     if (targetModalForNewCategory === 'add') {
       setNewCategory(createdCat.name);
@@ -242,6 +254,9 @@ export const ProductsManagementTab: React.FC = () => {
     setNewCatName('');
     setNewCatImage('');
     setNewCatDescription('');
+    setNewCatScale(1);
+    setNewCatPanX(0);
+    setNewCatPanY(0);
     setShowAddCategoryModal(false);
   };
 
@@ -1879,38 +1894,28 @@ export const ProductsManagementTab: React.FC = () => {
         </div>
       )}
 
-      {/* ADD NEW CATEGORY MODAL */}
+      {/* ADD NEW CATEGORY MODAL WITH LOGO ADJUSTER */}
       {showAddCategoryModal && (
         <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <form onSubmit={handleCreateCategorySubmit} className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full space-y-4 shadow-modal text-left my-8 max-h-[90vh] flex flex-col">
+          <form onSubmit={handleCreateCategorySubmit} className="bg-white rounded-3xl p-6 sm:p-7 max-w-lg w-full space-y-4 shadow-modal text-left my-8 max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
               <div>
-                <h3 className="text-lg font-black text-black">Add New Food Category</h3>
-                <p className="text-xs text-neutral-500">Provide a name, cover photo, and description.</p>
+                <h3 className="text-lg font-black text-black flex items-center gap-2">
+                  <Hand className="w-5 h-5 text-amber-500" />
+                  <span>Add New Food Category</span>
+                </h3>
+                <p className="text-xs text-neutral-500">Upload and adjust the category logo / photo with hand drag & zoom.</p>
               </div>
-              <button type="button" onClick={() => setShowAddCategoryModal(false)} className="text-neutral-400 hover:text-black cursor-pointer">
+              <button
+                type="button"
+                onClick={() => setShowAddCategoryModal(false)}
+                className="text-neutral-400 hover:text-black cursor-pointer"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="space-y-4 text-xs font-bold overflow-y-auto pr-1 flex-1">
-              {/* Live Preview Card */}
-              <div className="p-3 bg-neutral-50 rounded-2xl border border-neutral-200 flex items-center gap-3">
-                <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-black/20 bg-neutral-200 shrink-0 shadow-sm">
-                  {newCatImage ? (
-                    <img src={newCatImage} alt="Preview" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-[10px] text-neutral-400 text-center font-normal p-1">
-                      No Photo
-                    </div>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold block">Homepage Preview</span>
-                  <p className="text-sm font-black text-black truncate">{newCatName || 'Category Name'}</p>
-                </div>
-              </div>
-
               <div>
                 <label className="block text-neutral-700 mb-1">Category Name *</label>
                 <input
@@ -1918,9 +1923,163 @@ export const ProductsManagementTab: React.FC = () => {
                   required
                   value={newCatName}
                   onChange={(e) => setNewCatName(e.target.value)}
-                  placeholder="e.g. Instant Mixes, Podis & Powders, Dry Fruits"
+                  placeholder="e.g. Traditional Pickles, Ghee Sweets, Podis"
                   className="w-full p-3 rounded-2xl border border-neutral-300 font-extrabold text-sm focus:ring-1 focus:ring-black focus:outline-none"
                 />
+              </div>
+
+              {/* INTERACTIVE CATEGORY LOGO ADJUSTER CANVAS */}
+              <div className="p-4 bg-neutral-50 rounded-3xl border border-neutral-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-black flex items-center gap-1.5 uppercase tracking-wider">
+                    <Hand className="w-4 h-4 text-amber-500" />
+                    <span>Adjust Category Logo (Drag to Move • Zoom)</span>
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 bg-black text-white text-[11px] font-mono font-black rounded-lg">
+                      {Math.round(newCatScale * 100)}%
+                    </span>
+                    {(newCatScale !== 1 || newCatPanX !== 0 || newCatPanY !== 0) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewCatScale(1);
+                          setNewCatPanX(0);
+                          setNewCatPanY(0);
+                        }}
+                        className="px-2 py-0.5 bg-neutral-200 hover:bg-neutral-300 text-neutral-800 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+                        title="Center & Reset"
+                      >
+                        <RefreshCw className="w-3 h-3" /> Reset
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Circular Mask Interactive Frame */}
+                <div className="flex items-center justify-center py-2">
+                  <div
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setIsCatInteracting(true);
+                      catDragStartRef.current = {
+                        x: e.clientX,
+                        y: e.clientY,
+                        initialPanX: newCatPanX,
+                        initialPanY: newCatPanY,
+                      };
+                      const onMouseMove = (moveEvent: MouseEvent) => {
+                        if (!catDragStartRef.current) return;
+                        const deltaX = moveEvent.clientX - catDragStartRef.current.x;
+                        const deltaY = moveEvent.clientY - catDragStartRef.current.y;
+                        setNewCatPanX(Math.round(catDragStartRef.current.initialPanX + deltaX));
+                        setNewCatPanY(Math.round(catDragStartRef.current.initialPanY + deltaY));
+                      };
+                      const onMouseUp = () => {
+                        setIsCatInteracting(false);
+                        catDragStartRef.current = null;
+                        window.removeEventListener('mousemove', onMouseMove);
+                        window.removeEventListener('mouseup', onMouseUp);
+                      };
+                      window.addEventListener('mousemove', onMouseMove);
+                      window.addEventListener('mouseup', onMouseUp);
+                    }}
+                    onTouchStart={(e) => {
+                      if (e.touches.length === 1) {
+                        setIsCatInteracting(true);
+                        const t = e.touches[0];
+                        catDragStartRef.current = {
+                          x: t.clientX,
+                          y: t.clientY,
+                          initialPanX: newCatPanX,
+                          initialPanY: newCatPanY,
+                        };
+                      }
+                    }}
+                    onTouchMove={(e) => {
+                      if (e.touches.length === 1 && catDragStartRef.current) {
+                        const t = e.touches[0];
+                        const deltaX = t.clientX - catDragStartRef.current.x;
+                        const deltaY = t.clientY - catDragStartRef.current.y;
+                        setNewCatPanX(Math.round(catDragStartRef.current.initialPanX + deltaX));
+                        setNewCatPanY(Math.round(catDragStartRef.current.initialPanY + deltaY));
+                      }
+                    }}
+                    onTouchEnd={() => {
+                      setIsCatInteracting(false);
+                      catDragStartRef.current = null;
+                    }}
+                    onWheel={(e) => {
+                      e.preventDefault();
+                      const delta = e.deltaY < 0 ? 0.08 : -0.08;
+                      setNewCatScale((prev) => Math.min(Math.max(parseFloat((prev + delta).toFixed(2)), 0.5), 3.0));
+                    }}
+                    className={`relative w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 transition-all select-none ${
+                      isCatInteracting ? 'border-amber-400 cursor-grabbing shadow-xl' : 'border-black cursor-grab shadow-lg hover:border-neutral-700'
+                    } bg-neutral-900 flex items-center justify-center`}
+                  >
+                    {newCatImage ? (
+                      <img
+                        src={newCatImage}
+                        alt="Category Preview"
+                        draggable={false}
+                        style={{
+                          transform: `translate(${newCatPanX}px, ${newCatPanY}px) scale(${newCatScale})`,
+                          transformOrigin: 'center center',
+                        }}
+                        className="w-full h-full object-cover pointer-events-none transition-transform duration-75 ease-out rounded-full"
+                      />
+                    ) : (
+                      <div className="text-neutral-400 text-[10px] text-center p-2">
+                        Upload or pick a photo below
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Zoom Slider */}
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-neutral-600">
+                    <span className="flex items-center gap-1"><ZoomOut className="w-3.5 h-3.5" /> 50%</span>
+                    <span className="text-black font-extrabold">Zoom: {Math.round(newCatScale * 100)}%</span>
+                    <span className="flex items-center gap-1">300% <ZoomIn className="w-3.5 h-3.5" /></span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="3.0"
+                    step="0.05"
+                    value={newCatScale}
+                    onChange={(e) => setNewCatScale(parseFloat(e.target.value))}
+                    className="w-full accent-black cursor-pointer h-2 bg-neutral-200 rounded-lg appearance-none"
+                  />
+                </div>
+
+                {/* Quick Presets */}
+                <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                  <span className="text-[10px] font-bold text-neutral-500 mr-1">Quick Scale:</span>
+                  {[
+                    { label: '50%', scale: 0.5 },
+                    { label: '75%', scale: 0.75 },
+                    { label: '100% (Fit)', scale: 1.0 },
+                    { label: '125%', scale: 1.25 },
+                    { label: '150%', scale: 1.5 },
+                    { label: '200%', scale: 2.0 },
+                  ].map((preset) => (
+                    <button
+                      key={preset.scale}
+                      type="button"
+                      onClick={() => setNewCatScale(preset.scale)}
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                        newCatScale === preset.scale
+                          ? 'bg-black text-white shadow-sm'
+                          : 'bg-white border border-neutral-300 text-neutral-700 hover:bg-neutral-100'
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Photo Upload & Presets */}
@@ -1929,7 +2088,7 @@ export const ProductsManagementTab: React.FC = () => {
                   label="Category Photo Upload / URL *"
                   value={newCatImage}
                   onChange={setNewCatImage}
-                  helperText="Upload a photo for this category or choose a suggested preset below."
+                  helperText="Upload category cover photo or paste an image URL."
                 />
 
                 {/* Preset Suggestions */}
@@ -1992,7 +2151,7 @@ export const ProductsManagementTab: React.FC = () => {
         </div>
       )}
 
-      {/* EDIT CATEGORY MODAL */}
+      {/* EDIT CATEGORY MODAL WITH LOGO ADJUSTER */}
       {editingCategory && (
         <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <form
@@ -2003,40 +2162,33 @@ export const ProductsManagementTab: React.FC = () => {
                 name: editingCategory.name.trim(),
                 image: editingCategory.image,
                 description: editingCategory.description,
+                imageScale: editingCategory.imageScale !== undefined ? editingCategory.imageScale : 1,
+                panOffsetX: editingCategory.panOffsetX !== undefined ? editingCategory.panOffsetX : 0,
+                panOffsetY: editingCategory.panOffsetY !== undefined ? editingCategory.panOffsetY : 0,
               });
               setCategoryFilter(editingCategory.name.trim());
               setEditingCategory(null);
             }}
-            className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full space-y-4 shadow-modal text-left my-8 max-h-[90vh] flex flex-col"
+            className="bg-white rounded-3xl p-6 sm:p-7 max-w-lg w-full space-y-4 shadow-modal text-left my-8 max-h-[90vh] flex flex-col"
           >
             <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
               <div>
-                <h3 className="text-lg font-black text-black">Edit Category: {editingCategory.name}</h3>
-                <p className="text-xs text-neutral-500">Update category title, photo, and details.</p>
+                <h3 className="text-lg font-black text-black flex items-center gap-2">
+                  <Hand className="w-5 h-5 text-amber-500" />
+                  <span>Edit Category: {editingCategory.name}</span>
+                </h3>
+                <p className="text-xs text-neutral-500">Update title, logo alignment, and zoom scale.</p>
               </div>
-              <button type="button" onClick={() => setEditingCategory(null)} className="text-neutral-400 hover:text-black cursor-pointer">
+              <button
+                type="button"
+                onClick={() => setEditingCategory(null)}
+                className="text-neutral-400 hover:text-black cursor-pointer"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="space-y-4 text-xs font-bold overflow-y-auto pr-1 flex-1">
-              {/* Live Preview Card */}
-              <div className="p-3 bg-neutral-50 rounded-2xl border border-neutral-200 flex items-center gap-3">
-                <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-black/20 bg-neutral-200 shrink-0 shadow-sm">
-                  {editingCategory.image ? (
-                    <img src={editingCategory.image} alt="Preview" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-[10px] text-neutral-400 text-center font-normal p-1">
-                      No Photo
-                    </div>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold block">Homepage Preview</span>
-                  <p className="text-sm font-black text-black truncate">{editingCategory.name || 'Category Name'}</p>
-                </div>
-              </div>
-
               <div>
                 <label className="block text-neutral-700 mb-1">Category Name *</label>
                 <input
@@ -2048,6 +2200,180 @@ export const ProductsManagementTab: React.FC = () => {
                 />
               </div>
 
+              {/* INTERACTIVE EDIT LOGO ADJUSTER CANVAS */}
+              <div className="p-4 bg-neutral-50 rounded-3xl border border-neutral-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-black flex items-center gap-1.5 uppercase tracking-wider">
+                    <Hand className="w-4 h-4 text-amber-500" />
+                    <span>Adjust Category Logo (Drag to Move • Zoom)</span>
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 bg-black text-white text-[11px] font-mono font-black rounded-lg">
+                      {Math.round((editingCategory.imageScale || 1) * 100)}%
+                    </span>
+                    {((editingCategory.imageScale && editingCategory.imageScale !== 1) || editingCategory.panOffsetX || editingCategory.panOffsetY) && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEditingCategory({
+                            ...editingCategory,
+                            imageScale: 1,
+                            panOffsetX: 0,
+                            panOffsetY: 0,
+                          })
+                        }
+                        className="px-2 py-0.5 bg-neutral-200 hover:bg-neutral-300 text-neutral-800 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+                        title="Center & Reset"
+                      >
+                        <RefreshCw className="w-3 h-3" /> Reset
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Circular Mask Interactive Frame */}
+                <div className="flex items-center justify-center py-2">
+                  <div
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setIsCatInteracting(true);
+                      const startX = e.clientX;
+                      const startY = e.clientY;
+                      const initialPanX = editingCategory.panOffsetX || 0;
+                      const initialPanY = editingCategory.panOffsetY || 0;
+                      const onMouseMove = (moveEvent: MouseEvent) => {
+                        const deltaX = moveEvent.clientX - startX;
+                        const deltaY = moveEvent.clientY - startY;
+                        setEditingCategory((prev) =>
+                          prev ? { ...prev, panOffsetX: Math.round(initialPanX + deltaX), panOffsetY: Math.round(initialPanY + deltaY) } : null
+                        );
+                      };
+                      const onMouseUp = () => {
+                        setIsCatInteracting(false);
+                        window.removeEventListener('mousemove', onMouseMove);
+                        window.removeEventListener('mouseup', onMouseUp);
+                      };
+                      window.addEventListener('mousemove', onMouseMove);
+                      window.addEventListener('mouseup', onMouseUp);
+                    }}
+                    onTouchStart={(e) => {
+                      if (e.touches.length === 1) {
+                        setIsCatInteracting(true);
+                        const t = e.touches[0];
+                        catDragStartRef.current = {
+                          x: t.clientX,
+                          y: t.clientY,
+                          initialPanX: editingCategory.panOffsetX || 0,
+                          initialPanY: editingCategory.panOffsetY || 0,
+                        };
+                      }
+                    }}
+                    onTouchMove={(e) => {
+                      if (e.touches.length === 1 && catDragStartRef.current) {
+                        const t = e.touches[0];
+                        const deltaX = t.clientX - catDragStartRef.current.x;
+                        const deltaY = t.clientY - catDragStartRef.current.y;
+                        setEditingCategory((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                panOffsetX: Math.round(catDragStartRef.current!.initialPanX + deltaX),
+                                panOffsetY: Math.round(catDragStartRef.current!.initialPanY + deltaY),
+                              }
+                            : null
+                        );
+                      }
+                    }}
+                    onTouchEnd={() => {
+                      setIsCatInteracting(false);
+                      catDragStartRef.current = null;
+                    }}
+                    onWheel={(e) => {
+                      e.preventDefault();
+                      const delta = e.deltaY < 0 ? 0.08 : -0.08;
+                      const cur = editingCategory.imageScale || 1;
+                      const next = Math.min(Math.max(parseFloat((cur + delta).toFixed(2)), 0.5), 3.0);
+                      setEditingCategory((prev) => (prev ? { ...prev, imageScale: next } : null));
+                    }}
+                    className={`relative w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 transition-all select-none ${
+                      isCatInteracting ? 'border-amber-400 cursor-grabbing shadow-xl' : 'border-black cursor-grab shadow-lg hover:border-neutral-700'
+                    } bg-neutral-900 flex items-center justify-center`}
+                  >
+                    {editingCategory.image ? (
+                      <img
+                        src={editingCategory.image}
+                        alt="Category Preview"
+                        draggable={false}
+                        style={{
+                          transform: `translate(${editingCategory.panOffsetX || 0}px, ${editingCategory.panOffsetY || 0}px) scale(${editingCategory.imageScale || 1})`,
+                          transformOrigin: 'center center',
+                        }}
+                        className="w-full h-full object-cover pointer-events-none transition-transform duration-75 ease-out rounded-full"
+                      />
+                    ) : (
+                      <div className="text-neutral-400 text-[10px] text-center p-2">
+                        Upload or paste image below
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Zoom Slider */}
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-neutral-600">
+                    <span className="flex items-center gap-1"><ZoomOut className="w-3.5 h-3.5" /> 50%</span>
+                    <span className="text-black font-extrabold">Zoom: {Math.round((editingCategory.imageScale || 1) * 100)}%</span>
+                    <span className="flex items-center gap-1">300% <ZoomIn className="w-3.5 h-3.5" /></span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="3.0"
+                    step="0.05"
+                    value={editingCategory.imageScale || 1}
+                    onChange={(e) =>
+                      setEditingCategory({
+                        ...editingCategory,
+                        imageScale: parseFloat(e.target.value),
+                      })
+                    }
+                    className="w-full accent-black cursor-pointer h-2 bg-neutral-200 rounded-lg appearance-none"
+                  />
+                </div>
+
+                {/* Quick Presets */}
+                <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                  <span className="text-[10px] font-bold text-neutral-500 mr-1">Quick Scale:</span>
+                  {[
+                    { label: '50%', scale: 0.5 },
+                    { label: '75%', scale: 0.75 },
+                    { label: '100% (Fit)', scale: 1.0 },
+                    { label: '125%', scale: 1.25 },
+                    { label: '150%', scale: 1.5 },
+                    { label: '200%', scale: 2.0 },
+                  ].map((preset) => (
+                    <button
+                      key={preset.scale}
+                      type="button"
+                      onClick={() =>
+                        setEditingCategory({
+                          ...editingCategory,
+                          imageScale: preset.scale,
+                        })
+                      }
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                        (editingCategory.imageScale || 1) === preset.scale
+                          ? 'bg-black text-white shadow-sm'
+                          : 'bg-white border border-neutral-300 text-neutral-700 hover:bg-neutral-100'
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Photo Upload & Presets */}
               <div className="space-y-2">
                 <DragDropImagePicker
                   label="Category Photo Upload / URL *"
