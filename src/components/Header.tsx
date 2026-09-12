@@ -92,7 +92,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
       </div>
 
       {/* 2. MAIN HEADER NAVIGATION BAR */}
-      <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-5 lg:py-6 flex items-center justify-between gap-4 lg:gap-8">
+      <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 lg:py-4.5 flex items-center justify-between gap-4 lg:gap-8">
         
         {/* Left Side: Brand Logo & Mobile Menu Toggle */}
         <div className="flex items-center gap-2 sm:gap-4 shrink-0">
@@ -105,9 +105,9 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
 
-          {/* Brand Logo (Positioned cleanly inside white header) */}
-          <div onClick={() => navigate('/')} className="flex items-center cursor-pointer group shrink-0 relative z-30 my-0.5">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 xl:w-28 xl:h-28 rounded-full overflow-hidden shadow-lg group-hover:scale-105 transition-all duration-300 shrink-0 bg-black border-2 border-neutral-900 flex items-center justify-center">
+          {/* Brand Logo (Enlarged and perfectly contained inside white header) */}
+          <div onClick={() => navigate('/')} className="flex items-center cursor-pointer group shrink-0 relative z-30">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 xl:w-32 xl:h-32 rounded-full overflow-hidden shadow-lg group-hover:scale-105 transition-all duration-300 shrink-0 bg-black border-2 border-neutral-900 flex items-center justify-center">
               <img
                 src={siteLogo && siteLogo !== '/aishu-logo.jpg' ? siteLogo : '/aishu-logo.png'}
                 alt="Aishu Foods Logo"
