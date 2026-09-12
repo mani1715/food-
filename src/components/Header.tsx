@@ -105,9 +105,9 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
 
-          {/* Circular Overhanging Brand Logo (Exact match with reference) */}
-          <div onClick={() => navigate('/')} className="flex items-center cursor-pointer group shrink-0 relative z-30 -mb-8 sm:-mb-10 lg:-mb-14 xl:-mb-16 mt-0.5">
-            <div className="w-24 h-24 sm:w-28 sm:h-28 lg:w-36 lg:h-36 xl:w-40 xl:h-40 rounded-full overflow-hidden shadow-2xl group-hover:scale-105 transition-all duration-300 shrink-0 bg-black border-2 border-neutral-900 flex items-center justify-center">
+          {/* Brand Logo (Positioned cleanly inside white header) */}
+          <div onClick={() => navigate('/')} className="flex items-center cursor-pointer group shrink-0 relative z-30 my-0.5">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 xl:w-28 xl:h-28 rounded-full overflow-hidden shadow-lg group-hover:scale-105 transition-all duration-300 shrink-0 bg-black border-2 border-neutral-900 flex items-center justify-center">
               <img
                 src={siteLogo && siteLogo !== '/aishu-logo.jpg' ? siteLogo : '/aishu-logo.png'}
                 alt="Aishu Foods Logo"
