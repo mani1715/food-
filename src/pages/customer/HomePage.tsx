@@ -84,10 +84,13 @@ export const HomePage: React.FC = () => {
   return (
     <div className="min-h-screen bg-white text-black font-sans space-y-10">
       
-      {/* 1. HERO BANNER - SCENIC FULL-BLEED WITH CENTERED TEXT & SHOP NOW BUTTON */}
-      <section className="relative overflow-hidden bg-black text-white min-h-[460px] sm:min-h-[540px] lg:min-h-[600px] flex items-center justify-center border-b border-neutral-800">
+      {/* 1. HERO BANNER - SCENIC FULL-BLEED WITH DIRECT CLICK REDIRECTION & ADJUSTABLE ZOOM */}
+      <section
+        onClick={() => navigate(currentBanner.ctaLink || '/products')}
+        className="relative overflow-hidden bg-black text-white min-h-[460px] sm:min-h-[540px] lg:min-h-[600px] flex items-center justify-center border-b border-neutral-800 cursor-pointer group"
+      >
         
-        {/* Carousel Background Images with High Clarity */}
+        {/* Carousel Background Images with High Clarity & Adjustable Zoom */}
         {activeHeroSlides.map((slide, index) => {
           const posClass =
             slide.objectPosition === 'top' ? 'object-top' :
@@ -103,6 +106,8 @@ export const HomePage: React.FC = () => {
             slide.objectFit === 'contain' ? 'object-contain' :
             slide.objectFit === 'fill' ? 'object-fill' : 'object-cover';
 
+          const zoomScale = slide.imageScale !== undefined ? slide.imageScale : 1;
+
           return (
             <div
               key={slide.id}
@@ -113,10 +118,11 @@ export const HomePage: React.FC = () => {
               <img
                 src={slide.image}
                 alt={slide.title}
-                className={`w-full h-full ${fitClass} ${posClass} opacity-85 scale-100 transition-transform duration-1000`}
+                style={{ transform: `scale(${zoomScale})` }}
+                className={`w-full h-full ${fitClass} ${posClass} opacity-85 transition-transform duration-700`}
               />
               {/* Subtle dark gradient overlay for text readability while keeping photo rich & clear */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/20" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/20 pointer-events-none" />
             </div>
           );
         })}
@@ -147,7 +153,10 @@ export const HomePage: React.FC = () => {
           {/* Centered Shop Now Pill Button */}
           <div className="pt-2 flex items-center justify-center gap-4">
             <button
-              onClick={() => navigate(currentBanner.ctaLink || '/products')}
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(currentBanner.ctaLink || '/products');
+              }}
               className="px-8 sm:px-10 py-3 sm:py-3.5 bg-neutral-900/85 hover:bg-black backdrop-blur-md text-white font-bold text-sm sm:text-base rounded-full shadow-2xl hover:scale-105 transition-all duration-300 cursor-pointer border border-white/20"
             >
               <span>{currentBanner.ctaText || 'Shop Now'}</span>
@@ -157,10 +166,16 @@ export const HomePage: React.FC = () => {
         </div>
 
         {/* Bottom-Right Carousel Preview Widget (matching reference photo) */}
-        <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-8 z-20 flex items-center bg-black/80 backdrop-blur-md border border-white/15 rounded-xl overflow-hidden shadow-2xl">
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="absolute bottom-4 right-4 sm:bottom-6 sm:right-8 z-20 flex items-center bg-black/80 backdrop-blur-md border border-white/15 rounded-xl overflow-hidden shadow-2xl"
+        >
           {/* Left / Prev Arrow */}
           <button
-            onClick={prevSlide}
+            onClick={(e) => {
+              e.stopPropagation();
+              prevSlide();
+            }}
             aria-label="Previous Slide"
             className="p-3 sm:p-3.5 text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
           >
@@ -170,7 +185,10 @@ export const HomePage: React.FC = () => {
           {/* Next Slide Thumbnail Preview */}
           {activeHeroSlides.length > 1 && (
             <div
-              onClick={nextSlide}
+              onClick={(e) => {
+                e.stopPropagation();
+                nextSlide();
+              }}
               className="cursor-pointer group flex items-center gap-2.5 px-3 py-1.5 border-l border-r border-white/15 hover:bg-white/10 transition-all"
               title="Next Slide"
             >
@@ -192,7 +210,10 @@ export const HomePage: React.FC = () => {
 
           {/* Right / Next Arrow */}
           <button
-            onClick={nextSlide}
+            onClick={(e) => {
+              e.stopPropagation();
+              nextSlide();
+            }}
             aria-label="Next Slide"
             className="p-3 sm:p-3.5 text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
           >
@@ -201,11 +222,17 @@ export const HomePage: React.FC = () => {
         </div>
 
         {/* Bottom Center Slide Dots */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5">
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5"
+        >
           {activeHeroSlides.map((_, idx) => (
             <button
               key={idx}
-              onClick={() => setCurrentSlide(idx)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrentSlide(idx);
+              }}
               className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
                 idx === safeSlideIndex ? 'w-6 bg-white' : 'w-2 bg-white/40 hover:bg-white/70'
               }`}
