@@ -533,35 +533,28 @@ export const ProductsManagementTab: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+        <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
           {/* Stock History Audit Log Button */}
           <button
             onClick={() => setShowHistoryModal(true)}
-            className="px-3.5 py-2.5 bg-black hover:bg-neutral-800 text-white text-xs font-bold rounded-2xl transition-all flex items-center gap-2 cursor-pointer shadow-subtle"
+            className="px-4 py-2.5 bg-black hover:bg-neutral-800 text-white text-xs font-bold rounded-2xl transition-all flex items-center gap-2 cursor-pointer shadow-subtle"
             title="View Restock, Destock & Status Change History Logs"
           >
             <History className="w-4 h-4 text-white" />
             <span>Stock History Log ({stockHistoryLogs.length})</span>
           </button>
 
+          {/* Add New Category Button */}
           <button
             onClick={() => {
               setTargetModalForNewCategory('add');
               setShowAddCategoryModal(true);
             }}
-            className="px-3.5 py-2.5 bg-white border border-neutral-300 hover:border-black text-black text-xs font-extrabold rounded-2xl transition-all flex items-center gap-1.5 cursor-pointer shadow-subtle"
+            className="px-4 py-2.5 bg-white border border-neutral-300 hover:border-black text-black text-xs font-extrabold rounded-2xl transition-all flex items-center gap-2 cursor-pointer shadow-subtle hover:bg-neutral-50"
+            title="Create a new product category and adjust logo"
           >
             <Plus className="w-4 h-4" />
             <span>Add New Category</span>
-          </button>
-
-          {/* Add Product button in top bar */}
-          <button
-            onClick={() => handleOpenAddModal(categoryFilter !== 'All' ? categoryFilter : undefined)}
-            className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold rounded-2xl transition-all flex items-center gap-2 shadow-subtle shrink-0 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>+ Add New Product</span>
           </button>
         </div>
       </div>
@@ -1174,30 +1167,43 @@ export const ProductsManagementTab: React.FC = () => {
         </div>
       )}
 
-      {/* COMPREHENSIVE STOCK HISTORY & AUDIT LOG MODAL */}
+      {/* COMPREHENSIVE STOCK HISTORY & AUDIT LOG FULL PAGE MODAL */}
       {showHistoryModal && (
-        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 md:p-6">
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl p-6 max-w-4xl w-full space-y-5 shadow-modal text-left max-h-[90vh] overflow-y-auto"
+            initial={{ opacity: 0, scale: 0.98, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="bg-white rounded-3xl w-full h-full max-w-7xl max-h-[95vh] shadow-2xl text-left flex flex-col overflow-hidden border border-neutral-200"
           >
-            <div className="flex items-center justify-between border-b pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-black text-white flex items-center justify-center">
+            {/* Modal Header */}
+            <div className="p-5 sm:p-6 border-b border-neutral-200 flex items-center justify-between bg-neutral-50/70 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-black text-white flex items-center justify-center shadow-subtle">
                   <History className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-black">Product Stock & Status Change Audit Trail</h3>
-                  <p className="text-[11px] text-neutral-500">
-                    Chronological ledger of restocks, destocks, out-of-stock toggles & storefront visibility actions.
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-black text-black">Stock History & Audit Log</h3>
+                    <span className="bg-black text-white text-[11px] font-mono font-bold px-2 py-0.5 rounded-full">
+                      {stockHistoryLogs.length} Records
+                    </span>
+                  </div>
+                  <p className="text-xs text-neutral-500 mt-0.5">
+                    Full chronological audit log of inventory restocks, destocks, out-of-stock changes, and storefront visibility updates.
                   </p>
                 </div>
               </div>
-              <button onClick={() => setShowHistoryModal(false)} className="text-neutral-400 hover:text-black cursor-pointer">
+              <button
+                onClick={() => setShowHistoryModal(false)}
+                className="p-2 rounded-xl bg-white border border-neutral-200 text-neutral-500 hover:text-black hover:border-black transition-all cursor-pointer shadow-subtle"
+                title="Close Full Page Log"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {/* Modal Scrollable Body */}
+            <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
 
             {/* Audit Log Summary Statistics */}
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
@@ -1327,97 +1333,154 @@ export const ProductsManagementTab: React.FC = () => {
               </div>
             </div>
 
-            {/* Audit Log Entries List */}
-            <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+            {/* Full-Width Spacious Audit Log Table */}
+            <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden shadow-subtle">
               {filteredHistoryLogs.length > 0 ? (
-                <div className="divide-y divide-neutral-100 text-xs max-h-[50vh] overflow-y-auto">
-                  {filteredHistoryLogs.map((log) => {
-                    const isOutOfStock = log.type === 'out_of_stock';
-                    const isInStock = log.type === 'in_stock';
-                    const isHidden = log.type === 'hidden';
-                    const isVisible = log.type === 'visible';
-                    const isRestock = log.type === 'restock';
-                    const isDestock = log.type === 'destock';
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-neutral-100/80 border-b border-neutral-200 text-neutral-600 font-black uppercase tracking-wider text-[11px]">
+                      <tr>
+                        <th className="py-3.5 px-4">Date & Time</th>
+                        <th className="py-3.5 px-4">Product Name</th>
+                        <th className="py-3.5 px-4">Action Performed</th>
+                        <th className="py-3.5 px-4">Stock Movement</th>
+                        <th className="py-3.5 px-4">Reason / Description Note</th>
+                        <th className="py-3.5 px-4">Admin Author</th>
+                        <th className="py-3.5 px-4 text-right">Details</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-100">
+                      {filteredHistoryLogs.map((log) => {
+                        const isOutOfStock = log.type === 'out_of_stock';
+                        const isInStock = log.type === 'in_stock';
+                        const isHidden = log.type === 'hidden';
+                        const isVisible = log.type === 'visible';
+                        const isRestock = log.type === 'restock';
+                        const isDestock = log.type === 'destock';
 
-                    const badgeClass = isOutOfStock
-                      ? 'bg-rose-100 text-rose-900 border-rose-300'
-                      : isInStock
-                      ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
-                      : isHidden
-                      ? 'bg-amber-100 text-amber-900 border-amber-300'
-                      : isVisible
-                      ? 'bg-cyan-100 text-cyan-900 border-cyan-300'
-                      : isRestock
-                      ? 'bg-teal-100 text-teal-900 border-teal-300'
-                      : 'bg-purple-100 text-purple-900 border-purple-300';
+                        const badgeClass = isOutOfStock
+                          ? 'bg-rose-100 text-rose-900 border-rose-300'
+                          : isInStock
+                          ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                          : isHidden
+                          ? 'bg-amber-100 text-amber-900 border-amber-300'
+                          : isVisible
+                          ? 'bg-cyan-100 text-cyan-900 border-cyan-300'
+                          : isRestock
+                          ? 'bg-teal-100 text-teal-900 border-teal-300'
+                          : 'bg-purple-100 text-purple-900 border-purple-300';
 
-                    const badgeText = isOutOfStock
-                      ? '🚨 OUT OF STOCK'
-                      : isInStock
-                      ? '✅ BACK IN STOCK'
-                      : isHidden
-                      ? '🙈 HIDDEN FROM STORE'
-                      : isVisible
-                      ? '👁️ MADE VISIBLE'
-                      : isRestock
-                      ? `📦 +${log.quantity} RESTOCK`
-                      : `🔻 -${log.quantity} DESTOCK`;
+                        const badgeText = isOutOfStock
+                          ? '🚨 Out of Stock'
+                          : isInStock
+                          ? '✅ Back In Stock'
+                          : isHidden
+                          ? '🙈 Hidden in Store'
+                          : isVisible
+                          ? '👁️ Visible in Store'
+                          : isRestock
+                          ? `📦 +${log.quantity} Restock`
+                          : `🔻 -${log.quantity} Destock`;
 
-                    return (
-                      <div
-                        key={log.id}
-                        onClick={() => setSelectedLogDetail(log)}
-                        className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-neutral-50 transition-colors cursor-pointer"
-                      >
-                        <div className="flex items-start sm:items-center gap-3">
-                          <span className={`px-2.5 py-1 rounded-xl text-[10px] font-black uppercase font-mono border shrink-0 ${badgeClass}`}>
-                            {badgeText}
-                          </span>
-                          <div>
-                            <h4 className="font-extrabold text-black text-xs">{log.productName}</h4>
-                            {log.note && (
-                              <p className="text-[11px] text-neutral-600 font-medium mt-0.5 flex items-center gap-1">
-                                <FileText className="w-3 h-3 text-neutral-400 shrink-0" />
-                                <span className="line-clamp-1">{log.note}</span>
-                              </p>
-                            )}
-                          </div>
-                        </div>
+                        return (
+                          <tr
+                            key={log.id}
+                            onClick={() => setSelectedLogDetail(log)}
+                            className="hover:bg-neutral-50/90 transition-colors cursor-pointer"
+                          >
+                            {/* Date & Time */}
+                            <td className="py-3 px-4 whitespace-nowrap">
+                              <span className="block font-mono font-extrabold text-black text-xs">
+                                {formatDisplayDate(log.date)}
+                              </span>
+                              <span className="block font-mono text-[10px] text-neutral-400 flex items-center gap-1">
+                                <Clock className="w-3 h-3" /> {log.time}
+                              </span>
+                            </td>
 
-                        <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 text-right">
-                          <div className="text-left sm:text-right">
-                            <span className="block font-mono text-[11px] font-bold text-neutral-800">
-                              {formatDisplayDate(log.date)}
-                            </span>
-                            <span className="block font-mono text-[10px] text-neutral-400 flex items-center gap-1 sm:justify-end">
-                              <Clock className="w-3 h-3" /> {log.time}
-                            </span>
-                          </div>
-                          <span className="text-[10px] font-bold text-neutral-400 bg-neutral-100 px-2 py-1 rounded-lg">
-                            {log.adminName || 'Store Admin'}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
+                            {/* Product Name */}
+                            <td className="py-3 px-4">
+                              <span className="font-extrabold text-black text-xs">{log.productName}</span>
+                            </td>
+
+                            {/* Action Performed */}
+                            <td className="py-3 px-4 whitespace-nowrap">
+                              <span className={`px-2.5 py-1 rounded-xl text-[10px] font-black uppercase font-mono border inline-flex items-center gap-1 shadow-sm ${badgeClass}`}>
+                                {badgeText}
+                              </span>
+                            </td>
+
+                            {/* Stock Movement */}
+                            <td className="py-3 px-4 whitespace-nowrap">
+                              {log.quantity !== undefined ? (
+                                <span className={`font-mono font-black text-xs ${isRestock ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                  {isRestock ? `+${log.quantity}` : `-${log.quantity}`} units
+                                </span>
+                              ) : log.previousStock !== undefined ? (
+                                <span className="font-mono text-xs font-bold text-neutral-700">
+                                  {log.previousStock} &rarr; {log.newStock ?? 0}
+                                </span>
+                              ) : (
+                                <span className="text-neutral-400 font-mono text-[11px]">—</span>
+                              )}
+                            </td>
+
+                            {/* Reason / Description Note */}
+                            <td className="py-3 px-4 max-w-xs sm:max-w-md">
+                              {log.note ? (
+                                <div className="p-2 bg-neutral-50 rounded-xl border border-neutral-200/80 text-neutral-800 font-medium text-[11px] leading-relaxed line-clamp-2">
+                                  {log.note}
+                                </div>
+                              ) : (
+                                <span className="text-neutral-400 italic text-[11px]">No note recorded</span>
+                              )}
+                            </td>
+
+                            {/* Admin Author */}
+                            <td className="py-3 px-4 whitespace-nowrap">
+                              <span className="text-[10px] font-bold text-neutral-600 bg-neutral-100 border border-neutral-200 px-2 py-1 rounded-lg">
+                                {log.adminName || 'Store Admin'}
+                              </span>
+                            </td>
+
+                            {/* View Action */}
+                            <td className="py-3 px-4 text-right whitespace-nowrap">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedLogDetail(log);
+                                }}
+                                className="px-2.5 py-1 rounded-lg bg-neutral-100 hover:bg-black hover:text-white text-neutral-700 text-[10px] font-bold transition-all border border-neutral-200"
+                              >
+                                View Details &rarr;
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               ) : (
-                <div className="p-12 text-center text-xs text-neutral-400 space-y-2">
+                <div className="p-16 text-center text-xs text-neutral-400 space-y-2">
                   <p className="font-bold text-neutral-600 text-sm">No stock history audit records found.</p>
                   <p>When you restock, destock, mark out-of-stock or hide products, logs with reasons will appear here.</p>
                 </div>
               )}
             </div>
 
-            <div className="flex items-center justify-between pt-2">
-              <span className="text-[11px] text-neutral-500 font-medium">
-                Showing {filteredHistoryLogs.length} of {stockHistoryLogs.length} recorded audit events.
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 sm:p-5 border-t border-neutral-200 bg-neutral-50/70 flex items-center justify-between shrink-0">
+              <span className="text-xs text-neutral-600 font-medium">
+                Showing <strong className="text-black font-bold font-mono">{filteredHistoryLogs.length}</strong> of <strong className="text-black font-bold font-mono">{stockHistoryLogs.length}</strong> total recorded audit events.
               </span>
               <button
                 onClick={() => setShowHistoryModal(false)}
-                className="px-5 py-2.5 bg-black text-white text-xs font-extrabold rounded-2xl hover:bg-neutral-800 transition-all cursor-pointer"
+                className="px-6 py-2.5 bg-black text-white text-xs font-black rounded-2xl hover:bg-neutral-800 transition-all cursor-pointer shadow-subtle"
               >
-                Close Audit Logs
+                Close Stock History Log
               </button>
             </div>
           </motion.div>
