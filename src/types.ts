@@ -143,6 +143,11 @@ export interface HighlightItem {
   subtitle: string;
   productId: string;
   discountPercentage?: number;
+  image?: string;
+  redirectLink?: string;
+  imageScale?: number;
+  panOffsetX?: number;
+  panOffsetY?: number;
 }
 
 export interface WeeklyHighlights {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Sparkles, Tag, ArrowRight, ShoppingBag, Star, Flame, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Sparkles, Tag, ArrowRight, ShoppingBag, Star, Flame, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const WeeklyHighlightsShowcase: React.FC = () => {
@@ -22,7 +22,12 @@ export const WeeklyHighlightsShowcase: React.FC = () => {
       subtitle: weeklyHighlights.specialOfDay.subtitle,
       discount: weeklyHighlights.specialOfDay.discountPercentage,
       product: getProduct(weeklyHighlights.specialOfDay.productId),
-      bgClass: 'bg-black text-white border-neutral-800',
+      image: weeklyHighlights.specialOfDay.image,
+      redirectLink: weeklyHighlights.specialOfDay.redirectLink,
+      imageScale: weeklyHighlights.specialOfDay.imageScale ?? 1,
+      panOffsetX: weeklyHighlights.specialOfDay.panOffsetX ?? 0,
+      panOffsetY: weeklyHighlights.specialOfDay.panOffsetY ?? 0,
+      bgClass: 'bg-neutral-950 text-white border-neutral-800',
     },
     {
       type: 'week',
@@ -32,6 +37,11 @@ export const WeeklyHighlightsShowcase: React.FC = () => {
       subtitle: weeklyHighlights.specialOfWeek.subtitle,
       discount: weeklyHighlights.specialOfWeek.discountPercentage,
       product: getProduct(weeklyHighlights.specialOfWeek.productId),
+      image: weeklyHighlights.specialOfWeek.image,
+      redirectLink: weeklyHighlights.specialOfWeek.redirectLink,
+      imageScale: weeklyHighlights.specialOfWeek.imageScale ?? 1,
+      panOffsetX: weeklyHighlights.specialOfWeek.panOffsetX ?? 0,
+      panOffsetY: weeklyHighlights.specialOfWeek.panOffsetY ?? 0,
       bgClass: 'bg-neutral-900 text-white border-neutral-700',
     },
     {
@@ -42,6 +52,11 @@ export const WeeklyHighlightsShowcase: React.FC = () => {
       subtitle: weeklyHighlights.festivalSpecial.subtitle,
       discount: weeklyHighlights.festivalSpecial.discountPercentage,
       product: getProduct(weeklyHighlights.festivalSpecial.productId),
+      image: weeklyHighlights.festivalSpecial.image,
+      redirectLink: weeklyHighlights.festivalSpecial.redirectLink,
+      imageScale: weeklyHighlights.festivalSpecial.imageScale ?? 1,
+      panOffsetX: weeklyHighlights.festivalSpecial.panOffsetX ?? 0,
+      panOffsetY: weeklyHighlights.festivalSpecial.panOffsetY ?? 0,
       bgClass: 'bg-neutral-950 text-white border-neutral-800',
     },
   ];
@@ -57,6 +72,22 @@ export const WeeklyHighlightsShowcase: React.FC = () => {
 
   const activeSlide = slides[currentSlide];
   const activeProduct = activeSlide.product;
+  const bannerImage = activeSlide.image || activeProduct?.image || '';
+  const zoomScale = activeSlide.imageScale ?? 1;
+  const panX = activeSlide.panOffsetX ?? 0;
+  const panY = activeSlide.panOffsetY ?? 0;
+
+  const handleBannerClick = () => {
+    if (activeSlide.redirectLink) {
+      if (activeSlide.redirectLink.startsWith('http')) {
+        window.location.href = activeSlide.redirectLink;
+      } else {
+        navigate(activeSlide.redirectLink);
+      }
+    } else if (activeProduct?.id) {
+      navigate(`/product/${activeProduct.id}`);
+    }
+  };
 
   return (
     <section className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-left space-y-6">
@@ -79,21 +110,32 @@ export const WeeklyHighlightsShowcase: React.FC = () => {
 
       {/* Interactive Sliding Carousel Container */}
       <div
-        className="relative rounded-3xl overflow-hidden shadow-modal border border-neutral-800 min-h-[380px] sm:min-h-[420px] transition-all duration-500"
+        className="relative rounded-3xl overflow-hidden shadow-modal border border-neutral-800 min-h-[380px] sm:min-h-[420px] transition-all duration-500 group cursor-pointer"
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
+        onClick={handleBannerClick}
       >
         {activeProduct && (
-          <div key={currentSlide} className={`relative p-6 sm:p-10 ${activeSlide.bgClass} min-h-[380px] sm:min-h-[420px] flex flex-col justify-between transition-all duration-700 animate-fadeIn`}>
+          <div key={currentSlide} className={`relative p-6 sm:p-10 ${activeSlide.bgClass} min-h-[380px] sm:min-h-[420px] flex flex-col justify-between transition-all duration-700 animate-fadeIn select-none`}>
             
-            {/* Background Image Overlay */}
-            <div className="absolute inset-0 z-0">
-              <img
-                src={activeProduct.image}
-                alt={activeProduct.name}
-                className="w-full h-full object-cover opacity-35 scale-105 transition-all duration-1000"
-              />
-              <div className="absolute inset-0 bg-gradient-to-r from-black via-black/90 to-black/40" />
+            {/* Background Image with Live Zoom & Pan Transforms (High Clarity, Not Black) */}
+            <div className="absolute inset-0 z-0 overflow-hidden bg-neutral-950 pointer-events-none">
+              {bannerImage && (
+                <img
+                  src={bannerImage}
+                  alt={activeSlide.title || activeProduct.name}
+                  className="w-full h-full object-cover transition-transform duration-500 opacity-90 group-hover:scale-[1.02]"
+                  style={{
+                    transform: `translate3d(${panX}px, ${panY}px, 0px) scale(${zoomScale})`,
+                    transformOrigin: 'center center',
+                  }}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = activeProduct.image || 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?q=80&w=800&auto=format&fit=crop';
+                  }}
+                />
+              )}
+              {/* Vibrant readable overlay: subtle dark vignette on the left for crisp typography, clear on the right */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/45 to-black/10 sm:bg-gradient-to-r sm:from-black/85 sm:via-black/40 sm:to-transparent" />
             </div>
 
             {/* Slide Top Bar: Badge & Discount */}
@@ -112,38 +154,45 @@ export const WeeklyHighlightsShowcase: React.FC = () => {
 
             {/* Slide Middle Content */}
             <div className="relative z-10 space-y-3 my-6 max-w-2xl">
-              <span className="text-xs font-extrabold uppercase text-amber-400 tracking-widest block">
+              <span className="text-xs font-extrabold uppercase text-amber-400 tracking-widest block drop-shadow-sm">
                 {activeProduct.category} • {activeProduct.isVeg ? '● 100% Pure Veg' : '▲ Non-Veg Special'}
               </span>
               <h3
-                onClick={() => navigate(`/product/${activeProduct.id}`)}
-                className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight cursor-pointer hover:underline"
+                className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight drop-shadow-md group-hover:text-amber-200 transition-colors"
               >
                 {activeSlide.title || activeProduct.name}
               </h3>
-              <p className="text-xs sm:text-sm text-neutral-300 line-clamp-2 leading-relaxed font-medium">
+              <p className="text-xs sm:text-sm text-neutral-200 line-clamp-2 leading-relaxed font-medium drop-shadow-sm">
                 {activeSlide.subtitle || activeProduct.description}
               </p>
             </div>
 
             {/* Slide Bottom Bar: Price & CTA Action Buttons */}
-            <div className="relative z-10 pt-4 border-t border-neutral-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="relative z-10 pt-4 border-t border-white/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-baseline gap-3">
-                <span className="text-2xl sm:text-3xl font-black font-mono text-white">₹{activeProduct.price}</span>
-                <span className="text-xs text-neutral-400 font-bold uppercase tracking-wider">Per {activeProduct.defaultWeight || '500g'} Jar</span>
+                <span className="text-2xl sm:text-3xl font-black font-mono text-white drop-shadow">₹{activeProduct.price}</span>
+                <span className="text-xs text-neutral-300 font-bold uppercase tracking-wider">Per {activeProduct.defaultWeight || '500g'} Jar</span>
               </div>
 
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => addToCart(activeProduct, activeProduct.defaultWeight || '500g', 1)}
-                  className="px-6 py-3 bg-white text-black text-xs font-black rounded-2xl hover:bg-neutral-200 transition-all flex items-center gap-2 shadow-subtle cursor-pointer"
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    addToCart(activeProduct, activeProduct.defaultWeight || '500g', 1);
+                  }}
+                  className="px-6 py-3 bg-white text-black text-xs font-black rounded-2xl hover:bg-amber-400 transition-all flex items-center gap-2 shadow-subtle cursor-pointer active:scale-95"
                 >
                   <ShoppingBag className="w-4 h-4 text-black" />
                   <span>Add to Cart</span>
                 </button>
                 <button
-                  onClick={() => navigate(`/product/${activeProduct.id}`)}
-                  className="px-5 py-3 bg-neutral-900 border border-neutral-700 hover:border-white text-white text-xs font-extrabold rounded-2xl transition-all flex items-center gap-1.5 cursor-pointer"
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleBannerClick();
+                  }}
+                  className="px-5 py-3 bg-black/70 backdrop-blur-md border border-white/40 hover:border-white hover:bg-black text-white text-xs font-extrabold rounded-2xl transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
                 >
                   <span>Explore Offer</span>
                   <ArrowRight className="w-4 h-4" />
@@ -153,16 +202,24 @@ export const WeeklyHighlightsShowcase: React.FC = () => {
 
             {/* Next / Prev Nav Controls */}
             <button
-              onClick={() => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length)}
-              className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/60 hover:bg-black text-white flex items-center justify-center border border-white/20 transition-all cursor-pointer backdrop-blur-sm"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+              }}
+              className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/70 hover:bg-black text-white flex items-center justify-center border border-white/30 transition-all cursor-pointer backdrop-blur-md shadow-lg"
               title="Previous Offer"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
 
             <button
-              onClick={() => setCurrentSlide((prev) => (prev + 1) % slides.length)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/60 hover:bg-black text-white flex items-center justify-center border border-white/20 transition-all cursor-pointer backdrop-blur-sm"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrentSlide((prev) => (prev + 1) % slides.length);
+              }}
+              className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/70 hover:bg-black text-white flex items-center justify-center border border-white/30 transition-all cursor-pointer backdrop-blur-md shadow-lg"
               title="Next Offer"
             >
               <ChevronRight className="w-5 h-5" />
@@ -173,7 +230,11 @@ export const WeeklyHighlightsShowcase: React.FC = () => {
               {slides.map((_, idx) => (
                 <button
                   key={idx}
-                  onClick={() => setCurrentSlide(idx)}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentSlide(idx);
+                  }}
                   className={`h-2 rounded-full transition-all cursor-pointer ${
                     currentSlide === idx ? 'w-8 bg-amber-400' : 'w-2 bg-white/40 hover:bg-white'
                   }`}

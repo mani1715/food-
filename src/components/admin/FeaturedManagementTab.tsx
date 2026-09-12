@@ -1,7 +1,36 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useApp } from '../../context/AppContext';
 import { WeeklyHighlights, HighlightItem, HomeSection } from '../../types';
-import { Star, Tag, Flame, Save, Plus, Trash2, Check, Eye, EyeOff, LayoutGrid, ChevronUp, ChevronDown, Search, Filter, Layers } from 'lucide-react';
+import {
+  Star,
+  Tag,
+  Flame,
+  Save,
+  Plus,
+  Trash2,
+  Check,
+  Eye,
+  EyeOff,
+  LayoutGrid,
+  ChevronUp,
+  ChevronDown,
+  Search,
+  Filter,
+  Layers,
+  Sparkles,
+  Hand,
+  ZoomIn,
+  ZoomOut,
+  RefreshCw,
+  Crosshair,
+  Link as LinkIcon,
+  Image as ImageIcon,
+  Sliders,
+  ExternalLink,
+  Edit3,
+  X,
+} from 'lucide-react';
+import { DragDropImagePicker } from './DragDropImagePicker';
 
 // Per-section draft editor with category dropdown and filter
 const SectionEditor: React.FC<{
@@ -381,6 +410,51 @@ export const FeaturedManagementTab: React.FC = () => {
   const [newBadge, setNewBadge] = useState('');
   const [newCategoryFilter, setNewCategoryFilter] = useState('all');
 
+  // Modal / Adjuster State for Highlights
+  const [editingHighlightKey, setEditingHighlightKey] = useState<'specialOfDay' | 'specialOfWeek' | 'festivalSpecial' | null>(null);
+  const [highlightLinkMode, setHighlightLinkMode] = useState<'product' | 'category' | 'custom'>('product');
+  const [selectedHighlightCat, setSelectedHighlightCat] = useState<string>('');
+  const [selectedHighlightProdId, setSelectedHighlightProdId] = useState<string>('');
+  const [customHighlightLink, setCustomHighlightLink] = useState<string>('/products');
+
+  // Direct Hand Drag & Touch Pan State
+  const [isInteracting, setIsInteracting] = useState(false);
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const dragStartRef = useRef<{ x: number; y: number; initialPanX: number; initialPanY: number } | null>(null);
+
+  useEffect(() => {
+    setFormHighlights(weeklyHighlights);
+  }, [weeklyHighlights]);
+
+  const handleOpenHighlightEditor = (key: 'specialOfDay' | 'specialOfWeek' | 'festivalSpecial') => {
+    setEditingHighlightKey(key);
+    const item = formHighlights[key];
+    const link = item.redirectLink || `/product/${item.productId}`;
+
+    if (link.startsWith('/product/')) {
+      setHighlightLinkMode('product');
+      const pId = link.replace('/product/', '').split('?')[0];
+      setSelectedHighlightProdId(pId || item.productId);
+      setSelectedHighlightCat(categories[0]?.name || '');
+      setCustomHighlightLink(link);
+    } else if (link.includes('category=')) {
+      setHighlightLinkMode('category');
+      try {
+        const cat = decodeURIComponent(link.split('category=')[1].split('&')[0]);
+        setSelectedHighlightCat(cat);
+      } catch {
+        setSelectedHighlightCat(categories[0]?.name || '');
+      }
+      setSelectedHighlightProdId(item.productId);
+      setCustomHighlightLink(link);
+    } else {
+      setHighlightLinkMode('custom');
+      setCustomHighlightLink(link);
+      setSelectedHighlightCat(categories[0]?.name || '');
+      setSelectedHighlightProdId(item.productId);
+    }
+  };
+
   const handleItemChange = (
     key: 'specialOfDay' | 'specialOfWeek' | 'festivalSpecial',
     field: keyof HighlightItem,
@@ -389,9 +463,138 @@ export const FeaturedManagementTab: React.FC = () => {
     setFormHighlights((prev) => ({ ...prev, [key]: { ...prev[key], [field]: value } }));
   };
 
-  const handleSaveHighlights = (e: React.FormEvent) => {
+  const handleProductSelect = (key: 'specialOfDay' | 'specialOfWeek' | 'festivalSpecial', prodId: string) => {
+    const prod = products.find((p) => p.id === prodId);
+    if (!prod) return;
+    setFormHighlights((prev) => {
+      const current = prev[key];
+      return {
+        ...prev,
+        [key]: {
+          ...current,
+          productId: prodId,
+          title: current.title || prod.name,
+          subtitle: current.subtitle || prod.description,
+          image: current.image || prod.image,
+          redirectLink: highlightLinkMode === 'product' ? `/product/${prodId}` : current.redirectLink,
+        },
+      };
+    });
+    if (highlightLinkMode === 'product') {
+      setSelectedHighlightProdId(prodId);
+    }
+  };
+
+  const handleLinkModeChange = (key: 'specialOfDay' | 'specialOfWeek' | 'festivalSpecial', mode: 'product' | 'category' | 'custom') => {
+    setHighlightLinkMode(mode);
+    const item = formHighlights[key];
+    if (mode === 'product') {
+      const pId = selectedHighlightProdId || item.productId || products[0]?.id || '';
+      handleItemChange(key, 'redirectLink', `/product/${pId}`);
+    } else if (mode === 'category') {
+      const cat = selectedHighlightCat || categories[0]?.name || '';
+      handleItemChange(key, 'redirectLink', `/products?category=${encodeURIComponent(cat)}`);
+    } else {
+      handleItemChange(key, 'redirectLink', customHighlightLink || '/products');
+    }
+  };
+
+  // Canvas Hand Gestures
+  const handleCanvasMouseDown = (e: React.MouseEvent) => {
+    if (!editingHighlightKey) return;
     e.preventDefault();
+    setIsInteracting(true);
+    const item = formHighlights[editingHighlightKey];
+    dragStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      initialPanX: item.panOffsetX ?? 0,
+      initialPanY: item.panOffsetY ?? 0,
+    };
+  };
+
+  const handleCanvasMouseMove = useCallback((e: MouseEvent) => {
+    if (!dragStartRef.current || !editingHighlightKey) return;
+    const deltaX = e.clientX - dragStartRef.current.x;
+    const deltaY = e.clientY - dragStartRef.current.y;
+    handleItemChange(editingHighlightKey, 'panOffsetX', Math.round(dragStartRef.current.initialPanX + deltaX));
+    handleItemChange(editingHighlightKey, 'panOffsetY', Math.round(dragStartRef.current.initialPanY + deltaY));
+  }, [editingHighlightKey]);
+
+  const handleCanvasMouseUp = useCallback(() => {
+    setIsInteracting(false);
+    dragStartRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener('mousemove', handleCanvasMouseMove);
+    window.addEventListener('mouseup', handleCanvasMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleCanvasMouseMove);
+      window.removeEventListener('mouseup', handleCanvasMouseUp);
+    };
+  }, [handleCanvasMouseMove, handleCanvasMouseUp]);
+
+  // Touch Hand Gestures
+  const handleCanvasTouchStart = (e: React.TouchEvent) => {
+    if (!editingHighlightKey) return;
+    if (e.touches.length === 1) {
+      setIsInteracting(true);
+      const touch = e.touches[0];
+      const item = formHighlights[editingHighlightKey];
+      dragStartRef.current = {
+        x: touch.clientX,
+        y: touch.clientY,
+        initialPanX: item.panOffsetX ?? 0,
+        initialPanY: item.panOffsetY ?? 0,
+      };
+    }
+  };
+
+  const handleCanvasTouchMove = (e: React.TouchEvent) => {
+    if (!dragStartRef.current || !editingHighlightKey || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - dragStartRef.current.x;
+    const deltaY = touch.clientY - dragStartRef.current.y;
+    handleItemChange(editingHighlightKey, 'panOffsetX', Math.round(dragStartRef.current.initialPanX + deltaX));
+    handleItemChange(editingHighlightKey, 'panOffsetY', Math.round(dragStartRef.current.initialPanY + deltaY));
+  };
+
+  const handleCanvasTouchEnd = () => {
+    setIsInteracting(false);
+    dragStartRef.current = null;
+  };
+
+  // Scroll Wheel Zoom
+  const handleCanvasWheel = (e: React.WheelEvent) => {
+    if (!editingHighlightKey) return;
+    e.preventDefault();
+    const item = formHighlights[editingHighlightKey];
+    const currentScale = item.imageScale ?? 1;
+    const delta = e.deltaY < 0 ? 0.08 : -0.08;
+    const newScale = Math.min(3.0, Math.max(0.5, parseFloat((currentScale + delta).toFixed(2))));
+    handleItemChange(editingHighlightKey, 'imageScale', newScale);
+  };
+
+  const handleAdjustZoomStep = (step: number) => {
+    if (!editingHighlightKey) return;
+    const item = formHighlights[editingHighlightKey];
+    const currentScale = item.imageScale ?? 1;
+    const newScale = Math.min(3.0, Math.max(0.5, parseFloat((currentScale + step).toFixed(2))));
+    handleItemChange(editingHighlightKey, 'imageScale', newScale);
+  };
+
+  const handleResetPositionAndZoom = () => {
+    if (!editingHighlightKey) return;
+    handleItemChange(editingHighlightKey, 'imageScale', 1);
+    handleItemChange(editingHighlightKey, 'panOffsetX', 0);
+    handleItemChange(editingHighlightKey, 'panOffsetY', 0);
+  };
+
+  const handleSaveHighlights = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     updateWeeklyHighlights(formHighlights);
+    setEditingHighlightKey(null);
   };
 
   const handleCreateSection = (e: React.FormEvent) => {
@@ -450,47 +653,113 @@ export const FeaturedManagementTab: React.FC = () => {
         </div>
       </div>
 
-      {/* SECTION 2: WEEKLY HIGHLIGHTS & OFFERS */}
+      {/* SECTION 2: SPECIAL HIGHLIGHTS & OFFERS BANNERS */}
       <div className="space-y-6 pt-6 border-t border-neutral-200">
-        <div className="border-b border-neutral-200 pb-4">
-          <h2 className="text-xl font-extrabold text-black tracking-tight">Weekly Banner Highlights & Festive Offers</h2>
-          <p className="text-xs text-neutral-500">Configure Special of the Day, Special of the Week, and Festive Hampers.</p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-200 pb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-amber-500" />
+              <h2 className="text-xl font-extrabold text-black tracking-tight">Special Highlights & Offers Carousel Banners</h2>
+            </div>
+            <p className="text-xs text-neutral-500 mt-0.5">
+              Customize photos with hand drag & zoom alignment, readable vibrant overlays, and direct click redirections.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleSaveHighlights()}
+            className="px-5 py-2.5 bg-black text-white text-xs font-extrabold rounded-2xl hover:bg-neutral-800 transition-all flex items-center gap-2 shadow-subtle cursor-pointer"
+          >
+            <Save className="w-4 h-4" />
+            <span>Save All Highlights</span>
+          </button>
         </div>
-        <form onSubmit={handleSaveHighlights} className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {(['specialOfDay', 'specialOfWeek', 'festivalSpecial'] as const).map((key, i) => {
-              const icons = [<Flame key="f" className="w-4 h-4 text-black" />, <Star key="s" className="w-4 h-4 text-black" />, <Tag key="t" className="w-4 h-4 text-black" />];
-              const labels = ['1. Special of the Day', '2. Special of the Week', '3. Festival Special'];
-              const item = formHighlights[key];
-              return (
-                <div key={key} className="bg-neutral-50 border border-neutral-200 rounded-3xl p-5 space-y-4 shadow-subtle text-xs font-bold">
-                  <div className="flex items-center gap-2 border-b border-neutral-200 pb-3">
-                    {icons[i]}
-                    <h3 className="text-sm font-extrabold text-black">{labels[i]}</h3>
-                  </div>
-                  <div>
-                    <label className="block text-neutral-500 mb-1">Select Product</label>
-                    <select value={item.productId} onChange={(e) => handleItemChange(key, 'productId', e.target.value)} className="w-full p-3 rounded-2xl border border-neutral-300 bg-white">
-                      {products.map((p) => <option key={p.id} value={p.id}>{p.name} (₹{p.price})</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-neutral-500 mb-1">Badge Text</label>
-                    <input type="text" value={item.badgeText} onChange={(e) => handleItemChange(key, 'badgeText', e.target.value)} className="w-full p-3 rounded-2xl border border-neutral-300 bg-white font-mono" />
-                  </div>
-                  <div>
-                    <label className="block text-neutral-500 mb-1">Headline Title</label>
-                    <input type="text" value={item.title} onChange={(e) => handleItemChange(key, 'title', e.target.value)} className="w-full p-3 rounded-2xl border border-neutral-300 bg-white" />
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {(['specialOfDay', 'specialOfWeek', 'festivalSpecial'] as const).map((key, i) => {
+            const labels = ["1. Today's Special", "2. Weekly Highlight", "3. Festival Special"];
+            const item = formHighlights[key];
+            const prod = products.find((p) => p.id === item.productId) || products[0];
+            const displayImg = item.image || prod?.image || '';
+            const zoom = item.imageScale ?? 1;
+            const panX = item.panOffsetX ?? 0;
+            const panY = item.panOffsetY ?? 0;
+
+            return (
+              <div key={key} className="bg-white border border-neutral-200 rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                
+                {/* Banner Live Preview Card */}
+                <div className="relative aspect-[16/9] overflow-hidden bg-neutral-950">
+                  {displayImg ? (
+                    <img
+                      src={displayImg}
+                      alt={item.title || prod?.name}
+                      style={{
+                        transform: `translate(${panX}px, ${panY}px) scale(${zoom})`,
+                        transformOrigin: 'center center',
+                      }}
+                      className="w-full h-full object-cover transition-transform duration-300 opacity-90"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-neutral-500 text-xs">No image</div>
+                  )}
+
+                  {/* Readable gradient overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/10 p-4 flex flex-col justify-between pointer-events-none">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2.5 py-1 bg-white/90 backdrop-blur-md text-black text-[10px] font-black uppercase tracking-wider rounded-full shadow-sm">
+                        {item.badgeText || labels[i]}
+                      </span>
+                      {item.discountPercentage && item.discountPercentage > 0 ? (
+                        <span className="bg-amber-400 text-black text-[10px] font-black font-mono px-2 py-0.5 rounded-full shadow-sm">
+                          {item.discountPercentage}% OFF
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <div>
+                      <h4 className="text-white text-base font-extrabold line-clamp-1">{item.title || prod?.name}</h4>
+                      <p className="text-neutral-200 text-xs line-clamp-1 font-medium">{item.subtitle || prod?.description}</p>
+                    </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-          <button type="submit" className="w-full py-4 bg-black text-white text-xs font-extrabold rounded-2xl hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 shadow-subtle cursor-pointer">
-            <Save className="w-4 h-4" />
-            <span>Save & Publish Banner Highlights</span>
-          </button>
-        </form>
+
+                {/* Card Info & Edit Controls */}
+                <div className="p-4 space-y-3 bg-neutral-50 border-t border-neutral-100 flex-1 flex flex-col justify-between">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-neutral-500 font-bold">Product:</span>
+                      <span className="font-extrabold text-black truncate max-w-[170px]">{prod?.name || 'Default'}</span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 text-[11px] text-neutral-700 bg-white px-3 py-1.5 rounded-xl border border-neutral-200 truncate">
+                      <LinkIcon className="w-3.5 h-3.5 text-black shrink-0" />
+                      <span className="font-bold text-black shrink-0">Redirect:</span>
+                      <span className="text-neutral-500 truncate font-mono">{item.redirectLink || `/product/${item.productId}`}</span>
+                    </div>
+
+                    {((zoom && zoom !== 1) || panX !== 0 || panY !== 0) && (
+                      <div className="flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                        <Hand className="w-3 h-3 text-amber-600" />
+                        <span>Zoom {Math.round(zoom * 100)}% (Pan X:{panX}px, Y:{panY}px)</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenHighlightEditor(key)}
+                    className="w-full py-2.5 bg-black text-white hover:bg-neutral-800 rounded-2xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-subtle active:scale-95"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Adjust Photo & Redirect Logic</span>
+                  </button>
+                </div>
+
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* SECTION 3: BEST SELLER & FESTIVAL TOGGLES */}
@@ -518,6 +787,407 @@ export const FeaturedManagementTab: React.FC = () => {
           ))}
         </div>
       </div>
+
+      {/* HIGHLIGHT PHOTO ADJUSTER & REDIRECTION MODAL */}
+      {editingHighlightKey && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-2xl w-full space-y-6 shadow-modal text-left max-h-[92vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-neutral-200 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-2xl bg-black text-white flex items-center justify-center">
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-black">
+                    Adjust {editingHighlightKey === 'specialOfDay' ? "Today's Special" : editingHighlightKey === 'specialOfWeek' ? "Weekly Highlight" : "Festival Special"} Banner
+                  </h3>
+                  <p className="text-xs text-neutral-500 font-medium">
+                    Touch & drag with hand, zoom in/out, and set banner click redirect destination.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingHighlightKey(null)}
+                className="p-2 text-neutral-400 hover:text-black rounded-full hover:bg-neutral-100 transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* DIRECT HAND DRAG & ZOOM CANVAS */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-black text-black flex items-center gap-1.5 uppercase tracking-wider">
+                  <Hand className="w-4 h-4 text-amber-500" />
+                  <span>Direct Hand Gesture Canvas (Drag to Move • Scroll to Zoom)</span>
+                </label>
+                <div className="flex items-center gap-1.5">
+                  <span className="px-2 py-0.5 bg-black text-white text-[11px] font-mono font-black rounded-lg">
+                    {Math.round((formHighlights[editingHighlightKey].imageScale ?? 1) * 100)}%
+                  </span>
+                  {((formHighlights[editingHighlightKey].panOffsetX ?? 0) !== 0 || (formHighlights[editingHighlightKey].panOffsetY ?? 0) !== 0 || (formHighlights[editingHighlightKey].imageScale ?? 1) !== 1) && (
+                    <button
+                      type="button"
+                      onClick={handleResetPositionAndZoom}
+                      className="px-2 py-0.5 bg-neutral-200 hover:bg-neutral-300 text-neutral-800 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                      title="Reset to center & 100% zoom"
+                    >
+                      <RefreshCw className="w-3 h-3" /> Reset
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Canvas Container */}
+              <div
+                ref={canvasRef}
+                onMouseDown={handleCanvasMouseDown}
+                onTouchStart={handleCanvasTouchStart}
+                onTouchMove={handleCanvasTouchMove}
+                onTouchEnd={handleCanvasTouchEnd}
+                onWheel={handleCanvasWheel}
+                className={`relative aspect-[16/9] w-full rounded-2xl overflow-hidden bg-neutral-950 border-2 transition-all select-none ${
+                  isInteracting ? 'border-amber-400 cursor-grabbing shadow-lg' : 'border-neutral-700 cursor-grab shadow-md hover:border-neutral-500'
+                }`}
+              >
+                {(() => {
+                  const item = formHighlights[editingHighlightKey];
+                  const prod = products.find((p) => p.id === item.productId) || products[0];
+                  const imgUrl = item.image || prod?.image || '';
+                  const zoom = item.imageScale ?? 1;
+                  const panX = item.panOffsetX ?? 0;
+                  const panY = item.panOffsetY ?? 0;
+
+                  return (
+                    <>
+                      {imgUrl ? (
+                        <img
+                          src={imgUrl}
+                          alt="Canvas Preview"
+                          draggable={false}
+                          style={{
+                            transform: `translate(${panX}px, ${panY}px) scale(${zoom})`,
+                            transformOrigin: 'center center',
+                          }}
+                          className="w-full h-full object-cover pointer-events-none transition-transform duration-75 ease-out opacity-90"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-neutral-500 text-xs gap-1">
+                          <ImageIcon className="w-6 h-6 text-neutral-600" />
+                          <span>No Image Available</span>
+                        </div>
+                      )}
+
+                      {/* Visual Cropper Grid lines during interaction */}
+                      <div className={`absolute inset-0 pointer-events-none transition-opacity duration-200 ${isInteracting ? 'opacity-40' : 'opacity-15'}`}>
+                        <div className="w-full h-full grid grid-cols-3 grid-rows-3 border border-white/40">
+                          <div className="border-r border-b border-white/30" />
+                          <div className="border-r border-b border-white/30" />
+                          <div className="border-b border-white/30" />
+                          <div className="border-r border-b border-white/30" />
+                          <div className="border-r border-b border-white/30" />
+                          <div className="border-b border-white/30" />
+                          <div className="border-r border-b border-white/30" />
+                          <div className="border-r border-b border-white/30" />
+                          <div />
+                        </div>
+                      </div>
+
+                      {/* Live Typography and Redirection Overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/15 p-4 flex flex-col justify-between pointer-events-none">
+                        <div className="flex items-center justify-between">
+                          <span className="px-2.5 py-1 bg-white text-black text-[10px] font-black uppercase tracking-wider rounded-full shadow-sm">
+                            {item.badgeText || "SPECIAL OFFER"}
+                          </span>
+                          <span className="px-2 py-0.5 bg-black/70 backdrop-blur-md text-amber-300 text-[9px] font-bold rounded-lg border border-amber-300/30">
+                            ✋ Touch & Drag with Hand
+                          </span>
+                        </div>
+
+                        <div>
+                          <h4 className="text-white text-lg font-extrabold line-clamp-1">{item.title || prod?.name}</h4>
+                          <p className="text-neutral-200 text-xs line-clamp-1">{item.subtitle || prod?.description}</p>
+                          <div className="mt-2 flex items-center gap-2">
+                            <span className="px-3 py-1 bg-white text-black text-[10px] font-black rounded-full">
+                              Add to Cart
+                            </span>
+                            <span className="text-[10px] text-emerald-300 font-mono bg-black/80 px-2.5 py-1 rounded-full border border-emerald-400/40 truncate max-w-[240px]">
+                              👉 Direct Redirect: {item.redirectLink || `/product/${item.productId}`}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Floating Quick Hand Zoom Buttons on the Canvas */}
+                      <div className="absolute bottom-3 right-3 flex items-center gap-1.5 z-20">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAdjustZoomStep(-0.15);
+                          }}
+                          className="p-2 bg-black/80 hover:bg-black text-white rounded-xl backdrop-blur-md border border-white/20 cursor-pointer shadow-md active:scale-95"
+                          title="Zoom Out with Hand"
+                        >
+                          <ZoomOut className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAdjustZoomStep(0.15);
+                          }}
+                          className="p-2 bg-black/80 hover:bg-black text-white rounded-xl backdrop-blur-md border border-white/20 cursor-pointer shadow-md active:scale-95"
+                          title="Zoom In with Hand"
+                        >
+                          <ZoomIn className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleResetPositionAndZoom();
+                          }}
+                          className="p-2 bg-black/80 hover:bg-black text-white rounded-xl backdrop-blur-md border border-white/20 cursor-pointer shadow-md active:scale-95"
+                          title="Center & Reset"
+                        >
+                          <Crosshair className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+
+              {/* Hand Zoom Slider Fine-Tuner */}
+              <div className="p-3.5 bg-neutral-50 rounded-2xl border border-neutral-200 space-y-2">
+                <div className="flex items-center justify-between text-[11px] font-bold text-neutral-700">
+                  <span className="flex items-center gap-1 text-neutral-500">
+                    <ZoomOut className="w-3.5 h-3.5" /> 50%
+                  </span>
+                  <span className="text-black font-extrabold flex items-center gap-1">
+                    <Hand className="w-3.5 h-3.5 text-black" /> Zoom Scale: {Math.round((formHighlights[editingHighlightKey].imageScale ?? 1) * 100)}% (Pan X: {formHighlights[editingHighlightKey].panOffsetX ?? 0}px, Y: {formHighlights[editingHighlightKey].panOffsetY ?? 0}px)
+                  </span>
+                  <span className="flex items-center gap-1 text-neutral-500">
+                    300% <ZoomIn className="w-3.5 h-3.5" />
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="3.0"
+                  step="0.05"
+                  value={formHighlights[editingHighlightKey].imageScale ?? 1}
+                  onChange={(e) => handleItemChange(editingHighlightKey, 'imageScale', parseFloat(e.target.value))}
+                  className="w-full accent-black cursor-pointer h-2 bg-neutral-200 rounded-lg appearance-none"
+                />
+              </div>
+            </div>
+
+            {/* FORM FIELDS */}
+            <div className="space-y-4 text-xs font-bold">
+              {/* Product Selector */}
+              <div>
+                <label className="block text-neutral-500 mb-1">Select Base Product *</label>
+                <select
+                  value={formHighlights[editingHighlightKey].productId}
+                  onChange={(e) => handleProductSelect(editingHighlightKey, e.target.value)}
+                  className="w-full p-3 rounded-2xl border border-neutral-300 bg-white"
+                >
+                  {products.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name} (₹{p.price})</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Title, Subtitle, Badge, Discount */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-neutral-500 mb-1">Badge Tagline</label>
+                  <input
+                    type="text"
+                    value={formHighlights[editingHighlightKey].badgeText}
+                    onChange={(e) => handleItemChange(editingHighlightKey, 'badgeText', e.target.value)}
+                    placeholder="e.g. TODAY'S HOT SPECIAL"
+                    className="w-full p-3 rounded-2xl border border-neutral-300 bg-white font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-neutral-500 mb-1">Special Discount %</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="90"
+                    value={formHighlights[editingHighlightKey].discountPercentage || ''}
+                    onChange={(e) => handleItemChange(editingHighlightKey, 'discountPercentage', e.target.value ? Number(e.target.value) : undefined)}
+                    placeholder="e.g. 15"
+                    className="w-full p-3 rounded-2xl border border-neutral-300 bg-white font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-neutral-500 mb-1">Headline Title *</label>
+                  <input
+                    type="text"
+                    value={formHighlights[editingHighlightKey].title}
+                    onChange={(e) => handleItemChange(editingHighlightKey, 'title', e.target.value)}
+                    placeholder="e.g. Gongura Mutton Pickle Special"
+                    className="w-full p-3 rounded-2xl border border-neutral-300 bg-white font-extrabold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-neutral-500 mb-1">Subtitle / Description</label>
+                  <input
+                    type="text"
+                    value={formHighlights[editingHighlightKey].subtitle}
+                    onChange={(e) => handleItemChange(editingHighlightKey, 'subtitle', e.target.value)}
+                    placeholder="e.g. Traditional Andhra spicy relish made fresh."
+                    className="w-full p-3 rounded-2xl border border-neutral-300 bg-white font-sans"
+                  />
+                </div>
+              </div>
+
+              {/* Custom Banner Image Picker */}
+              <div className="space-y-2 pt-2 border-t border-neutral-200">
+                <div className="flex items-center justify-between">
+                  <label className="block text-neutral-600 font-extrabold uppercase tracking-wider text-[11px]">
+                    Banner Photo (Upload or Paste URL)
+                  </label>
+                  {(() => {
+                    const prod = products.find((p) => p.id === formHighlights[editingHighlightKey].productId);
+                    if (prod && prod.image) {
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => handleItemChange(editingHighlightKey, 'image', prod.image)}
+                          className="text-[11px] text-black font-extrabold hover:underline cursor-pointer"
+                        >
+                          Use Product Photo
+                        </button>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+                <DragDropImagePicker
+                  value={formHighlights[editingHighlightKey].image || ''}
+                  onChange={(url: string) => handleItemChange(editingHighlightKey, 'image', url)}
+                  label="Upload or Drag Banner Image"
+                />
+              </div>
+
+              {/* Click Redirection Mode Picker */}
+              <div className="space-y-3 pt-2 border-t border-neutral-200">
+                <label className="block text-neutral-600 font-extrabold uppercase tracking-wider text-[11px]">
+                  Click Redirection Destination (When Customer Taps Banner)
+                </label>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleLinkModeChange(editingHighlightKey, 'product')}
+                    className={`py-2 px-3 rounded-xl border text-xs font-extrabold transition-all cursor-pointer ${
+                      highlightLinkMode === 'product' ? 'bg-black text-white border-black shadow-sm' : 'bg-white text-neutral-600 border-neutral-200 hover:border-black'
+                    }`}
+                  >
+                    Specific Product
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleLinkModeChange(editingHighlightKey, 'category')}
+                    className={`py-2 px-3 rounded-xl border text-xs font-extrabold transition-all cursor-pointer ${
+                      highlightLinkMode === 'category' ? 'bg-black text-white border-black shadow-sm' : 'bg-white text-neutral-600 border-neutral-200 hover:border-black'
+                    }`}
+                  >
+                    Category Page
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleLinkModeChange(editingHighlightKey, 'custom')}
+                    className={`py-2 px-3 rounded-xl border text-xs font-extrabold transition-all cursor-pointer ${
+                      highlightLinkMode === 'custom' ? 'bg-black text-white border-black shadow-sm' : 'bg-white text-neutral-600 border-neutral-200 hover:border-black'
+                    }`}
+                  >
+                    Custom URL / Link
+                  </button>
+                </div>
+
+                {highlightLinkMode === 'product' && (
+                  <div>
+                    <select
+                      value={selectedHighlightProdId || formHighlights[editingHighlightKey].productId}
+                      onChange={(e) => {
+                        setSelectedHighlightProdId(e.target.value);
+                        handleItemChange(editingHighlightKey, 'redirectLink', `/product/${e.target.value}`);
+                      }}
+                      className="w-full p-3 rounded-2xl border border-neutral-300 bg-white"
+                    >
+                      {products.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name} (Redirects to /product/{p.id})</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {highlightLinkMode === 'category' && (
+                  <div>
+                    <select
+                      value={selectedHighlightCat || categories[0]?.name || ''}
+                      onChange={(e) => {
+                        setSelectedHighlightCat(e.target.value);
+                        handleItemChange(editingHighlightKey, 'redirectLink', `/products?category=${encodeURIComponent(e.target.value)}`);
+                      }}
+                      className="w-full p-3 rounded-2xl border border-neutral-300 bg-white"
+                    >
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.name}>{c.name} (Redirects to /products?category={c.name})</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {highlightLinkMode === 'custom' && (
+                  <div>
+                    <input
+                      type="text"
+                      value={customHighlightLink}
+                      onChange={(e) => {
+                        setCustomHighlightLink(e.target.value);
+                        handleItemChange(editingHighlightKey, 'redirectLink', e.target.value);
+                      }}
+                      placeholder="e.g. /products?filter=sweets or https://..."
+                      className="w-full p-3 rounded-2xl border border-neutral-300 bg-white font-mono"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Bottom Actions */}
+            <div className="flex gap-3 pt-3 border-t border-neutral-200">
+              <button
+                type="button"
+                onClick={() => setEditingHighlightKey(null)}
+                className="flex-1 py-3.5 border border-neutral-200 hover:bg-neutral-100 rounded-2xl text-xs font-bold text-black transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSaveHighlights()}
+                className="flex-1 py-3.5 bg-black hover:bg-neutral-800 text-white rounded-2xl text-xs font-extrabold transition-all cursor-pointer shadow-subtle flex items-center justify-center gap-2"
+              >
+                <Save className="w-4 h-4" />
+                <span>Save Banner Adjustments</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ADD NEW SECTION MODAL */}
       {showAddSectionModal && (
