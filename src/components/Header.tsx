@@ -107,19 +107,19 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
       <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 lg:py-4.5 flex items-center justify-between gap-4 lg:gap-8">
         
         {/* Left Side: Brand Logo & Mobile Menu Toggle */}
-        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
           {/* Mobile Burger Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="lg:hidden p-2 text-neutral-800 hover:text-black focus:outline-none rounded-lg hover:bg-neutral-100 transition-colors"
+            className="lg:hidden p-2 text-neutral-900 hover:text-black focus:outline-none rounded-xl hover:bg-neutral-100 transition-colors cursor-pointer"
             aria-label="Toggle menu"
           >
-            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {mobileMenuOpen ? <X className="w-6.5 h-6.5 stroke-[2.2]" /> : <Menu className="w-6.5 h-6.5 stroke-[2.2]" />}
           </button>
 
           {/* Brand Logo (Enlarged and perfectly contained inside white header) */}
           <div onClick={() => navigate('/')} className="flex items-center cursor-pointer group shrink-0 relative z-30">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 xl:w-32 xl:h-32 rounded-full overflow-hidden shadow-lg group-hover:scale-105 transition-all duration-300 shrink-0 bg-black border-2 border-neutral-900 flex items-center justify-center">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 lg:w-28 lg:h-28 xl:w-32 xl:h-32 rounded-full overflow-hidden shadow-lg group-hover:scale-105 transition-all duration-300 shrink-0 bg-black border-2 border-neutral-900 flex items-center justify-center">
               <img
                 src={siteLogo && siteLogo !== '/aishu-logo.jpg' ? siteLogo : '/aishu-logo.png'}
                 alt="Aishu Foods Logo"
@@ -168,17 +168,18 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
           })}
         </nav>
 
-        {/* Right Side: Action Icons (Search, Wishlist, Profile, Track, Cart) */}
-        <div className="flex items-center justify-end gap-2 sm:gap-3 lg:gap-4 shrink-0">
+        {/* Right Side: Action Icons (Large, Visible, Touch-Friendly, Auto Right-Aligned) */}
+        <div className="ml-auto flex items-center justify-end gap-1 sm:gap-2 lg:gap-3 shrink-0">
           
           {/* Search Icon */}
           {headerSettings?.showSearch !== false && (
             <button
               onClick={onOpenSearch}
-              className="p-2 sm:p-2.5 text-neutral-800 hover:text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer"
+              className="p-2 sm:p-2.5 text-neutral-900 hover:text-black hover:bg-neutral-100 rounded-2xl transition-all cursor-pointer flex items-center justify-center"
               title="Search Store"
+              aria-label="Search"
             >
-              <Search className="w-5 h-5 sm:w-5.5 sm:h-5.5 stroke-[1.75]" />
+              <Search className="w-6 h-6 sm:w-6.5 sm:h-6.5 lg:w-7 lg:h-7 stroke-[2]" />
             </button>
           )}
 
@@ -186,12 +187,13 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
           {headerSettings?.showWishlist !== false && (
             <button
               onClick={() => navigate('/wishlist')}
-              className="relative p-2 sm:p-2.5 text-neutral-800 hover:text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer"
+              className="relative p-2 sm:p-2.5 text-neutral-900 hover:text-black hover:bg-neutral-100 rounded-2xl transition-all cursor-pointer flex items-center justify-center"
               title="Wishlist"
+              aria-label="Wishlist"
             >
-              <Heart className="w-5 h-5 sm:w-5.5 sm:h-5.5 stroke-[1.75]" />
+              <Heart className="w-6 h-6 sm:w-6.5 sm:h-6.5 lg:w-7 lg:h-7 stroke-[2]" />
               {wishlistProductIds.length > 0 && (
-                <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black text-white text-[9px] font-bold flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 min-w-[19px] h-[19px] px-1 rounded-full bg-black text-white text-[10px] font-black flex items-center justify-center border-2 border-white shadow-md leading-none">
                   {wishlistProductIds.length}
                 </span>
               )}
@@ -202,10 +204,11 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
           {headerSettings?.showAccount !== false && (
             <button
               onClick={() => navigate('/profile')}
-              className="p-2 sm:p-2.5 text-neutral-800 hover:text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer"
+              className="p-2 sm:p-2.5 text-neutral-900 hover:text-black hover:bg-neutral-100 rounded-2xl transition-all cursor-pointer flex items-center justify-center"
               title="Account Profile"
+              aria-label="Account Profile"
             >
-              <User className="w-5 h-5 sm:w-5.5 sm:h-5.5 stroke-[1.75]" />
+              <User className="w-6 h-6 sm:w-6.5 sm:h-6.5 lg:w-7 lg:h-7 stroke-[2]" />
             </button>
           )}
 
@@ -213,10 +216,11 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
           {headerSettings?.showTrackOrder !== false && (
             <button
               onClick={() => navigate('/track-order')}
-              className="p-2 sm:p-2.5 text-neutral-800 hover:text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer hidden sm:block"
+              className="p-2 sm:p-2.5 text-neutral-900 hover:text-black hover:bg-neutral-100 rounded-2xl transition-all cursor-pointer flex items-center justify-center"
               title="Track Order"
+              aria-label="Track Order"
             >
-              <Package className="w-5 h-5 sm:w-5.5 sm:h-5.5 stroke-[1.75]" />
+              <Package className="w-6 h-6 sm:w-6.5 sm:h-6.5 lg:w-7 lg:h-7 stroke-[2]" />
             </button>
           )}
 
@@ -224,12 +228,13 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
           {headerSettings?.showCart !== false && (
             <button
               onClick={() => navigate('/cart')}
-              className="relative p-2 sm:p-2.5 text-neutral-800 hover:text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer"
+              className="relative p-2 sm:p-2.5 text-neutral-900 hover:text-black hover:bg-neutral-100 rounded-2xl transition-all cursor-pointer flex items-center justify-center"
               title="Shopping Cart"
+              aria-label="Shopping Cart"
             >
-              <ShoppingBag className="w-5 h-5 sm:w-5.5 sm:h-5.5 stroke-[1.75]" />
+              <ShoppingBag className="w-6 h-6 sm:w-6.5 sm:h-6.5 lg:w-7 lg:h-7 stroke-[2]" />
               {cartCount > 0 && (
-                <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black text-white text-[9px] font-bold flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 min-w-[19px] h-[19px] px-1 rounded-full bg-black text-white text-[10px] font-black flex items-center justify-center border-2 border-white shadow-md leading-none">
                   {cartCount}
                 </span>
               )}
