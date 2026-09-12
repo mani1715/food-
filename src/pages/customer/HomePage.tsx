@@ -84,10 +84,10 @@ export const HomePage: React.FC = () => {
   return (
     <div className="min-h-screen bg-white text-black font-sans space-y-10">
       
-      {/* 1. AUTO-SCROLLING HERO BANNER AT THE TOP */}
-      <section className="relative overflow-hidden bg-black text-white py-12 sm:py-20 px-4 sm:px-6 lg:px-8 border-b border-neutral-800 min-h-[460px] flex items-center">
+      {/* 1. HERO BANNER - SCENIC FULL-BLEED WITH CENTERED TEXT & SHOP NOW BUTTON */}
+      <section className="relative overflow-hidden bg-black text-white min-h-[460px] sm:min-h-[540px] lg:min-h-[600px] flex items-center justify-center border-b border-neutral-800">
         
-        {/* Carousel Background Images with Custom Alignment & Fitting */}
+        {/* Carousel Background Images with High Clarity */}
         {activeHeroSlides.map((slide, index) => {
           const posClass =
             slide.objectPosition === 'top' ? 'object-top' :
@@ -103,11 +103,6 @@ export const HomePage: React.FC = () => {
             slide.objectFit === 'contain' ? 'object-contain' :
             slide.objectFit === 'fill' ? 'object-fill' : 'object-cover';
 
-          const overlayClass =
-            slide.overlayOpacity === 'light' ? 'from-black/60 via-black/40 to-black/20' :
-            slide.overlayOpacity === 'medium' ? 'from-black/80 via-black/60 to-black/30' :
-            slide.overlayOpacity === 'heavy' ? 'from-black via-black to-black/80' : 'from-black via-black/90 to-black/60';
-
           return (
             <div
               key={slide.id}
@@ -118,120 +113,107 @@ export const HomePage: React.FC = () => {
               <img
                 src={slide.image}
                 alt={slide.title}
-                className={`w-full h-full ${fitClass} ${posClass} opacity-50 scale-105 transition-all duration-700`}
+                className={`w-full h-full ${fitClass} ${posClass} opacity-85 scale-100 transition-transform duration-1000`}
               />
-              <div className={`absolute inset-0 bg-gradient-to-r ${overlayClass}`} />
+              {/* Subtle dark gradient overlay for text readability while keeping photo rich & clear */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/20" />
             </div>
           );
         })}
 
-        {/* Hero Content Container */}
-        <div className="relative z-10 max-w-7xl mx-auto w-full text-left space-y-6">
+        {/* Hero Content Container (Centered Title, Subtitle, and Shop Now CTA) */}
+        <div className="relative z-10 max-w-4xl mx-auto w-full text-center px-4 sm:px-6 py-16 sm:py-24 space-y-6">
           
-          {/* Top Badge */}
-          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-black uppercase tracking-widest px-4 py-2 rounded-full shadow-subtle">
-            <Heart className="w-4 h-4 text-rose-400 fill-rose-400" />
-            <span>{currentBanner.badge}</span>
-          </div>
+          {/* Badge */}
+          {currentBanner.badge && (
+            <div className="inline-flex items-center gap-2 bg-black/40 backdrop-blur-md border border-white/20 text-white text-[11px] sm:text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full shadow-md">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span>{currentBanner.badge}</span>
+            </div>
+          )}
 
-          {/* Banner Main Headline & Subtitle */}
-          <div className="space-y-4 max-w-3xl">
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-tight font-serif transition-all duration-500">
+          {/* Banner Main Headline (Clean, Large, Centered) */}
+          <div className="space-y-3">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-medium tracking-tight text-white drop-shadow-lg leading-tight">
               {currentBanner.title}
             </h1>
-            <p className="text-sm sm:text-base text-neutral-300 font-medium leading-relaxed">
-              {currentBanner.subtitle}
-            </p>
+            {currentBanner.subtitle && (
+              <p className="text-sm sm:text-base lg:text-lg text-white/90 font-normal max-w-2xl mx-auto drop-shadow leading-relaxed">
+                {currentBanner.subtitle}
+              </p>
+            )}
           </div>
 
-          {/* 4 Differentiator Badges */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 pt-2">
-            <div className="bg-white/10 backdrop-blur-md border border-white/15 p-3 sm:p-3.5 rounded-2xl space-y-1 hover:border-amber-400 transition-all">
-              <div className="flex items-center gap-2 text-amber-400 font-extrabold text-xs">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>100% Pure & Natural</span>
-              </div>
-              <p className="text-[11px] text-neutral-300 font-medium">Zero preservatives or synthetic colors.</p>
-            </div>
-
-            <div className="bg-white/10 backdrop-blur-md border border-white/15 p-3 sm:p-3.5 rounded-2xl space-y-1 hover:border-amber-400 transition-all">
-              <div className="flex items-center gap-2 text-amber-400 font-extrabold text-xs">
-                <BookOpen className="w-4 h-4" />
-                <span>Grandma's Recipe</span>
-              </div>
-              <p className="text-[11px] text-neutral-300 font-medium">Stone-ground spices & traditional curing.</p>
-            </div>
-
-            <div className="bg-white/10 backdrop-blur-md border border-white/15 p-3 sm:p-3.5 rounded-2xl space-y-1 hover:border-amber-400 transition-all">
-              <div className="flex items-center gap-2 text-amber-400 font-extrabold text-xs">
-                <Award className="w-4 h-4" />
-                <span>Full Quantity & Value</span>
-              </div>
-              <p className="text-[11px] text-neutral-300 font-medium">Generous portions at honest prices.</p>
-            </div>
-
-            <div className="bg-white/10 backdrop-blur-md border border-white/15 p-3 sm:p-3.5 rounded-2xl space-y-1 hover:border-amber-400 transition-all">
-              <div className="flex items-center gap-2 text-amber-400 font-extrabold text-xs">
-                <Zap className="w-4 h-4" />
-                <span>Made Fresh on Order</span>
-              </div>
-              <p className="text-[11px] text-neutral-300 font-medium">Prepared in small hygienic batches.</p>
-            </div>
-          </div>
-
-          {/* Hero Action Buttons & Slide Controls */}
-          <div className="flex items-center justify-between flex-wrap gap-4 pt-2">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => navigate(currentBanner.ctaLink)}
-                className="px-7 py-3.5 bg-white text-black text-xs font-black rounded-2xl hover:bg-neutral-200 transition-all flex items-center gap-2 shadow-modal cursor-pointer"
-              >
-                <span>{currentBanner.ctaText}</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-
-              <button
-                onClick={() => navigate('/our-process')}
-                className="px-6 py-3.5 bg-neutral-900 border border-neutral-700 hover:border-white text-white text-xs font-black rounded-2xl transition-all flex items-center gap-2 cursor-pointer"
-              >
-                <span>How We Do</span>
-                <span>📜</span>
-              </button>
-            </div>
-
-            {/* Slide Navigation Dots & Prev/Next Arrows */}
-            <div className="flex items-center gap-3 z-20">
-              <button
-                onClick={prevSlide}
-                aria-label="Previous Slide"
-                className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-all cursor-pointer"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-
-              <div className="flex items-center gap-1.5">
-                {activeHeroSlides.map((_, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setCurrentSlide(idx)}
-                    className={`h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
-                      idx === safeSlideIndex ? 'w-8 bg-white' : 'w-2.5 bg-white/40 hover:bg-white/70'
-                    }`}
-                  />
-                ))}
-              </div>
-
-              <button
-                onClick={nextSlide}
-                aria-label="Next Slide"
-                className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white transition-all cursor-pointer"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
+          {/* Centered Shop Now Pill Button */}
+          <div className="pt-2 flex items-center justify-center gap-4">
+            <button
+              onClick={() => navigate(currentBanner.ctaLink || '/products')}
+              className="px-8 sm:px-10 py-3 sm:py-3.5 bg-neutral-900/85 hover:bg-black backdrop-blur-md text-white font-bold text-sm sm:text-base rounded-full shadow-2xl hover:scale-105 transition-all duration-300 cursor-pointer border border-white/20"
+            >
+              <span>{currentBanner.ctaText || 'Shop Now'}</span>
+            </button>
           </div>
 
         </div>
+
+        {/* Bottom-Right Carousel Preview Widget (matching reference photo) */}
+        <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-8 z-20 flex items-center bg-black/80 backdrop-blur-md border border-white/15 rounded-xl overflow-hidden shadow-2xl">
+          {/* Left / Prev Arrow */}
+          <button
+            onClick={prevSlide}
+            aria-label="Previous Slide"
+            className="p-3 sm:p-3.5 text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+
+          {/* Next Slide Thumbnail Preview */}
+          {activeHeroSlides.length > 1 && (
+            <div
+              onClick={nextSlide}
+              className="cursor-pointer group flex items-center gap-2.5 px-3 py-1.5 border-l border-r border-white/15 hover:bg-white/10 transition-all"
+              title="Next Slide"
+            >
+              <div className="w-12 h-8 sm:w-14 sm:h-9 rounded-md overflow-hidden bg-neutral-800 shrink-0 border border-white/20">
+                <img
+                  src={activeHeroSlides[(safeSlideIndex + 1) % activeHeroSlides.length]?.image}
+                  alt="Next slide"
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                />
+              </div>
+              <div className="hidden md:block text-left text-[11px] leading-tight pr-1">
+                <span className="text-white/50 block text-[9px] uppercase font-bold tracking-wider">Next</span>
+                <span className="text-white font-medium line-clamp-1 max-w-[100px]">
+                  {activeHeroSlides[(safeSlideIndex + 1) % activeHeroSlides.length]?.title}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Right / Next Arrow */}
+          <button
+            onClick={nextSlide}
+            aria-label="Next Slide"
+            className="p-3 sm:p-3.5 text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Bottom Center Slide Dots */}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5">
+          {activeHeroSlides.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setCurrentSlide(idx)}
+              className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                idx === safeSlideIndex ? 'w-6 bg-white' : 'w-2 bg-white/40 hover:bg-white/70'
+              }`}
+              aria-label={`Go to slide ${idx + 1}`}
+            />
+          ))}
+        </div>
+
       </section>
 
       {/* 2. EXPLORE CATEGORIES (3 ITEMS PER ROW GRID) */}
