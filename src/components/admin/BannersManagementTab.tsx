@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useApp } from '../../context/AppContext';
 import { HeroBannerSlide, HeaderAnnouncement, CustomHeaderMenuItem, HeaderSubMenuItem } from '../../types';
 import {
@@ -33,6 +33,9 @@ import {
   ExternalLink,
   Sliders,
   CheckCircle2,
+  Hand,
+  Crosshair,
+  RefreshCw,
 } from 'lucide-react';
 import { DragDropImagePicker } from './DragDropImagePicker';
 
@@ -74,7 +77,15 @@ export const BannersManagementTab: React.FC = () => {
     objectFit: 'cover',
     overlayOpacity: 'dark',
     imageScale: 1,
+    panOffsetX: 0,
+    panOffsetY: 0,
   });
+
+  // Hand Drag & Pinch Zoom Interaction State
+  const [isInteracting, setIsInteracting] = useState(false);
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const dragStartRef = useRef<{ x: number; y: number; initialPanX: number; initialPanY: number } | null>(null);
+  const touchPinchRef = useRef<{ initialDistance: number; initialScale: number } | null>(null);
 
   // State for Top Rotating Announcements
   const [newTopAnnText, setNewTopAnnText] = useState('');
@@ -128,6 +139,8 @@ export const BannersManagementTab: React.FC = () => {
       objectFit: 'cover',
       overlayOpacity: 'dark',
       imageScale: 1,
+      panOffsetX: 0,
+      panOffsetY: 0,
     });
     setShowBannerModal(true);
   };
@@ -171,6 +184,8 @@ export const BannersManagementTab: React.FC = () => {
       objectFit: banner.objectFit || 'cover',
       overlayOpacity: banner.overlayOpacity || 'dark',
       imageScale: banner.imageScale !== undefined ? banner.imageScale : 1,
+      panOffsetX: banner.panOffsetX !== undefined ? banner.panOffsetX : 0,
+      panOffsetY: banner.panOffsetY !== undefined ? banner.panOffsetY : 0,
     });
     setShowBannerModal(true);
   };
@@ -237,6 +252,135 @@ export const BannersManagementTab: React.FC = () => {
 
     setShowBannerModal(false);
     setEditingBannerId(null);
+  };
+
+  // -------------------------------------------------------------
+  // DIRECT HAND DRAG & PINCH-ZOOM LOGIC ON IMAGE CANVAS
+  // -------------------------------------------------------------
+  const handleCanvasMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsInteracting(true);
+    dragStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      initialPanX: bannerForm.panOffsetX || 0,
+      initialPanY: bannerForm.panOffsetY || 0,
+    };
+  };
+
+  const handleCanvasMouseMove = useCallback((e: MouseEvent) => {
+    if (!dragStartRef.current) return;
+    const deltaX = e.clientX - dragStartRef.current.x;
+    const deltaY = e.clientY - dragStartRef.current.y;
+    setBannerForm((prev) => ({
+      ...prev,
+      panOffsetX: Math.round(dragStartRef.current!.initialPanX + deltaX),
+      panOffsetY: Math.round(dragStartRef.current!.initialPanY + deltaY),
+    }));
+  }, []);
+
+  const handleCanvasMouseUp = useCallback(() => {
+    setIsInteracting(false);
+    dragStartRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener('mousemove', handleCanvasMouseMove);
+    window.addEventListener('mouseup', handleCanvasMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleCanvasMouseMove);
+      window.removeEventListener('mouseup', handleCanvasMouseUp);
+    };
+  }, [handleCanvasMouseMove, handleCanvasMouseUp]);
+
+  // Touch handlers for Mobile (1-finger pan, 2-finger pinch zoom)
+  const handleCanvasTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      setIsInteracting(true);
+      const touch = e.touches[0];
+      dragStartRef.current = {
+        x: touch.clientX,
+        y: touch.clientY,
+        initialPanX: bannerForm.panOffsetX || 0,
+        initialPanY: bannerForm.panOffsetY || 0,
+      };
+      touchPinchRef.current = null;
+    } else if (e.touches.length === 2) {
+      setIsInteracting(true);
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+      touchPinchRef.current = {
+        initialDistance: dist,
+        initialScale: bannerForm.imageScale || 1,
+      };
+      dragStartRef.current = null;
+    }
+  };
+
+  const handleCanvasTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 1 && dragStartRef.current) {
+      const touch = e.touches[0];
+      const deltaX = touch.clientX - dragStartRef.current.x;
+      const deltaY = touch.clientY - dragStartRef.current.y;
+      setBannerForm((prev) => ({
+        ...prev,
+        panOffsetX: Math.round(dragStartRef.current!.initialPanX + deltaX),
+        panOffsetY: Math.round(dragStartRef.current!.initialPanY + deltaY),
+      }));
+    } else if (e.touches.length === 2 && touchPinchRef.current) {
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const currentDist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+      if (touchPinchRef.current.initialDistance > 0) {
+        const factor = currentDist / touchPinchRef.current.initialDistance;
+        const newScale = Math.min(Math.max(touchPinchRef.current.initialScale * factor, 0.5), 3.0);
+        setBannerForm((prev) => ({
+          ...prev,
+          imageScale: parseFloat(newScale.toFixed(2)),
+        }));
+      }
+    }
+  };
+
+  const handleCanvasTouchEnd = () => {
+    setIsInteracting(false);
+    dragStartRef.current = null;
+    touchPinchRef.current = null;
+  };
+
+  // Mouse wheel zoom on canvas
+  const handleCanvasWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const zoomStep = e.deltaY < 0 ? 0.08 : -0.08;
+    setBannerForm((prev) => {
+      const currentScale = prev.imageScale || 1;
+      const nextScale = Math.min(Math.max(currentScale + zoomStep, 0.5), 3.0);
+      return {
+        ...prev,
+        imageScale: parseFloat(nextScale.toFixed(2)),
+      };
+    });
+  };
+
+  const handleResetPositionAndZoom = () => {
+    setBannerForm((prev) => ({
+      ...prev,
+      imageScale: 1,
+      panOffsetX: 0,
+      panOffsetY: 0,
+    }));
+  };
+
+  const handleAdjustZoomStep = (delta: number) => {
+    setBannerForm((prev) => {
+      const currentScale = prev.imageScale || 1;
+      const nextScale = Math.min(Math.max(currentScale + delta, 0.5), 3.0);
+      return {
+        ...prev,
+        imageScale: parseFloat(nextScale.toFixed(2)),
+      };
+    });
   };
 
   // Top Rotating Announcements Handlers
@@ -494,6 +638,8 @@ export const BannersManagementTab: React.FC = () => {
   };
 
   const zoomPercent = Math.round((bannerForm.imageScale || 1) * 100);
+  const panX = bannerForm.panOffsetX || 0;
+  const panY = bannerForm.panOffsetY || 0;
 
   return (
     <div className="space-y-6">
@@ -506,7 +652,7 @@ export const BannersManagementTab: React.FC = () => {
               Banners, Header & Announcement Center
             </h1>
             <p className="text-xs text-neutral-500 mt-1">
-              Customize homepage hero banners, image zoom/redirects, top rotating announcement lines, scrolling ticker, and header category links.
+              Customize homepage hero banners with hand zoom/drag adjustments, direct click redirects, rotating top bars, and header links.
             </p>
           </div>
         </div>
@@ -584,7 +730,7 @@ export const BannersManagementTab: React.FC = () => {
             <div>
               <h2 className="text-xl font-extrabold text-black tracking-tight">Homepage Hero Banners</h2>
               <p className="text-xs text-neutral-500 mt-0.5">
-                Add, edit, zoom in/out, and set direct click redirection (to category or product) for homepage slides.
+                Add, edit, adjust with direct hand drag & zoom, and set click redirect destinations.
               </p>
             </div>
             <button
@@ -607,15 +753,11 @@ export const BannersManagementTab: React.FC = () => {
                   <img
                     src={banner.image}
                     alt={banner.title}
-                    style={{ transform: `scale(${banner.imageScale || 1})` }}
-                    className={`w-full h-full ${
-                      banner.objectFit === 'contain' ? 'object-contain' : banner.objectFit === 'fill' ? 'object-fill' : 'object-cover'
-                    } ${
-                      banner.objectPosition === 'top' ? 'object-top' :
-                      banner.objectPosition === 'bottom' ? 'object-bottom' :
-                      banner.objectPosition === 'left' ? 'object-left' :
-                      banner.objectPosition === 'right' ? 'object-right' : 'object-center'
-                    } transition-transform duration-500`}
+                    style={{
+                      transform: `translate(${banner.panOffsetX || 0}px, ${banner.panOffsetY || 0}px) scale(${banner.imageScale || 1})`,
+                      transformOrigin: 'center center',
+                    }}
+                    className={`w-full h-full object-cover transition-transform duration-500`}
                     onError={(e) => {
                       (e.target as HTMLImageElement).src =
                         'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?q=80&w=800&auto=format&fit=crop';
@@ -628,9 +770,10 @@ export const BannersManagementTab: React.FC = () => {
                       </span>
 
                       <div className="flex items-center gap-1.5">
-                        {banner.imageScale && banner.imageScale !== 1 && (
-                          <span className="px-2 py-0.5 bg-black/60 backdrop-blur-md text-amber-300 text-[10px] font-bold rounded-lg border border-amber-300/30">
-                            Zoom: {Math.round(banner.imageScale * 100)}%
+                        {((banner.imageScale && banner.imageScale !== 1) || banner.panOffsetX || banner.panOffsetY) && (
+                          <span className="px-2 py-0.5 bg-black/60 backdrop-blur-md text-amber-300 text-[10px] font-bold rounded-lg border border-amber-300/30 flex items-center gap-1">
+                            <Hand className="w-2.5 h-2.5" />
+                            {Math.round((banner.imageScale || 1) * 100)}%
                           </span>
                         )}
                         <button
@@ -675,7 +818,7 @@ export const BannersManagementTab: React.FC = () => {
                       <button
                         onClick={() => handleOpenEditBanner(banner)}
                         className="p-2 bg-neutral-100 text-neutral-700 hover:bg-black hover:text-white rounded-xl transition-all cursor-pointer"
-                        title="Edit Banner & Zoom"
+                        title="Edit Banner & Hand Zoom"
                       >
                         <Edit3 className="w-4 h-4" />
                       </button>
@@ -1228,17 +1371,18 @@ export const BannersManagementTab: React.FC = () => {
       )}
 
       {/* ============================================================== */}
-      {/* MODAL: ADD / EDIT HERO BANNER WITH ZOOM & REDIRECT PICKER */}
+      {/* MODAL: ADD / EDIT HERO BANNER WITH DIRECT HAND ZOOM & PAN */}
       {/* ============================================================== */}
       {showBannerModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white border border-neutral-200 rounded-3xl p-6 max-w-2xl w-full space-y-5 shadow-2xl my-8 text-left max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
               <div>
-                <h3 className="text-lg font-black text-black">
-                  {editingBannerId ? 'Edit Hero Banner Slide' : 'Add New Hero Banner Slide'}
+                <h3 className="text-lg font-black text-black flex items-center gap-2">
+                  <Hand className="w-5 h-5 text-black" />
+                  {editingBannerId ? 'Edit Hero Banner (Hand Zoom & Align)' : 'Add New Hero Banner (Hand Zoom & Align)'}
                 </h3>
-                <p className="text-xs text-neutral-500">Configure photo zoom, alignment, and direct click redirect.</p>
+                <p className="text-xs text-neutral-500">Touch/drag image directly with hand to reposition, scroll/pinch to zoom.</p>
               </div>
               <button
                 onClick={() => setShowBannerModal(false)}
@@ -1250,52 +1394,184 @@ export const BannersManagementTab: React.FC = () => {
 
             <form onSubmit={handleSaveBanner} className="space-y-4 text-xs overflow-y-auto pr-1 flex-1">
               
-              {/* LIVE PREVIEW BOX */}
-              <div className="bg-neutral-900 rounded-2xl overflow-hidden border border-neutral-700 shadow-md">
-                <div className="px-3 py-1.5 bg-neutral-800 border-b border-neutral-700 flex items-center justify-between text-[11px] text-neutral-300 font-bold">
-                  <span>🔴 Live Banner Preview</span>
-                  <span>Scale: {zoomPercent}% | Position: {bannerForm.objectPosition || 'center'}</span>
+              {/* INTERACTIVE HAND DRAG & ZOOM CANVAS */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-black flex items-center gap-1.5 uppercase tracking-wider">
+                    <Hand className="w-4 h-4 text-amber-500" />
+                    <span>Direct Hand Gesture Canvas (Drag to Move • Scroll/Pinch to Zoom)</span>
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 bg-black text-white text-[11px] font-mono font-black rounded-lg">
+                      {zoomPercent}%
+                    </span>
+                    {(panX !== 0 || panY !== 0 || zoomPercent !== 100) && (
+                      <button
+                        type="button"
+                        onClick={handleResetPositionAndZoom}
+                        className="px-2 py-0.5 bg-neutral-200 hover:bg-neutral-300 text-neutral-800 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                        title="Reset to center & 100% zoom"
+                      >
+                        <RefreshCw className="w-3 h-3" /> Reset
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="relative aspect-[21/9] w-full overflow-hidden bg-neutral-950">
+
+                <div
+                  ref={canvasRef}
+                  onMouseDown={handleCanvasMouseDown}
+                  onTouchStart={handleCanvasTouchStart}
+                  onTouchMove={handleCanvasTouchMove}
+                  onTouchEnd={handleCanvasTouchEnd}
+                  onWheel={handleCanvasWheel}
+                  className={`relative aspect-[21/9] w-full rounded-2xl overflow-hidden bg-neutral-950 border-2 transition-all select-none ${
+                    isInteracting ? 'border-amber-400 cursor-grabbing shadow-lg' : 'border-neutral-700 cursor-grab shadow-md hover:border-neutral-500'
+                  }`}
+                >
                   {bannerForm.image ? (
                     <img
                       src={bannerForm.image}
-                      alt="Banner Preview"
-                      style={{ transform: `scale(${bannerForm.imageScale || 1})` }}
-                      className={`w-full h-full ${
-                        bannerForm.objectFit === 'contain' ? 'object-contain' : bannerForm.objectFit === 'fill' ? 'object-fill' : 'object-cover'
-                      } ${
-                        bannerForm.objectPosition === 'top' ? 'object-top' :
-                        bannerForm.objectPosition === 'bottom' ? 'object-bottom' :
-                        bannerForm.objectPosition === 'left' ? 'object-left' :
-                        bannerForm.objectPosition === 'right' ? 'object-right' : 'object-center'
-                      } transition-transform duration-300`}
+                      alt="Banner Canvas"
+                      draggable={false}
+                      style={{
+                        transform: `translate(${panX}px, ${panY}px) scale(${bannerForm.imageScale || 1})`,
+                        transformOrigin: 'center center',
+                      }}
+                      className="w-full h-full object-cover pointer-events-none transition-transform duration-75 ease-out"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-neutral-500 text-xs">
-                      No Image Chosen
+                    <div className="w-full h-full flex flex-col items-center justify-center text-neutral-500 text-xs gap-1">
+                      <ImageIcon className="w-6 h-6 text-neutral-600" />
+                      <span>Upload or paste image below to adjust</span>
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/20 p-4 flex flex-col justify-between pointer-events-none">
-                    <div>
-                      {bannerForm.badge && (
-                        <span className="px-2 py-0.5 bg-black/50 text-amber-400 border border-white/20 text-[9px] font-black uppercase tracking-wider rounded-full">
+
+                  {/* Visual Cropper Grid lines during interaction */}
+                  <div className={`absolute inset-0 pointer-events-none transition-opacity duration-200 ${isInteracting ? 'opacity-40' : 'opacity-15'}`}>
+                    <div className="w-full h-full grid grid-cols-3 grid-rows-3 border border-white/40">
+                      <div className="border-r border-b border-white/30" />
+                      <div className="border-r border-b border-white/30" />
+                      <div className="border-b border-white/30" />
+                      <div className="border-r border-b border-white/30" />
+                      <div className="border-r border-b border-white/30" />
+                      <div className="border-b border-white/30" />
+                      <div className="border-r border-white/30" />
+                      <div className="border-r border-white/30" />
+                      <div />
+                    </div>
+                  </div>
+
+                  {/* Gradient Overlay for live typography preview */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/20 p-3.5 flex flex-col justify-between pointer-events-none">
+                    <div className="flex items-center justify-between">
+                      {bannerForm.badge ? (
+                        <span className="px-2 py-0.5 bg-black/60 text-amber-400 border border-white/20 text-[9px] font-black uppercase tracking-wider rounded-full backdrop-blur-sm">
                           {bannerForm.badge}
                         </span>
-                      )}
+                      ) : <div />}
+                      <span className="px-2 py-0.5 bg-black/70 backdrop-blur-md text-white text-[9px] font-bold rounded-lg border border-white/20">
+                        ✋ Touch / Drag with Hand
+                      </span>
                     </div>
+
                     <div>
                       <h4 className="text-white text-sm sm:text-base font-extrabold line-clamp-1">{bannerForm.title || 'Headline Title'}</h4>
                       <p className="text-neutral-300 text-[10px] sm:text-xs line-clamp-1">{bannerForm.subtitle || 'Subtitle / Description text'}</p>
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className="px-3 py-1 bg-white text-black text-[10px] font-bold rounded-full">
+                      <div className="mt-1.5 flex items-center gap-2">
+                        <span className="px-2.5 py-0.5 bg-white text-black text-[9px] font-bold rounded-full">
                           {bannerForm.ctaText || 'Shop Now'}
                         </span>
-                        <span className="text-[10px] text-emerald-400 font-mono bg-black/60 px-2 py-0.5 rounded-full border border-emerald-400/30">
-                          👉 Clicking redirects to: {bannerForm.ctaLink || '/products'}
+                        <span className="text-[9px] text-emerald-300 font-mono bg-black/70 px-2 py-0.5 rounded-full border border-emerald-400/30 truncate max-w-[200px]">
+                          👉 Direct Link: {bannerForm.ctaLink || '/products'}
                         </span>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Floating Quick Hand Zoom Buttons on the Canvas */}
+                  <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1 z-20">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAdjustZoomStep(-0.15);
+                      }}
+                      className="p-1.5 bg-black/80 hover:bg-black text-white rounded-lg backdrop-blur-md border border-white/20 cursor-pointer shadow-md active:scale-95"
+                      title="Zoom Out with Hand"
+                    >
+                      <ZoomOut className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAdjustZoomStep(0.15);
+                      }}
+                      className="p-1.5 bg-black/80 hover:bg-black text-white rounded-lg backdrop-blur-md border border-white/20 cursor-pointer shadow-md active:scale-95"
+                      title="Zoom In with Hand"
+                    >
+                      <ZoomIn className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleResetPositionAndZoom();
+                      }}
+                      className="p-1.5 bg-black/80 hover:bg-black text-white rounded-lg backdrop-blur-md border border-white/20 cursor-pointer shadow-md active:scale-95"
+                      title="Center & Reset"
+                    >
+                      <Crosshair className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Hand Zoom Slider Fine-Tuner */}
+                <div className="p-3 bg-neutral-50 rounded-2xl border border-neutral-200 space-y-2">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-neutral-700">
+                    <span className="flex items-center gap-1 text-neutral-500">
+                      <ZoomOut className="w-3.5 h-3.5" /> 50%
+                    </span>
+                    <span className="text-black font-extrabold flex items-center gap-1">
+                      <Hand className="w-3.5 h-3.5 text-black" /> Zoom Scale: {zoomPercent}% (X: {panX}px, Y: {panY}px)
+                    </span>
+                    <span className="flex items-center gap-1 text-neutral-500">
+                      300% <ZoomIn className="w-3.5 h-3.5" />
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="3.0"
+                    step="0.05"
+                    value={bannerForm.imageScale || 1}
+                    onChange={(e) => setBannerForm({ ...bannerForm, imageScale: parseFloat(e.target.value) })}
+                    className="w-full accent-black cursor-pointer h-2 bg-neutral-200 rounded-lg appearance-none"
+                  />
+                  <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                    <span className="text-[10px] font-bold text-neutral-500 mr-1">Quick Presets:</span>
+                    {[
+                      { label: '50%', scale: 0.5 },
+                      { label: '75%', scale: 0.75 },
+                      { label: '100% (Fit)', scale: 1.0 },
+                      { label: '125%', scale: 1.25 },
+                      { label: '150%', scale: 1.5 },
+                      { label: '200%', scale: 2.0 },
+                    ].map((preset) => (
+                      <button
+                        key={preset.scale}
+                        type="button"
+                        onClick={() => setBannerForm({ ...bannerForm, imageScale: preset.scale })}
+                        className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                          bannerForm.imageScale === preset.scale
+                            ? 'bg-black text-white shadow-sm'
+                            : 'bg-white border border-neutral-300 text-neutral-700 hover:bg-neutral-100'
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -1309,100 +1585,6 @@ export const BannersManagementTab: React.FC = () => {
                   onChange={(url) => setBannerForm({ ...bannerForm, image: url })}
                   helperText="Upload banner image or paste an image URL."
                 />
-              </div>
-
-              {/* ZOOM & POSITIONING ADJUSTMENT CARD */}
-              <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-200 space-y-3.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Sliders className="w-4 h-4 text-black" />
-                    <h4 className="text-xs font-extrabold text-black uppercase tracking-wider">
-                      Banner Image Zoom & Positioning Adjustments
-                    </h4>
-                  </div>
-                  <span className="px-2.5 py-1 bg-black text-white rounded-lg text-xs font-black">
-                    {zoomPercent}%
-                  </span>
-                </div>
-
-                {/* Slider */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-[11px] font-bold text-neutral-600">
-                    <span className="flex items-center gap-1"><ZoomOut className="w-3.5 h-3.5" /> Zoom Out (50%)</span>
-                    <span className="text-black font-extrabold">Default 100%</span>
-                    <span className="flex items-center gap-1"><ZoomIn className="w-3.5 h-3.5" /> Zoom In (200%)</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0.5"
-                    max="2.0"
-                    step="0.05"
-                    value={bannerForm.imageScale || 1}
-                    onChange={(e) => setBannerForm({ ...bannerForm, imageScale: parseFloat(e.target.value) })}
-                    className="w-full accent-black cursor-pointer h-2 bg-neutral-200 rounded-lg appearance-none"
-                  />
-                </div>
-
-                {/* Quick Presets */}
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[11px] font-bold text-neutral-500 mr-1">Quick Presets:</span>
-                  {[
-                    { label: '50% (Out)', scale: 0.5 },
-                    { label: '75%', scale: 0.75 },
-                    { label: '100% (Fit)', scale: 1.0 },
-                    { label: '125%', scale: 1.25 },
-                    { label: '150% (In)', scale: 1.5 },
-                    { label: '200% (Max)', scale: 2.0 },
-                  ].map((preset) => (
-                    <button
-                      key={preset.scale}
-                      type="button"
-                      onClick={() => setBannerForm({ ...bannerForm, imageScale: preset.scale })}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                        bannerForm.imageScale === preset.scale
-                          ? 'bg-black text-white shadow-sm'
-                          : 'bg-white border border-neutral-300 text-neutral-700 hover:bg-neutral-100'
-                      }`}
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Alignment & Fit Selection */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                  <div>
-                    <label className="block text-[11px] font-bold text-neutral-700 mb-1">
-                      Focal Alignment (Position)
-                    </label>
-                    <select
-                      value={bannerForm.objectPosition || 'center'}
-                      onChange={(e) => setBannerForm({ ...bannerForm, objectPosition: e.target.value as any })}
-                      className="w-full px-3 py-2 bg-white border border-neutral-300 rounded-xl text-xs font-semibold focus:ring-1 focus:ring-black"
-                    >
-                      <option value="center">Center (Recommended)</option>
-                      <option value="top">Top Focused</option>
-                      <option value="bottom">Bottom Focused</option>
-                      <option value="left">Left Aligned</option>
-                      <option value="right">Right Aligned</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-neutral-700 mb-1">
-                      Image Fit Mode
-                    </label>
-                    <select
-                      value={bannerForm.objectFit || 'cover'}
-                      onChange={(e) => setBannerForm({ ...bannerForm, objectFit: e.target.value as any })}
-                      className="w-full px-3 py-2 bg-white border border-neutral-300 rounded-xl text-xs font-semibold focus:ring-1 focus:ring-black"
-                    >
-                      <option value="cover">Cover (Fills entire banner width & height)</option>
-                      <option value="contain">Contain (Shows complete photo without cropping)</option>
-                      <option value="fill">Fill (Stretches photo to fill)</option>
-                    </select>
-                  </div>
-                </div>
               </div>
 
               {/* DIRECT CLICK REDIRECTION CARD */}

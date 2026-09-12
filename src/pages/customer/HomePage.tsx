@@ -107,18 +107,23 @@ export const HomePage: React.FC = () => {
             slide.objectFit === 'fill' ? 'object-fill' : 'object-cover';
 
           const zoomScale = slide.imageScale !== undefined ? slide.imageScale : 1;
+          const panX = slide.panOffsetX || 0;
+          const panY = slide.panOffsetY || 0;
 
           return (
             <div
               key={slide.id}
-              className={`absolute inset-0 z-0 transition-opacity duration-1000 ease-in-out ${
+              className={`absolute inset-0 z-0 overflow-hidden transition-opacity duration-1000 ease-in-out ${
                 index === safeSlideIndex ? 'opacity-100' : 'opacity-0 pointer-events-none'
               }`}
             >
               <img
                 src={slide.image}
                 alt={slide.title}
-                style={{ transform: `scale(${zoomScale})` }}
+                style={{
+                  transform: `translate(${panX}px, ${panY}px) scale(${zoomScale})`,
+                  transformOrigin: 'center center',
+                }}
                 className={`w-full h-full ${fitClass} ${posClass} opacity-85 transition-transform duration-700`}
               />
               {/* Subtle dark gradient overlay for text readability while keeping photo rich & clear */}

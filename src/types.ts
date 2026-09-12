@@ -170,7 +170,9 @@ export interface HeroBannerSlide {
   objectPosition?: 'center' | 'top' | 'bottom' | 'left' | 'right' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
   objectFit?: 'cover' | 'contain' | 'fill';
   overlayOpacity?: 'light' | 'medium' | 'dark' | 'heavy';
-  imageScale?: number; // 0.5 to 2.0 (e.g. 1 = 100%, 1.2 = 120% zoom in, 0.8 = 80% zoom out)
+  imageScale?: number; // 0.5 to 3.0 (e.g. 1 = 100%, 1.2 = 120% zoom in, 0.8 = 80% zoom out)
+  panOffsetX?: number; // Horizontal pan offset in px or %
+  panOffsetY?: number; // Vertical pan offset in px or %
 }
 
 export interface HeaderAnnouncement {
