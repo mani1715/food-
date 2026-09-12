@@ -74,7 +74,9 @@ export const ProductListingPage: React.FC = () => {
           p.category.toLowerCase().includes(searchQuery.toLowerCase());
 
         const matchesFilter =
-          filterParam !== 'new-arrivals' || p.isNewArrival || p.isBestSeller;
+          (filterParam === 'new-arrivals' ? (p.isNewArrival || p.isBestSeller) : true) &&
+          (filterParam === 'festival' ? (p.isFestival || p.category.toLowerCase() === 'sweets') : true) &&
+          (filterParam === 'bestsellers' ? p.isBestSeller : true);
 
         const matchesPrice = p.price <= maxPrice;
         const matchesRating = p.rating >= minRating;

@@ -163,6 +163,8 @@ interface AppContextType {
   updateHomeSection: (id: string, updated: Partial<HomeSection>) => void;
   deleteHomeSection: (id: string) => void;
   toggleProductInHomeSection: (sectionId: string, productId: string) => void;
+  moveHomeSection: (id: string, direction: 'up' | 'down') => void;
+  setSectionProducts: (sectionId: string, productIds: string[]) => void;
   
   // Hero Banners & Announcements Admin
   addHeroBanner: (banner: Omit<HeroBannerSlide, 'id'>) => void;
@@ -229,6 +231,15 @@ const DEFAULT_HOME_SECTIONS: HomeSection[] = [
     title: 'Best Selling Homemade Products',
     subtitle: 'Top rated authentic homemade delicacies loved by thousands of families.',
     productIds: ['prod-1', 'prod-2', 'prod-6', 'prod-7'],
+    categoryFilter: 'all',
+    enabled: true,
+  },
+  {
+    id: 'sec-festival',
+    badge: 'Festive Delights & Gift Hampers',
+    title: 'Festival Specials & Hampers',
+    subtitle: 'Handcrafted traditional sweets, festive snacks & celebratory gift packs.',
+    productIds: ['prod-6', 'prod-7', 'prod-8', 'prod-11'],
     categoryFilter: 'all',
     enabled: true,
   },
@@ -899,6 +910,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [categories]);
 
   useEffect(() => {
+    localStorage.setItem('aura_products', JSON.stringify(products));
+  }, [products]);
+
+  useEffect(() => {
+    localStorage.setItem('aura_categories', JSON.stringify(categories));
+  }, [categories]);
+
+  useEffect(() => {
     localStorage.setItem('aura_cart', JSON.stringify(cartItems));
   }, [cartItems]);
 
@@ -1469,6 +1488,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast('Section Updated', 'Product assigned to showcase section.', 'success');
   };
 
+  const moveHomeSection = (id: string, direction: 'up' | 'down') => {
+    setHomeSections((prev) => {
+      const index = prev.findIndex((s) => s.id === id);
+      if (index === -1) return prev;
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+      const copy = [...prev];
+      const [item] = copy.splice(index, 1);
+      copy.splice(targetIndex, 0, item);
+      if (isSupabaseConfigured()) {
+        copy.forEach((sec, idx) => {
+          saveHomeSectionInDb(sec, idx).catch(console.warn);
+        });
+      }
+      return copy;
+    });
+    addToast('Section Reordered', `Section moved ${direction}.`, 'info');
+  };
+
+  const setSectionProducts = (sectionId: string, productIds: string[]) => {
+    setHomeSections((prev) => {
+      const updatedList = prev.map((s) => (s.id === sectionId ? { ...s, productIds } : s));
+      const targetSec = updatedList.find((s) => s.id === sectionId);
+      if (targetSec && isSupabaseConfigured()) {
+        const order = updatedList.findIndex((s) => s.id === sectionId);
+        saveHomeSectionInDb(targetSec, order >= 0 ? order : 0).catch(console.warn);
+      }
+      return updatedList;
+    });
+  };
+
   // Hero Banners & Announcements Admin
   const addHeroBanner = (banner: Omit<HeroBannerSlide, 'id'>) => {
     const newBanner: HeroBannerSlide = { ...banner, id: `banner-${Date.now()}` };
@@ -1892,6 +1942,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateHomeSection,
         deleteHomeSection,
         toggleProductInHomeSection,
+        moveHomeSection,
+        setSectionProducts,
         addHeroBanner,
         updateHeroBanner,
         deleteHeroBanner,

@@ -73,6 +73,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                   Best Seller
                 </span>
               )}
+
+              {product.isFestival && (
+                <span className="bg-amber-400 text-black text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full shadow-subtle flex items-center gap-0.5">
+                  <span>✨</span>
+                  <span>Festival Special</span>
+                </span>
+              )}
             </>
           )}
         </div>

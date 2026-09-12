@@ -351,44 +351,53 @@ export const HomePage: React.FC = () => {
       {homeSections
         .filter((sec) => sec.enabled)
         .map((sec) => {
-          // 1. Explicitly assigned products that exist in current catalog and are not hidden
-          const explicitlyAssigned = products.filter((p) =>
-            !p.isHidden && (sec.productIds || []).includes(p.id)
-          );
+          // 1. If admin explicitly assigned products, strictly use them in that order
+          let sectionProducts = (sec.productIds || [])
+            .map((id) => products.find((p) => p.id === id))
+            .filter((p): p is typeof products[0] => Boolean(p && !p.isHidden));
 
-          // 2. Category-matched products if section has a specific category filter
-          const categoryMatched =
-            sec.categoryFilter && sec.categoryFilter !== 'all'
-              ? products.filter(
-                  (p) => !p.isHidden && p.category.toLowerCase() === (sec.categoryFilter || '').toLowerCase()
-                )
-              : sec.title.toLowerCase().includes('pickle')
-              ? products.filter((p) => !p.isHidden && p.category.toLowerCase() === 'pickles')
-              : sec.title.toLowerCase().includes('sweet')
-              ? products.filter((p) => !p.isHidden && p.category.toLowerCase() === 'sweets')
-              : sec.title.toLowerCase().includes('snack') || sec.title.toLowerCase().includes('savor')
-              ? products.filter((p) => !p.isHidden && p.category.toLowerCase() === 'snacks')
-              : [];
-
-          // 3. Combine without duplicates
-          const combined = [...explicitlyAssigned];
-          categoryMatched.forEach((p) => {
-            if (!combined.some((item) => item.id === p.id)) {
-              combined.push(p);
+          // 2. If no products were explicitly assigned, apply intelligent category & festival fallbacks
+          if (sectionProducts.length === 0) {
+            if (sec.categoryFilter && sec.categoryFilter !== 'all') {
+              sectionProducts = products.filter(
+                (p) => !p.isHidden && p.category.toLowerCase().trim() === (sec.categoryFilter || '').toLowerCase().trim()
+              );
+            } else if (sec.id === 'sec-festival' || sec.title.toLowerCase().includes('festival') || sec.title.toLowerCase().includes('festive') || (sec.badge && sec.badge.toLowerCase().includes('festiv'))) {
+              const festivalProducts = products.filter((p) => !p.isHidden && p.isFestival);
+              sectionProducts = festivalProducts.length > 0
+                ? festivalProducts
+                : products.filter((p) => !p.isHidden && (p.category.toLowerCase() === 'sweets' || p.category.toLowerCase() === 'snacks')).slice(0, 4);
+            } else if (sec.id === 'sec-bestsellers' || sec.title.toLowerCase().includes('best selling') || sec.title.toLowerCase().includes('featured') || (sec.badge && sec.badge.toLowerCase().includes('favorite'))) {
+              const bestProducts = products.filter((p) => !p.isHidden && p.isBestSeller);
+              sectionProducts = bestProducts.length > 0 ? bestProducts : products.filter((p) => !p.isHidden).slice(0, 4);
+            } else if (sec.title.toLowerCase().includes('pickle')) {
+              sectionProducts = products.filter((p) => !p.isHidden && p.category.toLowerCase() === 'pickles');
+            } else if (sec.title.toLowerCase().includes('sweet')) {
+              sectionProducts = products.filter((p) => !p.isHidden && p.category.toLowerCase() === 'sweets');
+            } else if (sec.title.toLowerCase().includes('snack') || sec.title.toLowerCase().includes('savor')) {
+              sectionProducts = products.filter((p) => !p.isHidden && p.category.toLowerCase() === 'snacks');
+            } else {
+              sectionProducts = products.filter((p) => !p.isHidden).slice(0, 4);
             }
-          });
-
-          // 4. Fallback for bestseller / general showcase sections
-          const sectionProducts =
-            combined.length > 0
-              ? combined
-              : sec.id === 'sec-bestsellers' || sec.title.toLowerCase().includes('best selling')
-              ? products.filter((p) => !p.isHidden && p.isBestSeller).length > 0
-                ? products.filter((p) => !p.isHidden && p.isBestSeller)
-                : products.filter((p) => !p.isHidden).slice(0, 4)
-              : [];
+          }
 
           if (sectionProducts.length === 0) return null;
+
+          const getViewAllLink = () => {
+            if (sec.categoryFilter && sec.categoryFilter !== 'all') {
+              return `/products?category=${encodeURIComponent(sec.categoryFilter)}`;
+            }
+            if (sec.id === 'sec-festival' || sec.title.toLowerCase().includes('festival') || sec.title.toLowerCase().includes('festive')) {
+              return '/products?filter=festival';
+            }
+            if (sec.id === 'sec-bestsellers' || sec.title.toLowerCase().includes('best selling')) {
+              return '/products?filter=bestsellers';
+            }
+            if (sec.title.toLowerCase().includes('pickle')) return '/products?category=Pickles';
+            if (sec.title.toLowerCase().includes('sweet')) return '/products?category=Sweets';
+            if (sec.title.toLowerCase().includes('snack')) return '/products?category=Snacks';
+            return '/products';
+          };
 
           return (
             <section key={sec.id} className="py-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-left space-y-6">
@@ -405,13 +414,7 @@ export const HomePage: React.FC = () => {
                 </div>
 
                 <button
-                  onClick={() =>
-                    navigate(
-                      sec.categoryFilter && sec.categoryFilter !== 'all'
-                        ? `/products?category=${encodeURIComponent(sec.categoryFilter)}`
-                        : '/products'
-                    )
-                  }
+                  onClick={() => navigate(getViewAllLink())}
                   className="text-xs font-extrabold text-black hover:underline flex items-center gap-1 self-start sm:self-auto cursor-pointer shrink-0"
                 >
                   <span>View All ({sectionProducts.length})</span>

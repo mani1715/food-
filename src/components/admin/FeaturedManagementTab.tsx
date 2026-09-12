@@ -32,17 +32,36 @@ import {
 } from 'lucide-react';
 import { DragDropImagePicker } from './DragDropImagePicker';
 
-// Per-section draft editor with category dropdown and filter
+// Per-section draft editor with category dropdown, reordering and batch selection
 const SectionEditor: React.FC<{
   sec: HomeSection;
   secIdx: number;
+  totalSections: number;
   products: ReturnType<typeof useApp>['products'];
   categories: ReturnType<typeof useApp>['categories'];
   onToggleProduct: (secId: string, prodId: string) => void;
+  onSelectAllInCat: (secId: string, catName: string) => void;
+  onDeselectAllInCat: (secId: string, catName: string) => void;
   onToggleVisible: (secId: string, enabled: boolean) => void;
   onSave: (secId: string, updates: Partial<HomeSection>) => void;
   onDelete: (secId: string) => void;
-}> = ({ sec, secIdx, products, categories, onToggleProduct, onToggleVisible, onSave, onDelete }) => {
+  onMoveUp: (secId: string) => void;
+  onMoveDown: (secId: string) => void;
+}> = ({
+  sec,
+  secIdx,
+  totalSections,
+  products,
+  categories,
+  onToggleProduct,
+  onSelectAllInCat,
+  onDeselectAllInCat,
+  onToggleVisible,
+  onSave,
+  onDelete,
+  onMoveUp,
+  onMoveDown,
+}) => {
   const [draftBadge, setDraftBadge] = useState(sec.badge || '');
   const [draftTitle, setDraftTitle] = useState(sec.title);
   const [draftSubtitle, setDraftSubtitle] = useState(sec.subtitle || '');
@@ -111,16 +130,47 @@ const SectionEditor: React.FC<{
       {/* Section Header Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-200 pb-4">
         <div className="flex items-center gap-3">
-          <span className="w-8 h-8 rounded-2xl bg-black text-white font-mono text-xs font-bold flex items-center justify-center">
+          <span className="w-8 h-8 rounded-2xl bg-black text-white font-mono text-xs font-bold flex items-center justify-center shrink-0">
             {secIdx + 1}
           </span>
           <div>
-            <h3 className="text-base font-extrabold text-black font-sans">{sec.title}</h3>
-            <p className="text-xs text-neutral-400 font-mono">{sec.productIds.length} Products Assigned to Homepage</p>
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-extrabold text-black font-sans">{sec.title}</h3>
+              {sec.badge && (
+                <span className="px-2.5 py-0.5 bg-neutral-200 text-black text-[10px] font-extrabold rounded-full">
+                  {sec.badge}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-neutral-500 font-medium">
+              <strong className="text-black font-bold">{sec.productIds.length}</strong> products assigned to homepage
+            </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Reorder Buttons */}
+          <div className="flex items-center bg-white border border-neutral-200 rounded-xl p-0.5">
+            <button
+              type="button"
+              disabled={secIdx === 0}
+              onClick={() => onMoveUp(sec.id)}
+              className="p-1.5 hover:bg-neutral-100 disabled:opacity-30 disabled:hover:bg-transparent rounded-lg text-black transition-colors cursor-pointer"
+              title="Move Section Up on Homepage"
+            >
+              <ChevronUp className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              disabled={secIdx === totalSections - 1}
+              onClick={() => onMoveDown(sec.id)}
+              className="p-1.5 hover:bg-neutral-100 disabled:opacity-30 disabled:hover:bg-transparent rounded-lg text-black transition-colors cursor-pointer"
+              title="Move Section Down on Homepage"
+            >
+              <ChevronDown className="w-4 h-4" />
+            </button>
+          </div>
+
           {isDirty && (
             <button
               onClick={handleSave}
@@ -321,19 +371,35 @@ const SectionEditor: React.FC<{
           </div>
         </div>
 
-        {/* Showing Filter Info */}
-        <div className="flex items-center justify-between text-[11px] text-neutral-500 font-medium">
+        {/* Showing Filter Info & Batch Select Buttons */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-neutral-500 font-medium bg-neutral-100/60 p-2.5 rounded-2xl border border-neutral-200">
           <span>
-            Showing <strong>{filteredProducts.length}</strong> product(s) {selectedCategory !== 'All' && <span>in <strong className="text-black">{selectedCategory}</strong></span>}
+            Showing <strong className="text-black">{filteredProducts.length}</strong> product(s) {selectedCategory !== 'All' && <span>in <strong className="text-black">{selectedCategory}</strong></span>}
           </span>
-          {searchQuery && (
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => setSearchQuery('')}
-              className="text-black font-bold hover:underline cursor-pointer"
+              type="button"
+              onClick={() => onSelectAllInCat(sec.id, selectedCategory)}
+              className="px-2.5 py-1 bg-white border border-neutral-300 hover:border-black text-black font-extrabold rounded-lg text-[10px] transition-all cursor-pointer shadow-xs"
             >
-              Clear search
+              + Select All {selectedCategory === 'All' ? 'Catalog' : selectedCategory}
             </button>
-          )}
+            <button
+              type="button"
+              onClick={() => onDeselectAllInCat(sec.id, selectedCategory)}
+              className="px-2.5 py-1 bg-white border border-neutral-300 hover:border-rose-400 text-rose-600 font-extrabold rounded-lg text-[10px] transition-all cursor-pointer shadow-xs"
+            >
+              - Deselect All {selectedCategory === 'All' ? 'Catalog' : selectedCategory}
+            </button>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="text-black font-bold hover:underline cursor-pointer ml-1"
+              >
+                Clear search
+              </button>
+            )}
+          </div>
         </div>
         
         {/* Product Cards Grid */}
@@ -401,6 +467,8 @@ export const FeaturedManagementTab: React.FC = () => {
     updateHomeSection,
     deleteHomeSection,
     toggleProductInHomeSection,
+    moveHomeSection,
+    setSectionProducts,
   } = useApp();
 
   const [formHighlights, setFormHighlights] = useState<WeeklyHighlights>(weeklyHighlights);
@@ -597,6 +665,22 @@ export const FeaturedManagementTab: React.FC = () => {
     setEditingHighlightKey(null);
   };
 
+  const handleSelectAllInCat = (secId: string, catName: string) => {
+    const sec = homeSections.find((s) => s.id === secId);
+    if (!sec) return;
+    const catProds = products.filter((p) => catName === 'All' || p.category.toLowerCase() === catName.toLowerCase()).map((p) => p.id);
+    const combined = Array.from(new Set([...sec.productIds, ...catProds]));
+    setSectionProducts(secId, combined);
+  };
+
+  const handleDeselectAllInCat = (secId: string, catName: string) => {
+    const sec = homeSections.find((s) => s.id === secId);
+    if (!sec) return;
+    const catProds = new Set(products.filter((p) => catName === 'All' || p.category.toLowerCase() === catName.toLowerCase()).map((p) => p.id));
+    const remaining = sec.productIds.filter((pId) => !catProds.has(pId));
+    setSectionProducts(secId, remaining);
+  };
+
   const handleCreateSection = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
@@ -642,12 +726,17 @@ export const FeaturedManagementTab: React.FC = () => {
               key={sec.id}
               sec={sec}
               secIdx={secIdx}
+              totalSections={homeSections.length}
               products={products}
               categories={categories}
               onToggleProduct={(secId, prodId) => toggleProductInHomeSection(secId, prodId)}
+              onSelectAllInCat={handleSelectAllInCat}
+              onDeselectAllInCat={handleDeselectAllInCat}
               onToggleVisible={(secId, enabled) => updateHomeSection(secId, { enabled })}
               onSave={(secId, updates) => updateHomeSection(secId, updates)}
               onDelete={(secId) => deleteHomeSection(secId)}
+              onMoveUp={(secId) => moveHomeSection(secId, 'up')}
+              onMoveDown={(secId) => moveHomeSection(secId, 'down')}
             />
           ))}
         </div>
@@ -1189,31 +1278,113 @@ export const FeaturedManagementTab: React.FC = () => {
         </div>
       )}
 
-      {/* ADD NEW SECTION MODAL */}
+      {/* ADD NEW SECTION MODAL WITH PRESETS & CATEGORY PICKER */}
       {showAddSectionModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <form onSubmit={handleCreateSection} className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-5 shadow-modal text-left">
+          <form onSubmit={handleCreateSection} className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-5 shadow-modal text-left max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
-              <h3 className="text-lg font-black text-black">Create New Showcase Section</h3>
-              <button type="button" onClick={() => setShowAddSectionModal(false)} className="text-neutral-400 hover:text-black">✕</button>
+              <div>
+                <h3 className="text-lg font-black text-black">Create New Showcase Section</h3>
+                <p className="text-xs text-neutral-500 font-medium">Adds a new live section to your homepage catalog display.</p>
+              </div>
+              <button type="button" onClick={() => setShowAddSectionModal(false)} className="text-neutral-400 hover:text-black text-sm p-1">✕</button>
             </div>
-            <div className="space-y-4 text-xs font-bold">
+
+            {/* Quick 1-Click Presets */}
+            <div className="space-y-2">
+              <label className="block text-[11px] font-extrabold uppercase tracking-wider text-neutral-500">Quick 1-Click Presets</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {[
+                  { title: 'Festival Specials & Hampers', badge: 'Festive Delights', subtitle: 'Handcrafted traditional sweets & festive gift packs.', cat: 'Sweets' },
+                  { title: 'Best Selling Delicacies', badge: 'Customer Favorites', subtitle: 'Top rated authentic homemade items loved by families.', cat: 'all' },
+                  { title: "Grandmother's Podi & Powders", badge: 'Stone-Ground', subtitle: 'Traditional fragrant spice powders and podi mixes.', cat: 'all' },
+                  { title: 'Signature Homestyle Pickles', badge: 'Spicy & Tangy', subtitle: 'Prepared with cold-pressed sesame oil and stone-ground spices.', cat: 'Pickles' },
+                  { title: 'Pure A2 Ghee Sweets', badge: 'Pure Cow Ghee', subtitle: 'Melt-in-your-mouth sweets made with fresh natural ingredients.', cat: 'Sweets' },
+                  { title: 'Crunchy Evening Savories', badge: 'Fresh Daily Batch', subtitle: 'Crispy homemade snacks and savories for tea time.', cat: 'Snacks' },
+                ].map((p, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setNewTitle(p.title);
+                      setNewBadge(p.badge);
+                      setNewSubtitle(p.subtitle);
+                      setNewCategoryFilter(p.cat);
+                    }}
+                    className="p-2.5 text-left border border-neutral-200 hover:border-black rounded-2xl bg-neutral-50 hover:bg-white text-[11px] transition-all cursor-pointer flex flex-col justify-between"
+                  >
+                    <span className="font-extrabold text-black line-clamp-1">{p.title}</span>
+                    <span className="text-[10px] text-neutral-500 font-mono mt-0.5">{p.badge}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-4 text-xs font-bold pt-2 border-t border-neutral-100">
               <div>
                 <label className="block text-neutral-500 mb-1">Section Title *</label>
-                <input type="text" required value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="e.g. Grandmother's Podi & Powders" className="w-full p-3 rounded-2xl border border-neutral-300 font-extrabold" />
+                <input
+                  type="text"
+                  required
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  placeholder="e.g. Festival Specials & Hampers"
+                  className="w-full p-3 rounded-2xl border border-neutral-300 font-extrabold text-sm bg-white"
+                />
               </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-neutral-500 mb-1">Badge Tagline</label>
+                  <input
+                    type="text"
+                    value={newBadge}
+                    onChange={(e) => setNewBadge(e.target.value)}
+                    placeholder="e.g. Festive Delights"
+                    className="w-full p-3 rounded-2xl border border-neutral-300 font-mono bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-neutral-500 mb-1">Category Filter Link</label>
+                  <select
+                    value={newCategoryFilter}
+                    onChange={(e) => setNewCategoryFilter(e.target.value)}
+                    className="w-full p-3 rounded-2xl border border-neutral-300 bg-white"
+                  >
+                    <option value="all">All Categories (Curated)</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-neutral-500 mb-1">Subtitle / Description</label>
-                <input type="text" value={newSubtitle} onChange={(e) => setNewSubtitle(e.target.value)} placeholder="e.g. Hand-ground traditional spice powders & podi mixes." className="w-full p-3 rounded-2xl border border-neutral-300 font-sans" />
-              </div>
-              <div>
-                <label className="block text-neutral-500 mb-1">Badge Tagline</label>
-                <input type="text" value={newBadge} onChange={(e) => setNewBadge(e.target.value)} placeholder="e.g. Aromatic Stone-Ground" className="w-full p-3 rounded-2xl border border-neutral-300 font-mono" />
+                <input
+                  type="text"
+                  value={newSubtitle}
+                  onChange={(e) => setNewSubtitle(e.target.value)}
+                  placeholder="e.g. Handcrafted traditional delicacies prepared fresh with pure love."
+                  className="w-full p-3 rounded-2xl border border-neutral-300 font-sans bg-white"
+                />
               </div>
             </div>
-            <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => setShowAddSectionModal(false)} className="flex-1 py-3 border border-neutral-200 hover:bg-neutral-100 rounded-2xl text-xs font-bold text-black transition-all cursor-pointer">Cancel</button>
-              <button type="submit" className="flex-1 py-3 bg-black hover:bg-neutral-800 text-white rounded-2xl text-xs font-extrabold transition-all cursor-pointer shadow-subtle">Create Section</button>
+
+            <div className="flex gap-3 pt-2 border-t border-neutral-100">
+              <button
+                type="button"
+                onClick={() => setShowAddSectionModal(false)}
+                className="flex-1 py-3 border border-neutral-200 hover:bg-neutral-100 rounded-2xl text-xs font-bold text-black transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="flex-1 py-3 bg-black hover:bg-neutral-800 text-white rounded-2xl text-xs font-extrabold transition-all cursor-pointer shadow-subtle"
+              >
+                Create Section on Homepage
+              </button>
             </div>
           </form>
         </div>
