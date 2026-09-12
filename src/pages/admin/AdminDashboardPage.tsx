@@ -83,7 +83,7 @@ export const AdminDashboardPage: React.FC = () => {
     { id: 'banners', label: 'Banners & Header Text', icon: <ImageIcon className="w-4 h-4" /> },
     { id: 'bestsellers', label: 'Featured & Festival', icon: <Star className="w-4 h-4" /> },
     { id: 'discounts', label: 'Discounts & Offers', icon: <Percent className="w-4 h-4" /> },
-    { id: 'settings', label: 'Settings & WhatsApp', icon: <Settings className="w-4 h-4" /> },
+    { id: 'settings', label: 'Store Settings', icon: <Settings className="w-4 h-4" /> },
     { id: 'profile', label: 'Profile & Security', icon: <UserCheck className="w-4 h-4" /> },
   ];
 

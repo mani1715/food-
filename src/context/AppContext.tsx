@@ -18,6 +18,7 @@ import {
   HeaderSettings,
   StockHistoryLog,
   SubAdmin,
+  StoreInfo,
 } from '../types';
 import {
   MOCK_PRODUCTS,
@@ -187,9 +188,13 @@ interface AppContextType {
   updatePaymentStatus: (orderId: string, paymentStatus: Order['paymentStatus']) => void;
   cancelOrder: (orderId: string, reason: string, cancelledBy?: string) => void;
 
-  // Settings & WhatsApp Admin
+  // Store Settings & Controls Admin
+  storeInfo: StoreInfo;
+  updateStoreInfo: (updated: Partial<StoreInfo>) => void;
   setPaymentEnabled: (enabled: boolean) => void;
   updateHeaderSettings: (settings: Partial<HeaderSettings>) => void;
+  exportStoreBackupJson: () => string;
+  resetStoreToDefault: () => void;
   restockProduct: (productId: string, quantity: number, note?: string) => void;
   destockProduct: (productId: string, quantity: number, note?: string) => void;
   toggleProductOutOfStock: (productId: string, reason?: string) => void;
@@ -222,6 +227,23 @@ const getInitialState = <T,>(key: string, fallback: T): T => {
     // ignore
   }
   return fallback;
+};
+
+export const DEFAULT_STORE_INFO: StoreInfo = {
+  storeName: 'AISHU FOODS - Handcrafted Homemade Specialties',
+  tagline: 'Authentic Andhra Pickles, Pure A2 Ghee Sweets & Crunchy Savories Made with Grandmother Recipes',
+  supportEmail: 'care@aishufoods.com',
+  supportPhone: '+91 98480 12345',
+  kitchenAddress: 'Plot 42, Heritage Food Enclave, Near Benz Circle, Vijayawada, Andhra Pradesh - 520008',
+  fssaiNumber: '10123999000142',
+  gstin: '37AAAAA0000A1Z5',
+  currencySymbol: '₹',
+  minOrderAmount: 199,
+  freeShippingThreshold: 499,
+  codEnabled: true,
+  orderAcceptanceStatus: 'open',
+  vacationNotice: 'Our kitchen is currently preparing fresh holiday batches. Orders placed will be dispatched promptly on next working day.',
+  deliveryTimeNotice: 'Prepared fresh & delivered in 24-48 hours across AP & Telangana. All-India express shipping available.',
 };
 
 const DEFAULT_HOME_SECTIONS: HomeSection[] = [
@@ -896,6 +918,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [paymentEnabled, setPaymentEnabledState] = useState<boolean>(() =>
     getInitialState('aura_payment_enabled', true)
   );
+  const [storeInfo, setStoreInfo] = useState<StoreInfo>(() =>
+    getInitialState('aura_store_info', DEFAULT_STORE_INFO)
+  );
   const [orders, setOrders] = useState<Order[]>(() =>
     getInitialState('aura_orders', INITIAL_MOCK_ORDERS)
   );
@@ -980,6 +1005,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem('aura_payment_enabled', JSON.stringify(paymentEnabled));
   }, [paymentEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem('aura_store_info', JSON.stringify(storeInfo));
+  }, [storeInfo]);
 
   useEffect(() => {
     localStorage.setItem('aura_orders', JSON.stringify(orders));
@@ -1851,6 +1880,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Settings & WhatsApp Admin
+  const updateStoreInfo = (updated: Partial<StoreInfo>) => {
+    setStoreInfo((prev) => ({ ...prev, ...updated }));
+    addToast('Store Settings Saved', 'Business details & checkout configuration updated.', 'success');
+  };
+
+  const exportStoreBackupJson = () => {
+    const backupData = {
+      exportedAt: new Date().toISOString(),
+      storeInfo,
+      productsCount: products.length,
+      categoriesCount: categories.length,
+      ordersCount: orders.length,
+      products,
+      categories,
+      coupons,
+      deliveryCities,
+      homeSections,
+      heroBanners,
+      headerAnnouncements,
+      headerSettings,
+    };
+    return JSON.stringify(backupData, null, 2);
+  };
+
+  const resetStoreToDefault = () => {
+    setStoreInfo(DEFAULT_STORE_INFO);
+    setPaymentEnabledState(true);
+    addToast('Settings Reset', 'Store settings restored to default values.', 'info');
+  };
+
   const setPaymentEnabled = (enabled: boolean) => {
     setPaymentEnabledState(enabled);
     addToast('Payment Settings Saved', `Payment gateway is now ${enabled ? 'ENABLED' : 'DISABLED'}.`, 'success');
@@ -1903,6 +1962,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         coupons,
         headerSettings,
         stockHistoryLogs,
+        storeInfo,
+        updateStoreInfo,
+        exportStoreBackupJson,
+        resetStoreToDefault,
         subAdmins,
         isAdminAuthenticated,
         deliveryCities,

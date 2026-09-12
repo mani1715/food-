@@ -276,3 +276,21 @@ export interface SubAdmin {
   allowedTabs: AdminTab[];
   createdAt: string;
 }
+
+export interface StoreInfo {
+  storeName: string;
+  tagline: string;
+  supportEmail: string;
+  supportPhone: string;
+  kitchenAddress: string;
+  fssaiNumber: string;
+  gstin: string;
+  currencySymbol: string;
+  minOrderAmount: number;
+  freeShippingThreshold: number;
+  codEnabled: boolean;
+  orderAcceptanceStatus: 'open' | 'vacation' | 'paused';
+  vacationNotice?: string;
+  deliveryTimeNotice?: string;
+}
+

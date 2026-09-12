@@ -1,8 +1,35 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { CreditCard, Smartphone, Plus, Trash2, Image as ImageIcon, Sliders, ShieldCheck, UserPlus, Users, Check } from 'lucide-react';
+import {
+  CreditCard,
+  Plus,
+  Trash2,
+  Image as ImageIcon,
+  Sliders,
+  ShieldCheck,
+  UserPlus,
+  Users,
+  Check,
+  Building,
+  Truck,
+  Phone,
+  Mail,
+  MapPin,
+  FileText,
+  AlertTriangle,
+  Download,
+  RotateCcw,
+  Clock,
+  Sparkles,
+  Save,
+  ShoppingBag,
+  DollarSign,
+  Coffee,
+  CheckCircle2,
+  XCircle,
+} from 'lucide-react';
 import { DragDropImagePicker } from './DragDropImagePicker';
-import { AdminTab } from '../../types';
+import { AdminTab, StoreInfo } from '../../types';
 
 export const SettingsManagementTab: React.FC = () => {
   const {
@@ -10,19 +37,32 @@ export const SettingsManagementTab: React.FC = () => {
     updateSiteLogo,
     paymentEnabled,
     setPaymentEnabled,
-    whatsappContacts,
-    addWhatsAppContact,
-    deleteWhatsAppContact,
     headerSettings,
     updateHeaderSettings,
     categories,
     subAdmins,
     addSubAdmin,
     deleteSubAdmin,
+    storeInfo,
+    updateStoreInfo,
+    exportStoreBackupJson,
+    resetStoreToDefault,
   } = useApp();
 
-  const [newContactName, setNewContactName] = useState('');
-  const [newContactPhone, setNewContactPhone] = useState('');
+  // Local Draft States for Business Details
+  const [draftStoreName, setDraftStoreName] = useState(storeInfo.storeName || '');
+  const [draftTagline, setDraftTagline] = useState(storeInfo.tagline || '');
+  const [draftSupportEmail, setDraftSupportEmail] = useState(storeInfo.supportEmail || '');
+  const [draftSupportPhone, setDraftSupportPhone] = useState(storeInfo.supportPhone || '');
+  const [draftKitchenAddress, setDraftKitchenAddress] = useState(storeInfo.kitchenAddress || '');
+  const [draftFssaiNumber, setDraftFssaiNumber] = useState(storeInfo.fssaiNumber || '');
+  const [draftGstin, setDraftGstin] = useState(storeInfo.gstin || '');
+  const [draftMinOrder, setDraftMinOrder] = useState<number>(storeInfo.minOrderAmount || 199);
+  const [draftFreeShipping, setDraftFreeShipping] = useState<number>(storeInfo.freeShippingThreshold || 499);
+  const [draftCodEnabled, setDraftCodEnabled] = useState<boolean>(storeInfo.codEnabled !== false);
+  const [draftDeliveryNotice, setDraftDeliveryNotice] = useState(storeInfo.deliveryTimeNotice || '');
+  const [draftAcceptanceStatus, setDraftAcceptanceStatus] = useState<'open' | 'vacation' | 'paused'>(storeInfo.orderAcceptanceStatus || 'open');
+  const [draftVacationNotice, setDraftVacationNotice] = useState(storeInfo.vacationNotice || '');
 
   // Sub-Admin Form State
   const [subAdminName, setSubAdminName] = useState('');
@@ -31,13 +71,38 @@ export const SettingsManagementTab: React.FC = () => {
   const [subAdminRoleTitle, setSubAdminRoleTitle] = useState('Catalog & Inventory Admin');
   const [subAdminAllowedTabs, setSubAdminAllowedTabs] = useState<AdminTab[]>(['products', 'orders']);
 
-  const handleAddWhatsApp = (e: React.FormEvent) => {
+  // Reset Confirmation Modal State
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  const handleSaveBusinessProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newContactName.trim() && newContactPhone.trim()) {
-      addWhatsAppContact(newContactName, newContactPhone);
-      setNewContactName('');
-      setNewContactPhone('');
-    }
+    updateStoreInfo({
+      storeName: draftStoreName.trim(),
+      tagline: draftTagline.trim(),
+      supportEmail: draftSupportEmail.trim(),
+      supportPhone: draftSupportPhone.trim(),
+      kitchenAddress: draftKitchenAddress.trim(),
+      fssaiNumber: draftFssaiNumber.trim(),
+      gstin: draftGstin.trim(),
+    });
+  };
+
+  const handleSaveCheckoutRules = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateStoreInfo({
+      minOrderAmount: Number(draftMinOrder) || 0,
+      freeShippingThreshold: Number(draftFreeShipping) || 0,
+      codEnabled: draftCodEnabled,
+      deliveryTimeNotice: draftDeliveryNotice.trim(),
+    });
+  };
+
+  const handleSaveOperationalStatus = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateStoreInfo({
+      orderAcceptanceStatus: draftAcceptanceStatus,
+      vacationNotice: draftVacationNotice.trim(),
+    });
   };
 
   const handleCreateSubAdminSubmit = (e: React.FormEvent) => {
@@ -76,194 +141,461 @@ export const SettingsManagementTab: React.FC = () => {
     updateHeaderSettings({ disabledCategoryNames: newDisabledList });
   };
 
+  const handleDownloadBackup = () => {
+    const jsonStr = exportStoreBackupJson();
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `aishu-foods-store-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
-    <div className="space-y-6 text-left">
-      <div className="border-b border-neutral-200 pb-4">
-        <h2 className="text-xl font-extrabold text-black tracking-tight">Store Settings & Administration Control</h2>
-        <p className="text-xs text-neutral-500">Configure online payment gateways, header icon visibility, category link toggles, and sub-admin team roles.</p>
+    <div className="space-y-8 text-left">
+      {/* Header Banner */}
+      <div className="border-b border-neutral-200 pb-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-black text-black tracking-tight">Store Settings & Business Controls</h2>
+            <p className="text-xs text-neutral-500 mt-1">
+              Manage complete store identity, food safety license, checkout pricing rules, vacation mode, and team administration.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleDownloadBackup}
+              className="px-4 py-2 bg-neutral-100 hover:bg-neutral-200 text-black rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-neutral-200"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Backup Store Data</span>
+            </button>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
-        {/* Payment Gateway Toggle */}
-        <div className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-subtle space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-black text-white flex items-center justify-center">
-              <CreditCard className="w-5 h-5" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {/* 1. STORE & KITCHEN BUSINESS PROFILE */}
+        <div className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-subtle space-y-5">
+          <div className="flex items-center gap-3 border-b border-neutral-100 pb-3">
+            <div className="w-10 h-10 rounded-2xl bg-black text-white flex items-center justify-center shrink-0">
+              <Building className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-extrabold text-black">Payment Gateway Status</h3>
-              <p className="text-xs text-neutral-400">Toggle customer checkout online payment status</p>
+              <h3 className="text-base font-extrabold text-black">Store & Kitchen Profile</h3>
+              <p className="text-xs text-neutral-400">Official business name, contact helpline & food licensing</p>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl border border-neutral-200 bg-neutral-50 flex items-center justify-between">
+          <form onSubmit={handleSaveBusinessProfile} className="space-y-4 text-xs font-bold">
             <div>
-              <span className="text-xs font-bold text-black block">Online Payments (UPI / Cards / COD)</span>
-              <span className="text-[11px] text-neutral-500">
-                {paymentEnabled ? 'Checkout payments are active.' : 'Online payments suspended.'}
-              </span>
+              <label className="block text-neutral-500 mb-1">Official Store / Brand Name *</label>
+              <input
+                type="text"
+                required
+                value={draftStoreName}
+                onChange={(e) => setDraftStoreName(e.target.value)}
+                placeholder="AISHU FOODS - Handcrafted Homemade Specialties"
+                className="w-full p-3 rounded-2xl border border-neutral-300 bg-neutral-50 font-extrabold text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-neutral-500 mb-1">Brand Tagline & Quality Promise</label>
+              <input
+                type="text"
+                value={draftTagline}
+                onChange={(e) => setDraftTagline(e.target.value)}
+                placeholder="Authentic Andhra Pickles, Pure A2 Ghee Sweets & Crunchy Savories"
+                className="w-full p-3 rounded-2xl border border-neutral-300 bg-neutral-50 font-sans"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-neutral-500 mb-1 flex items-center gap-1">
+                  <Mail className="w-3.5 h-3.5 text-neutral-400" />
+                  <span>Support Email</span>
+                </label>
+                <input
+                  type="email"
+                  value={draftSupportEmail}
+                  onChange={(e) => setDraftSupportEmail(e.target.value)}
+                  placeholder="care@aishufoods.com"
+                  className="w-full p-3 rounded-2xl border border-neutral-300 bg-neutral-50 font-mono text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-neutral-500 mb-1 flex items-center gap-1">
+                  <Phone className="w-3.5 h-3.5 text-neutral-400" />
+                  <span>Helpline Phone Number</span>
+                </label>
+                <input
+                  type="text"
+                  value={draftSupportPhone}
+                  onChange={(e) => setDraftSupportPhone(e.target.value)}
+                  placeholder="+91 98480 12345"
+                  className="w-full p-3 rounded-2xl border border-neutral-300 bg-neutral-50 font-mono text-xs"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-neutral-500 mb-1 flex items-center gap-1">
+                <MapPin className="w-3.5 h-3.5 text-neutral-400" />
+                <span>Kitchen & Dispatch Facility Origin</span>
+              </label>
+              <textarea
+                rows={2}
+                value={draftKitchenAddress}
+                onChange={(e) => setDraftKitchenAddress(e.target.value)}
+                placeholder="Plot 42, Heritage Food Enclave, Near Benz Circle, Vijayawada, Andhra Pradesh - 520008"
+                className="w-full p-3 rounded-2xl border border-neutral-300 bg-neutral-50 font-medium"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-neutral-500 mb-1 flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>FSSAI Food License #</span>
+                </label>
+                <input
+                  type="text"
+                  value={draftFssaiNumber}
+                  onChange={(e) => setDraftFssaiNumber(e.target.value)}
+                  placeholder="10123999000142"
+                  className="w-full p-3 rounded-2xl border border-neutral-300 bg-neutral-50 font-mono text-xs font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-neutral-500 mb-1 flex items-center gap-1">
+                  <FileText className="w-3.5 h-3.5 text-neutral-400" />
+                  <span>GSTIN Number (Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={draftGstin}
+                  onChange={(e) => setDraftGstin(e.target.value)}
+                  placeholder="37AAAAA0000A1Z5"
+                  className="w-full p-3 rounded-2xl border border-neutral-300 bg-neutral-50 font-mono text-xs font-bold uppercase"
+                />
+              </div>
             </div>
 
             <button
-              onClick={() => setPaymentEnabled(!paymentEnabled)}
-              className={`px-4 py-2 text-xs font-extrabold rounded-xl transition-all cursor-pointer ${
-                paymentEnabled ? 'bg-black text-white' : 'bg-neutral-200 text-neutral-600'
-              }`}
+              type="submit"
+              className="w-full py-3 bg-black hover:bg-neutral-800 text-white rounded-2xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-subtle active:scale-95"
             >
-              {paymentEnabled ? 'ENABLED ✅' : 'DISABLED ❌'}
-            </button>
-          </div>
-        </div>
-
-        {/* Header Icons & Navigation Toggles */}
-        <div className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-subtle space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-black text-white flex items-center justify-center">
-              <Sliders className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-base font-extrabold text-black">Header Icons & Menu Display</h3>
-              <p className="text-xs text-neutral-400">Enable or disable header icons & categories with auto right-alignment</p>
-            </div>
-          </div>
-
-          <div className="space-y-2 text-xs font-bold">
-            <span className="text-[10px] uppercase text-neutral-400 font-extrabold tracking-wider block">Header Action Icons</span>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { key: 'showSearch', label: 'Search Icon 🔍' },
-                { key: 'showWishlist', label: 'Wishlist Icon ❤️' },
-                { key: 'showAccount', label: 'Account Icon 👤' },
-                { key: 'showTrackOrder', label: 'Track Order 📦' },
-                { key: 'showCart', label: 'Cart Icon 🛍️' },
-              ].map((item) => {
-                const isEnabled = (headerSettings as any)[item.key] !== false;
-                return (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => updateHeaderSettings({ [item.key]: !isEnabled })}
-                    className={`p-2.5 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${
-                      isEnabled ? 'bg-black text-white border-black' : 'bg-neutral-100 text-neutral-600 border-neutral-200'
-                    }`}
-                  >
-                    <span>{item.label}</span>
-                    <span className="text-[10px] uppercase font-mono">{isEnabled ? 'ON' : 'OFF'}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <span className="text-[10px] uppercase text-neutral-400 font-extrabold tracking-wider block pt-3">Category Navigation Menus</span>
-            <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-              {categories.map((cat) => {
-                const isDisabled = (headerSettings?.disabledCategoryNames || []).includes(cat.name);
-                return (
-                  <div key={cat.id} className="flex items-center justify-between p-2 rounded-xl bg-neutral-50 border border-neutral-200 text-xs">
-                    <span className="font-bold text-black">{cat.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => toggleCategoryMenu(cat.name)}
-                      className={`px-3 py-1 rounded-lg text-[10px] font-extrabold uppercase transition-all cursor-pointer ${
-                        isDisabled ? 'bg-rose-100 text-rose-800 border border-rose-300' : 'bg-black text-white'
-                      }`}
-                    >
-                      {isDisabled ? 'DISABLED' : 'VISIBLE'}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* WhatsApp Support Hotline Manager */}
-        <div className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-subtle space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-black text-white flex items-center justify-center">
-              <Smartphone className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-base font-extrabold text-black">WhatsApp Concierge Hotlines</h3>
-              <p className="text-xs text-neutral-400">Manage customer support contact channels</p>
-            </div>
-          </div>
-
-          <form onSubmit={handleAddWhatsApp} className="space-y-3 text-xs font-bold">
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                type="text"
-                placeholder="Channel Name (e.g. Bulk Orders)"
-                value={newContactName}
-                onChange={(e) => setNewContactName(e.target.value)}
-                className="p-2.5 rounded-xl border border-neutral-300 bg-neutral-50"
-              />
-              <input
-                type="text"
-                placeholder="Phone (+91 98765 43210)"
-                value={newContactPhone}
-                onChange={(e) => setNewContactPhone(e.target.value)}
-                className="p-2.5 rounded-xl border border-neutral-300 bg-neutral-50 font-mono"
-              />
-            </div>
-            <button type="submit" className="w-full py-2.5 bg-black text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer">
-              <Plus className="w-4 h-4" />
-              <span>Add WhatsApp Channel</span>
+              <Save className="w-3.5 h-3.5" />
+              <span>Save Business Profile</span>
             </button>
           </form>
-
-          <div className="space-y-2 pt-2">
-            {whatsappContacts.map((c) => (
-              <div key={c.id} className="p-3 rounded-2xl border border-neutral-200 flex items-center justify-between text-xs">
-                <div>
-                  <span className="font-bold text-black block">{c.name}</span>
-                  <span className="font-mono text-neutral-500">{c.phone}</span>
-                </div>
-                <button onClick={() => deleteWhatsAppContact(c.id)} className="p-1.5 text-neutral-400 hover:text-rose-600 cursor-pointer">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-          </div>
         </div>
 
-        {/* Store Brand Logo Manager (Drag & Drop Photo Upload) */}
-        <div className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-subtle space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-black text-white flex items-center justify-center">
+        {/* 2. CHECKOUT RULES & PAYMENT METHODS */}
+        <div className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-subtle space-y-5">
+          <div className="flex items-center gap-3 border-b border-neutral-100 pb-3">
+            <div className="w-10 h-10 rounded-2xl bg-black text-white flex items-center justify-center shrink-0">
+              <CreditCard className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-extrabold text-black">Payment & Checkout Rules</h3>
+              <p className="text-xs text-neutral-400">Gateway controls, minimum orders & free delivery threshold</p>
+            </div>
+          </div>
+
+          <form onSubmit={handleSaveCheckoutRules} className="space-y-4 text-xs font-bold">
+            {/* Master Online Gateway Toggle */}
+            <div className="p-4 rounded-2xl border border-neutral-200 bg-neutral-50 flex items-center justify-between">
+              <div>
+                <span className="text-xs font-bold text-black block">Online Payments (UPI, Cards, NetBanking)</span>
+                <span className="text-[11px] text-neutral-500 font-normal">
+                  {paymentEnabled ? 'Customer online checkout is active and accepting payments.' : 'Online payments temporarily disabled.'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPaymentEnabled(!paymentEnabled)}
+                className={`px-4 py-2 text-xs font-extrabold rounded-xl transition-all cursor-pointer ${
+                  paymentEnabled ? 'bg-black text-white' : 'bg-rose-100 text-rose-800 border border-rose-200'
+                }`}
+              >
+                {paymentEnabled ? 'ACTIVE ✅' : 'DISABLED ❌'}
+              </button>
+            </div>
+
+            {/* Cash on Delivery Toggle */}
+            <div className="p-4 rounded-2xl border border-neutral-200 bg-neutral-50 flex items-center justify-between">
+              <div>
+                <span className="text-xs font-bold text-black block">Cash on Delivery (COD)</span>
+                <span className="text-[11px] text-neutral-500 font-normal">
+                  {draftCodEnabled ? 'COD checkout available for eligible delivery pin codes.' : 'COD option hidden at checkout.'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDraftCodEnabled(!draftCodEnabled)}
+                className={`px-4 py-2 text-xs font-extrabold rounded-xl transition-all cursor-pointer ${
+                  draftCodEnabled ? 'bg-black text-white' : 'bg-neutral-200 text-neutral-700'
+                }`}
+              >
+                {draftCodEnabled ? 'ENABLED ✅' : 'DISABLED ❌'}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-neutral-500 mb-1">Minimum Order Value (₹)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={draftMinOrder}
+                  onChange={(e) => setDraftMinOrder(Number(e.target.value))}
+                  placeholder="199"
+                  className="w-full p-3 rounded-2xl border border-neutral-300 bg-neutral-50 font-mono text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-neutral-500 mb-1">Free Delivery Threshold (₹)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={draftFreeShipping}
+                  onChange={(e) => setDraftFreeShipping(Number(e.target.value))}
+                  placeholder="499"
+                  className="w-full p-3 rounded-2xl border border-neutral-300 bg-neutral-50 font-mono text-sm"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-neutral-500 mb-1 flex items-center gap-1">
+                <Truck className="w-3.5 h-3.5 text-neutral-400" />
+                <span>Estimated Delivery Message (Checkout Banner)</span>
+              </label>
+              <input
+                type="text"
+                value={draftDeliveryNotice}
+                onChange={(e) => setDraftDeliveryNotice(e.target.value)}
+                placeholder="Prepared fresh & delivered in 24-48 hours across AP & Telangana."
+                className="w-full p-3 rounded-2xl border border-neutral-300 bg-neutral-50 font-sans"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3 bg-black hover:bg-neutral-800 text-white rounded-2xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-subtle active:scale-95"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>Save Checkout Rules</span>
+            </button>
+          </form>
+        </div>
+
+        {/* 3. KITCHEN OPERATIONAL STATUS & VACATION MODE */}
+        <div className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-subtle space-y-5">
+          <div className="flex items-center gap-3 border-b border-neutral-100 pb-3">
+            <div className="w-10 h-10 rounded-2xl bg-black text-white flex items-center justify-center shrink-0">
+              <Coffee className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-extrabold text-black">Kitchen Operational Status</h3>
+              <p className="text-xs text-neutral-400">Order acceptance state & vacation/holiday notice</p>
+            </div>
+          </div>
+
+          <form onSubmit={handleSaveOperationalStatus} className="space-y-4 text-xs font-bold">
+            <div className="space-y-2">
+              <label className="block text-neutral-500">Select Operating State</label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {[
+                  { id: 'open', label: '🟢 Accepting Orders', desc: 'Standard Live Operations' },
+                  { id: 'vacation', label: '🟡 Vacation / Holiday', desc: 'Orders queued for later dispatch' },
+                  { id: 'paused', label: '🔴 Kitchen Rush Paused', desc: 'Temporary order pause' },
+                ].map((st) => (
+                  <button
+                    key={st.id}
+                    type="button"
+                    onClick={() => setDraftAcceptanceStatus(st.id as any)}
+                    className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
+                      draftAcceptanceStatus === st.id
+                        ? 'bg-black text-white border-black shadow-sm ring-2 ring-black/10'
+                        : 'bg-neutral-50 text-neutral-700 border-neutral-200 hover:border-black'
+                    }`}
+                  >
+                    <span className="font-extrabold">{st.label}</span>
+                    <span className={`text-[10px] mt-1 ${draftAcceptanceStatus === st.id ? 'text-neutral-300' : 'text-neutral-400'}`}>
+                      {st.desc}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-neutral-500 mb-1">Customer Notice Message (Displayed when not in standard mode)</label>
+              <textarea
+                rows={2}
+                value={draftVacationNotice}
+                onChange={(e) => setDraftVacationNotice(e.target.value)}
+                placeholder="Our kitchen is currently preparing fresh holiday batches. Orders will be dispatched promptly on next working day."
+                className="w-full p-3 rounded-2xl border border-neutral-300 bg-neutral-50 font-medium"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3 bg-black hover:bg-neutral-800 text-white rounded-2xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-subtle active:scale-95"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>Update Operating Status</span>
+            </button>
+          </form>
+        </div>
+
+        {/* 4. STORE BRAND LOGO ASSET */}
+        <div className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-subtle space-y-5">
+          <div className="flex items-center gap-3 border-b border-neutral-100 pb-3">
+            <div className="w-10 h-10 rounded-2xl bg-black text-white flex items-center justify-center shrink-0">
               <ImageIcon className="w-5 h-5" />
             </div>
             <div>
               <h3 className="text-base font-extrabold text-black">Store Brand Logo</h3>
-              <p className="text-xs text-neutral-400">Drag & drop or select new logo photo from your files/folder</p>
+              <p className="text-xs text-neutral-400">Drag & drop or select new transparent logo photo from files</p>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl border border-neutral-200 bg-neutral-50 space-y-4">
+          <div className="space-y-4">
             <DragDropImagePicker
               label="Change Store Logo"
               value={siteLogo}
               onChange={updateSiteLogo}
-              helperText="Upload transparent PNG, JPG or SVG logo for crisp display across Header and Footer."
+              helperText="Upload transparent PNG, JPG, or SVG logo for crisp display across Header, Footer, and Invoice prints."
             />
+
+            <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-2xl border border-neutral-200 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-neutral-500">Current Logo File:</span>
+                <span className="font-mono text-black font-bold truncate max-w-[200px]">{siteLogo}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => updateSiteLogo('/aishu-logo.png')}
+                className="text-[11px] font-extrabold text-black hover:underline cursor-pointer"
+              >
+                Reset Default
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Sub-Admin (Baby Admin) Role & Permission Access Manager */}
-        <div className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-subtle space-y-4 md:col-span-2">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-black text-white flex items-center justify-center">
-              <Users className="w-5 h-5" />
+        {/* 5. HEADER ICONS & CATEGORY NAVIGATION VISIBILITY */}
+        <div className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-subtle space-y-5 md:col-span-2">
+          <div className="flex items-center gap-3 border-b border-neutral-100 pb-3">
+            <div className="w-10 h-10 rounded-2xl bg-black text-white flex items-center justify-center shrink-0">
+              <Sliders className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-extrabold text-black">Sub-Admin (Baby Admin) Team Management</h3>
-              <p className="text-xs text-neutral-400">Create new admin accounts and grant specific permissions to tabs (Products, Orders, Banners, Analytics)</p>
+              <h3 className="text-base font-extrabold text-black">Header Navigation & Menu Display Controls</h3>
+              <p className="text-xs text-neutral-400">Toggle customer header action icons and customize category navbar links</p>
             </div>
           </div>
 
-          <form onSubmit={handleCreateSubAdminSubmit} className="p-5 rounded-2xl border border-neutral-200 bg-neutral-50 space-y-4 text-xs font-bold">
-            <span className="text-xs font-black uppercase text-black block">Add New Sub-Admin Account</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs font-bold">
+            {/* Header Action Icons */}
+            <div className="space-y-3">
+              <span className="text-[11px] uppercase text-neutral-400 font-extrabold tracking-wider block">
+                Customer Header Action Icons
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {[
+                  { key: 'showSearch', label: 'Search 🔍' },
+                  { key: 'showWishlist', label: 'Wishlist ❤️' },
+                  { key: 'showAccount', label: 'Account 👤' },
+                  { key: 'showTrackOrder', label: 'Track Order 📦' },
+                  { key: 'showCart', label: 'Cart 🛍️' },
+                ].map((item) => {
+                  const isEnabled = (headerSettings as any)[item.key] !== false;
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => updateHeaderSettings({ [item.key]: !isEnabled })}
+                      className={`p-3 rounded-2xl border text-left flex items-center justify-between transition-all cursor-pointer ${
+                        isEnabled
+                          ? 'bg-black text-white border-black shadow-xs'
+                          : 'bg-neutral-50 text-neutral-500 border-neutral-200'
+                      }`}
+                    >
+                      <span>{item.label}</span>
+                      <span className="text-[10px] uppercase font-mono font-bold">
+                        {isEnabled ? 'ON' : 'OFF'}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Category Navigation Bar Links */}
+            <div className="space-y-3">
+              <span className="text-[11px] uppercase text-neutral-400 font-extrabold tracking-wider block">
+                Category Navbar Links Visibility
+              </span>
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                {categories.map((cat) => {
+                  const isDisabled = (headerSettings?.disabledCategoryNames || []).includes(cat.name);
+                  return (
+                    <div
+                      key={cat.id}
+                      className="flex items-center justify-between p-2.5 rounded-2xl bg-neutral-50 border border-neutral-200 text-xs"
+                    >
+                      <div className="flex items-center gap-2">
+                        <img src={cat.image} alt={cat.name} className="w-7 h-7 rounded-full object-cover border border-neutral-300" />
+                        <span className="font-extrabold text-black">{cat.name}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => toggleCategoryMenu(cat.name)}
+                        className={`px-3 py-1 rounded-xl text-[10px] font-extrabold uppercase transition-all cursor-pointer ${
+                          isDisabled ? 'bg-rose-100 text-rose-800 border border-rose-300' : 'bg-black text-white'
+                        }`}
+                      >
+                        {isDisabled ? 'HIDDEN' : 'VISIBLE'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 6. SUB-ADMIN TEAM & ROLE-BASED ACCESS CONTROL (RBAC) */}
+        <div className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-subtle space-y-5 md:col-span-2">
+          <div className="flex items-center gap-3 border-b border-neutral-100 pb-3">
+            <div className="w-10 h-10 rounded-2xl bg-black text-white flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-extrabold text-black">Sub-Admin Team & Role-Based Access Control (RBAC)</h3>
+              <p className="text-xs text-neutral-400">
+                Create dedicated admin accounts and assign granular tab permissions (Products, Orders, Banners, Discounts, Settings)
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleCreateSubAdminSubmit} className="p-5 rounded-3xl border border-neutral-200 bg-neutral-50 space-y-4 text-xs font-bold">
+            <span className="text-xs font-black uppercase text-black block">Add New Team Member</span>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <input
                 type="text"
@@ -271,15 +603,15 @@ export const SettingsManagementTab: React.FC = () => {
                 placeholder="Full Name (e.g. Rahul Sharma)"
                 value={subAdminName}
                 onChange={(e) => setSubAdminName(e.target.value)}
-                className="p-2.5 bg-white border border-neutral-300 rounded-xl"
+                className="p-3 bg-white border border-neutral-300 rounded-2xl"
               />
               <input
                 type="email"
                 required
-                placeholder="Email (e.g. subadmin@aura.com)"
+                placeholder="Email (e.g. rahul@aishufoods.com)"
                 value={subAdminEmail}
                 onChange={(e) => setSubAdminEmail(e.target.value)}
-                className="p-2.5 bg-white border border-neutral-300 rounded-xl"
+                className="p-3 bg-white border border-neutral-300 rounded-2xl font-mono"
               />
               <input
                 type="password"
@@ -287,7 +619,7 @@ export const SettingsManagementTab: React.FC = () => {
                 placeholder="Password"
                 value={subAdminPass}
                 onChange={(e) => setSubAdminPass(e.target.value)}
-                className="p-2.5 bg-white border border-neutral-300 rounded-xl"
+                className="p-3 bg-white border border-neutral-300 rounded-2xl"
               />
             </div>
 
@@ -295,25 +627,25 @@ export const SettingsManagementTab: React.FC = () => {
               <label className="block text-[11px] text-neutral-500 mb-1">Role Title / Designation</label>
               <input
                 type="text"
-                placeholder="e.g. Inventory Manager, Order Fulfillment Specialist"
+                placeholder="e.g. Kitchen Logistics Manager, Catalog Specialist"
                 value={subAdminRoleTitle}
                 onChange={(e) => setSubAdminRoleTitle(e.target.value)}
-                className="w-full p-2.5 bg-white border border-neutral-300 rounded-xl font-bold"
+                className="w-full p-3 bg-white border border-neutral-300 rounded-2xl font-bold"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] text-neutral-500 mb-1.5">Grant Access Permissions (Select Allowed Tabs)</label>
+              <label className="block text-[11px] text-neutral-500 mb-1.5">Assign Tab Access Permissions</label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {[
                   { id: 'products', label: 'Products & Inventory' },
                   { id: 'orders', label: 'Orders & Fulfillment' },
                   { id: 'analytics', label: 'Store Analytics' },
                   { id: 'banners', label: 'Hero Banners' },
-                  { id: 'discounts', label: 'Coupons & Discounts' },
+                  { id: 'bestsellers', label: 'Featured & Festival' },
+                  { id: 'discounts', label: 'Coupons & Offers' },
                   { id: 'locations', label: 'Delivery Cities' },
-                  { id: 'notifications', label: 'Notifications' },
-                  { id: 'settings', label: 'Settings & Security' },
+                  { id: 'settings', label: 'Store Settings' },
                 ].map((tabObj) => {
                   const isChecked = subAdminAllowedTabs.includes(tabObj.id as any);
                   return (
@@ -321,8 +653,8 @@ export const SettingsManagementTab: React.FC = () => {
                       key={tabObj.id}
                       type="button"
                       onClick={() => toggleTabPermission(tabObj.id as any)}
-                      className={`p-2 rounded-xl border text-left flex items-center justify-between text-[11px] transition-all cursor-pointer ${
-                        isChecked ? 'bg-black text-white border-black font-extrabold' : 'bg-white text-neutral-600 border-neutral-300'
+                      className={`p-2.5 rounded-2xl border text-left flex items-center justify-between text-[11px] transition-all cursor-pointer ${
+                        isChecked ? 'bg-black text-white border-black font-extrabold shadow-xs' : 'bg-white text-neutral-600 border-neutral-300'
                       }`}
                     >
                       <span>{tabObj.label}</span>
@@ -333,38 +665,47 @@ export const SettingsManagementTab: React.FC = () => {
               </div>
             </div>
 
-            <button type="submit" className="px-5 py-3 bg-black text-white text-xs font-extrabold rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-subtle">
+            <button
+              type="submit"
+              className="px-6 py-3.5 bg-black text-white text-xs font-extrabold rounded-2xl flex items-center justify-center gap-2 cursor-pointer shadow-subtle hover:bg-neutral-800 transition-all"
+            >
               <UserPlus className="w-4 h-4" />
               <span>Create Sub-Admin Account</span>
             </button>
           </form>
 
-          {/* Sub-Admins List */}
+          {/* Active Sub-Admins List */}
           <div className="space-y-3 pt-2">
-            <span className="text-xs font-black uppercase text-black block">Active Sub-Admin Team Members ({subAdmins.length})</span>
+            <span className="text-xs font-black uppercase text-black block">Active Sub-Admin Team ({subAdmins.length})</span>
             {subAdmins.length === 0 ? (
-              <p className="text-xs text-neutral-400 italic p-4 border border-dashed rounded-2xl text-center">No sub-admin accounts created yet.</p>
+              <p className="text-xs text-neutral-400 italic p-6 border border-dashed rounded-3xl text-center">
+                No sub-admin accounts created yet. Master admin has full access.
+              </p>
             ) : (
               <div className="space-y-2">
                 {subAdmins.map((sub) => (
-                  <div key={sub.id} className="p-4 rounded-2xl border border-neutral-200 bg-neutral-50 flex items-center justify-between text-xs">
+                  <div key={sub.id} className="p-4 rounded-3xl border border-neutral-200 bg-neutral-50 flex items-center justify-between text-xs">
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-extrabold text-black text-sm">{sub.name}</span>
-                        <span className="bg-black text-white text-[9px] font-extrabold px-2 py-0.5 rounded-full">{sub.roleTitle}</span>
+                        <span className="bg-black text-white text-[9px] font-extrabold px-2.5 py-0.5 rounded-full">{sub.roleTitle}</span>
                       </div>
-                      <p className="text-neutral-500 font-mono text-[11px]">{sub.email} • Created: {sub.createdAt}</p>
-                      <div className="flex items-center gap-1 mt-1 flex-wrap">
-                        <span className="text-[10px] font-bold text-neutral-400 uppercase">Access:</span>
+                      <p className="text-neutral-500 font-mono text-[11px] mt-0.5">{sub.email} • Created: {sub.createdAt}</p>
+                      <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                        <span className="text-[10px] font-bold text-neutral-400 uppercase">Allowed Tabs:</span>
                         {sub.allowedTabs.map((t) => (
-                          <span key={t} className="bg-neutral-200 text-black text-[9px] font-bold px-1.5 py-0.5 rounded">
+                          <span key={t} className="bg-neutral-200 text-black text-[9px] font-bold px-2 py-0.5 rounded-md">
                             {t}
                           </span>
                         ))}
                       </div>
                     </div>
 
-                    <button onClick={() => deleteSubAdmin(sub.id)} className="p-2 text-neutral-400 hover:text-rose-600 cursor-pointer" title="Remove Sub-Admin">
+                    <button
+                      onClick={() => deleteSubAdmin(sub.id)}
+                      className="p-2.5 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
+                      title="Revoke Sub-Admin Access"
+                    >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -372,6 +713,64 @@ export const SettingsManagementTab: React.FC = () => {
               </div>
             )}
           </div>
+        </div>
+
+        {/* 7. SYSTEM MAINTENANCE & RESTORE DEFAULTS */}
+        <div className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-subtle space-y-4 md:col-span-2">
+          <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-neutral-100 text-black flex items-center justify-center shrink-0">
+                <RotateCcw className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-black">System Maintenance & Restore Defaults</h3>
+                <p className="text-xs text-neutral-400">Reset configurations or clear demo sandbox state</p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowResetConfirm(true)}
+              className="px-4 py-2 border border-rose-200 hover:bg-rose-50 text-rose-600 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reset Settings to Default</span>
+            </button>
+          </div>
+
+          {showResetConfirm && (
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl space-y-3">
+              <div className="flex items-center gap-2 text-rose-800 font-bold text-xs">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>Are you sure you want to restore default store settings? Business info will return to initial presets.</span>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowResetConfirm(false)}
+                  className="px-4 py-2 bg-white border border-neutral-200 rounded-xl text-xs font-bold text-black cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetStoreToDefault();
+                    setShowResetConfirm(false);
+                    setDraftStoreName(storeInfo.storeName);
+                    setDraftTagline(storeInfo.tagline);
+                    setDraftSupportEmail(storeInfo.supportEmail);
+                    setDraftSupportPhone(storeInfo.supportPhone);
+                    setDraftKitchenAddress(storeInfo.kitchenAddress);
+                    setDraftFssaiNumber(storeInfo.fssaiNumber);
+                  }}
+                  className="px-4 py-2 bg-rose-600 text-white rounded-xl text-xs font-extrabold cursor-pointer"
+                >
+                  Yes, Restore Defaults
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
       </div>
