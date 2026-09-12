@@ -206,12 +206,34 @@ export type AdminTab =
   | 'newsletter'
   | 'profile';
 
+export interface HeaderSubMenuItem {
+  id: string;
+  label: string;
+  path: string;
+  type?: 'category' | 'product' | 'custom';
+  targetId?: string;
+}
+
+export interface CustomHeaderMenuItem {
+  id: string;
+  label: string;
+  path: string;
+  subCategories?: HeaderSubMenuItem[];
+  enabled: boolean;
+  order?: number;
+  isSpecial?: boolean;
+}
+
 export interface HeaderSettings {
   showSearch: boolean;
   showWishlist: boolean;
   showAccount: boolean;
   showTrackOrder: boolean;
   showCart: boolean;
+  showTopRotatingBar?: boolean;
+  showMarqueeTicker?: boolean;
+  topRotatingAnnouncements?: HeaderAnnouncement[];
+  customMenuItems?: CustomHeaderMenuItem[];
   disabledCategoryNames: string[];
 }
 

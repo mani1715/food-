@@ -25,71 +25,83 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
           "100% Homemade, Zero Preservatives & Cold-Pressed Oils",
         ];
 
-  const categoryMenus = [
-    ...(categories || [])
-      .filter((cat) => !(headerSettings?.disabledCategoryNames || []).includes(cat.name))
-      .map((cat) => ({
-        label: cat.name,
-        path: `/products?category=${encodeURIComponent(cat.name)}`,
-        subCategories: [
-          { label: `All ${cat.name} Collection`, path: `/products?category=${encodeURIComponent(cat.name)}` },
-        ],
-      })),
-    {
-      label: 'BEST SELLERS',
-      path: '/products',
-      subCategories: [
-        { label: 'Top Rated Items ⭐', path: '/products' },
-        { label: 'Grandma Specials 📜', path: '/products' },
-      ],
-    },
-    {
-      label: 'OFFERS & SPECIALS',
-      path: '/products?filter=new-arrivals',
-      isSpecial: true,
-      subCategories: [
-        { label: 'Use Code AF05 (5% OFF) 🎉', path: '/products' },
-        { label: 'New Arrivals ✨', path: '/products?filter=new-arrivals' },
-        { label: 'Festival Gift Hampers 🎁', path: '/products?category=Gift%20Boxes' },
-      ],
-    },
-    {
-      label: 'OUR PROCESS',
-      path: '/our-process',
-      subCategories: [
-        { label: '5-Step Grandma Process 📜', path: '/our-process' },
-        { label: 'Regional Farm Sourcing 📍', path: '/sourcing' },
-        { label: '0% Preservative Guarantee 🛡️', path: '/quality-promise' },
-      ],
-    },
-  ];
+  const categoryMenus =
+    headerSettings?.customMenuItems && headerSettings.customMenuItems.length > 0
+      ? headerSettings.customMenuItems
+          .filter((item) => item.enabled !== false)
+          .map((item) => ({
+            label: item.label,
+            path: item.path,
+            isSpecial: item.isSpecial,
+            subCategories: item.subCategories || [],
+          }))
+      : [
+          ...(categories || [])
+            .filter((cat) => !(headerSettings?.disabledCategoryNames || []).includes(cat.name))
+            .map((cat) => ({
+              label: cat.name,
+              path: `/products?category=${encodeURIComponent(cat.name)}`,
+              subCategories: [
+                { label: `All ${cat.name} Collection`, path: `/products?category=${encodeURIComponent(cat.name)}` },
+              ],
+            })),
+          {
+            label: 'BEST SELLERS',
+            path: '/products',
+            subCategories: [
+              { label: 'Top Rated Items ⭐', path: '/products' },
+              { label: 'Grandma Specials 📜', path: '/products' },
+            ],
+          },
+          {
+            label: 'OFFERS & SPECIALS',
+            path: '/products?filter=new-arrivals',
+            isSpecial: true,
+            subCategories: [
+              { label: 'Use Code AF05 (5% OFF) 🎉', path: '/products' },
+              { label: 'New Arrivals ✨', path: '/products?filter=new-arrivals' },
+              { label: 'Festival Gift Hampers 🎁', path: '/products?category=Gift%20Boxes' },
+            ],
+          },
+          {
+            label: 'OUR PROCESS',
+            path: '/our-process',
+            subCategories: [
+              { label: '5-Step Grandma Process 📜', path: '/our-process' },
+              { label: 'Regional Farm Sourcing 📍', path: '/sourcing' },
+              { label: '0% Preservative Guarantee 🛡️', path: '/quality-promise' },
+            ],
+          },
+        ];
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-neutral-200 transition-all shadow-subtle">
       
       {/* 1. TOP SCROLLING ANNOUNCEMENT TICKER (BLACK & WHITE MARQUEE) */}
-      <div className="bg-black text-white py-2 px-4 text-xs font-bold tracking-wide overflow-hidden border-b border-neutral-800">
-        <div className="animate-marquee items-center gap-8 text-neutral-200">
-          {/* First Copy */}
-          {activeAnnouncements.map((text, index) => (
-            <React.Fragment key={`a1-${index}`}>
-              <span className="flex items-center gap-2 whitespace-nowrap">
-                <Zap className="w-3.5 h-3.5 text-white shrink-0 fill-white" />
-                <span>{text}</span>
-              </span>
-            </React.Fragment>
-          ))}
-          {/* Duplicate Copy for Seamless Infinite Scrolling */}
-          {activeAnnouncements.map((text, index) => (
-            <React.Fragment key={`a2-${index}`}>
-              <span className="flex items-center gap-2 whitespace-nowrap">
-                <Zap className="w-3.5 h-3.5 text-white shrink-0 fill-white" />
-                <span>{text}</span>
-              </span>
-            </React.Fragment>
-          ))}
+      {headerSettings?.showMarqueeTicker !== false && activeAnnouncements.length > 0 && (
+        <div className="bg-black text-white py-2 px-4 text-xs font-bold tracking-wide overflow-hidden border-b border-neutral-800">
+          <div className="animate-marquee items-center gap-8 text-neutral-200">
+            {/* First Copy */}
+            {activeAnnouncements.map((text, index) => (
+              <React.Fragment key={`a1-${index}`}>
+                <span className="flex items-center gap-2 whitespace-nowrap">
+                  <Zap className="w-3.5 h-3.5 text-white shrink-0 fill-white" />
+                  <span>{text}</span>
+                </span>
+              </React.Fragment>
+            ))}
+            {/* Duplicate Copy for Seamless Infinite Scrolling */}
+            {activeAnnouncements.map((text, index) => (
+              <React.Fragment key={`a2-${index}`}>
+                <span className="flex items-center gap-2 whitespace-nowrap">
+                  <Zap className="w-3.5 h-3.5 text-white shrink-0 fill-white" />
+                  <span>{text}</span>
+                </span>
+              </React.Fragment>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 2. MAIN HEADER NAVIGATION BAR */}
       <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 lg:py-4.5 flex items-center justify-between gap-4 lg:gap-8">
