@@ -454,11 +454,18 @@ export const ProductsManagementTab: React.FC = () => {
             <button
               key={c.id}
               onClick={() => setCategoryFilter(c.name)}
-              className={`px-3 py-2 rounded-xl text-xs font-bold border whitespace-nowrap cursor-pointer ${
-                categoryFilter === c.name ? 'bg-black text-white border-black' : 'bg-white text-neutral-600 border-neutral-200'
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold border whitespace-nowrap flex items-center gap-1.5 cursor-pointer transition-all ${
+                categoryFilter === c.name ? 'bg-black text-white border-black shadow-subtle' : 'bg-white text-neutral-700 border-neutral-200 hover:border-neutral-400'
               }`}
             >
-              {c.name}
+              {c.image && (
+                <img
+                  src={c.image}
+                  alt={c.name}
+                  className="w-4 h-4 rounded-full object-cover border border-white/40 shrink-0"
+                />
+              )}
+              <span>{c.name}</span>
             </button>
           ))}
         </div>
@@ -1874,48 +1881,99 @@ export const ProductsManagementTab: React.FC = () => {
 
       {/* ADD NEW CATEGORY MODAL */}
       {showAddCategoryModal && (
-        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <form onSubmit={handleCreateCategorySubmit} className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-5 shadow-modal text-left">
+        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <form onSubmit={handleCreateCategorySubmit} className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full space-y-4 shadow-modal text-left my-8 max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
-              <h3 className="text-lg font-black text-black">Add New Food Category</h3>
-              <button type="button" onClick={() => setShowAddCategoryModal(false)} className="text-neutral-400 hover:text-black">
+              <div>
+                <h3 className="text-lg font-black text-black">Add New Food Category</h3>
+                <p className="text-xs text-neutral-500">Provide a name, cover photo, and description.</p>
+              </div>
+              <button type="button" onClick={() => setShowAddCategoryModal(false)} className="text-neutral-400 hover:text-black cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-4 text-xs font-bold">
+            <div className="space-y-4 text-xs font-bold overflow-y-auto pr-1 flex-1">
+              {/* Live Preview Card */}
+              <div className="p-3 bg-neutral-50 rounded-2xl border border-neutral-200 flex items-center gap-3">
+                <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-black/20 bg-neutral-200 shrink-0 shadow-sm">
+                  {newCatImage ? (
+                    <img src={newCatImage} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-[10px] text-neutral-400 text-center font-normal p-1">
+                      No Photo
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold block">Homepage Preview</span>
+                  <p className="text-sm font-black text-black truncate">{newCatName || 'Category Name'}</p>
+                </div>
+              </div>
+
               <div>
-                <label className="block text-neutral-500 mb-1">Category Name *</label>
+                <label className="block text-neutral-700 mb-1">Category Name *</label>
                 <input
                   type="text"
                   required
                   value={newCatName}
                   onChange={(e) => setNewCatName(e.target.value)}
-                  placeholder="e.g. Instant Mixes, Podi & Powders, Dry Fruits"
-                  className="w-full p-3 rounded-2xl border border-neutral-300 font-extrabold text-sm"
+                  placeholder="e.g. Instant Mixes, Podis & Powders, Dry Fruits"
+                  className="w-full p-3 rounded-2xl border border-neutral-300 font-extrabold text-sm focus:ring-1 focus:ring-black focus:outline-none"
                 />
               </div>
 
-              <DragDropImagePicker
-                label="Category Cover Image"
-                value={newCatImage}
-                onChange={setNewCatImage}
-                helperText="Upload or select category banner image."
-              />
+              {/* Photo Upload & Presets */}
+              <div className="space-y-2">
+                <DragDropImagePicker
+                  label="Category Photo Upload / URL *"
+                  value={newCatImage}
+                  onChange={setNewCatImage}
+                  helperText="Upload a photo for this category or choose a suggested preset below."
+                />
+
+                {/* Preset Suggestions */}
+                <div className="pt-1">
+                  <span className="text-[11px] text-neutral-500 block mb-1">Quick Food Photo Presets:</span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {[
+                      { name: '🌶️ Pickles', url: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=800&auto=format&fit=crop' },
+                      { name: '🍯 Sweets', url: 'https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?q=80&w=800&auto=format&fit=crop' },
+                      { name: '🫓 Snacks', url: 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?q=80&w=800&auto=format&fit=crop' },
+                      { name: '🌾 Podis', url: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?q=80&w=800&auto=format&fit=crop' },
+                      { name: '🥐 Bakery', url: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?q=80&w=800&auto=format&fit=crop' },
+                      { name: '🎁 Gift Boxes', url: 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?q=80&w=800&auto=format&fit=crop' },
+                    ].map((preset) => (
+                      <button
+                        key={preset.name}
+                        type="button"
+                        onClick={() => setNewCatImage(preset.url)}
+                        className={`px-2.5 py-1 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                          newCatImage === preset.url
+                            ? 'bg-black text-white border-black'
+                            : 'bg-neutral-100 border-neutral-200 text-neutral-700 hover:bg-neutral-200'
+                        }`}
+                      >
+                        {preset.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
 
               <div>
-                <label className="block text-neutral-500 mb-1">Description (Optional)</label>
+                <label className="block text-neutral-700 mb-1">Description (Optional)</label>
                 <input
                   type="text"
                   value={newCatDescription}
                   onChange={(e) => setNewCatDescription(e.target.value)}
                   placeholder="Brief description of this food category..."
-                  className="w-full p-3 rounded-2xl border border-neutral-300 font-sans"
+                  className="w-full p-3 rounded-2xl border border-neutral-300 font-medium focus:ring-1 focus:ring-black focus:outline-none"
                 />
               </div>
             </div>
 
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-3 pt-3 border-t border-neutral-100">
               <button
                 type="button"
                 onClick={() => setShowAddCategoryModal(false)}
@@ -1936,7 +1994,7 @@ export const ProductsManagementTab: React.FC = () => {
 
       {/* EDIT CATEGORY MODAL */}
       {editingCategory && (
-        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -1949,47 +2007,97 @@ export const ProductsManagementTab: React.FC = () => {
               setCategoryFilter(editingCategory.name.trim());
               setEditingCategory(null);
             }}
-            className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-5 shadow-modal text-left"
+            className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full space-y-4 shadow-modal text-left my-8 max-h-[90vh] flex flex-col"
           >
             <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
-              <h3 className="text-lg font-black text-black">Edit Category: {editingCategory.name}</h3>
-              <button type="button" onClick={() => setEditingCategory(null)} className="text-neutral-400 hover:text-black">
+              <div>
+                <h3 className="text-lg font-black text-black">Edit Category: {editingCategory.name}</h3>
+                <p className="text-xs text-neutral-500">Update category title, photo, and details.</p>
+              </div>
+              <button type="button" onClick={() => setEditingCategory(null)} className="text-neutral-400 hover:text-black cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-4 text-xs font-bold">
+            <div className="space-y-4 text-xs font-bold overflow-y-auto pr-1 flex-1">
+              {/* Live Preview Card */}
+              <div className="p-3 bg-neutral-50 rounded-2xl border border-neutral-200 flex items-center gap-3">
+                <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-black/20 bg-neutral-200 shrink-0 shadow-sm">
+                  {editingCategory.image ? (
+                    <img src={editingCategory.image} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-[10px] text-neutral-400 text-center font-normal p-1">
+                      No Photo
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold block">Homepage Preview</span>
+                  <p className="text-sm font-black text-black truncate">{editingCategory.name || 'Category Name'}</p>
+                </div>
+              </div>
+
               <div>
-                <label className="block text-neutral-500 mb-1">Category Name *</label>
+                <label className="block text-neutral-700 mb-1">Category Name *</label>
                 <input
                   type="text"
                   required
                   value={editingCategory.name}
                   onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
-                  className="w-full p-3 rounded-2xl border border-neutral-300 font-extrabold text-sm"
+                  className="w-full p-3 rounded-2xl border border-neutral-300 font-extrabold text-sm focus:ring-1 focus:ring-black focus:outline-none"
                 />
               </div>
 
-              <DragDropImagePicker
-                label="Category Cover Image"
-                value={editingCategory.image || ''}
-                onChange={(url) => setEditingCategory({ ...editingCategory, image: url })}
-                helperText="Upload or select category banner image."
-              />
+              <div className="space-y-2">
+                <DragDropImagePicker
+                  label="Category Photo Upload / URL *"
+                  value={editingCategory.image || ''}
+                  onChange={(url) => setEditingCategory({ ...editingCategory, image: url })}
+                  helperText="Upload category cover photo or paste an image link."
+                />
+
+                {/* Preset Suggestions */}
+                <div className="pt-1">
+                  <span className="text-[11px] text-neutral-500 block mb-1">Quick Food Photo Presets:</span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {[
+                      { name: '🌶️ Pickles', url: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=800&auto=format&fit=crop' },
+                      { name: '🍯 Sweets', url: 'https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?q=80&w=800&auto=format&fit=crop' },
+                      { name: '🫓 Snacks', url: 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?q=80&w=800&auto=format&fit=crop' },
+                      { name: '🌾 Podis', url: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?q=80&w=800&auto=format&fit=crop' },
+                      { name: '🥐 Bakery', url: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?q=80&w=800&auto=format&fit=crop' },
+                      { name: '🎁 Gift Boxes', url: 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?q=80&w=800&auto=format&fit=crop' },
+                    ].map((preset) => (
+                      <button
+                        key={preset.name}
+                        type="button"
+                        onClick={() => setEditingCategory({ ...editingCategory, image: preset.url })}
+                        className={`px-2.5 py-1 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                          editingCategory.image === preset.url
+                            ? 'bg-black text-white border-black'
+                            : 'bg-neutral-100 border-neutral-200 text-neutral-700 hover:bg-neutral-200'
+                        }`}
+                      >
+                        {preset.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
 
               <div>
-                <label className="block text-neutral-500 mb-1">Description</label>
+                <label className="block text-neutral-700 mb-1">Description</label>
                 <input
                   type="text"
                   value={editingCategory.description || ''}
                   onChange={(e) => setEditingCategory({ ...editingCategory, description: e.target.value })}
                   placeholder="Brief description of this food category..."
-                  className="w-full p-3 rounded-2xl border border-neutral-300 font-sans"
+                  className="w-full p-3 rounded-2xl border border-neutral-300 font-medium focus:ring-1 focus:ring-black focus:outline-none"
                 />
               </div>
             </div>
 
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-3 pt-3 border-t border-neutral-100">
               <button
                 type="button"
                 onClick={() => setEditingCategory(null)}

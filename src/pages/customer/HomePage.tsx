@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { WeeklyHighlightsShowcase } from '../../components/WeeklyHighlightsShowcase';
 import { ProductCard } from '../../components/ProductCard';
@@ -80,6 +80,15 @@ export const HomePage: React.FC = () => {
 
   const safeSlideIndex = currentSlide % (activeHeroSlides.length || 1);
   const currentBanner = activeHeroSlides[safeSlideIndex] || heroSlides[0];
+
+  const categoriesScrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollCategories = (direction: 'left' | 'right') => {
+    if (categoriesScrollRef.current) {
+      const scrollAmount = direction === 'left' ? -260 : 260;
+      categoriesScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white text-black font-sans space-y-10">
@@ -248,43 +257,78 @@ export const HomePage: React.FC = () => {
 
       </section>
 
-      {/* 2. EXPLORE CATEGORIES (3 ITEMS PER ROW GRID) */}
+      {/* 2. EXPLORE CATEGORIES (SIDE-BY-SIDE HORIZONTAL SCROLL) */}
       <section className="py-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-left space-y-4">
         <div className="flex items-center justify-between border-b border-neutral-200 pb-3">
           <div>
             <h2 className="text-xl sm:text-2xl font-black text-black tracking-tight">Explore Categories</h2>
-            <p className="text-xs text-neutral-500 font-medium">Tap to view authentic homemade specialties by category.</p>
+            <p className="text-xs text-neutral-500 font-medium">Scroll horizontally to explore authentic homemade specialties.</p>
           </div>
-          <button
-            onClick={() => navigate('/categories')}
-            className="text-xs font-extrabold text-black hover:underline flex items-center gap-1 cursor-pointer"
-          >
-            <span>View All ({categories.length})</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Scroll Left Button */}
+            <button
+              onClick={() => scrollCategories('left')}
+              className="p-2 rounded-full border border-neutral-300 hover:bg-black hover:text-white transition-colors cursor-pointer text-black"
+              title="Scroll Left"
+              aria-label="Scroll Categories Left"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            {/* Scroll Right Button */}
+            <button
+              onClick={() => scrollCategories('right')}
+              className="p-2 rounded-full border border-neutral-300 hover:bg-black hover:text-white transition-colors cursor-pointer text-black"
+              title="Scroll Right"
+              aria-label="Scroll Categories Right"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => navigate('/categories')}
+              className="text-xs font-extrabold text-black hover:underline flex items-center gap-1 cursor-pointer pl-1 sm:pl-2"
+            >
+              <span className="hidden sm:inline">View All</span>
+              <span>({categories.length})</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
-        {/* Category Grid (Responsive 2 cols on mobile, 3 on tablet/desktop) */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-6 py-4">
+        {/* Categories Side-by-Side Horizontal Scroll Container */}
+        <div
+          ref={categoriesScrollRef}
+          className="flex items-start gap-4 sm:gap-6 overflow-x-auto no-scrollbar scroll-smooth py-3 px-1 snap-x"
+        >
           {categories.map((cat) => (
             <div
               key={cat.id}
               onClick={() => navigate(`/products?category=${encodeURIComponent(cat.name)}`)}
-              className="group flex flex-col items-center cursor-pointer text-center space-y-2 py-1"
+              className="group flex flex-col items-center cursor-pointer text-center space-y-2 shrink-0 snap-start select-none w-24 sm:w-28 md:w-32 transition-transform duration-200"
             >
-              {/* 1:1 Aspect-Square Circle Photo Container */}
-              <div className="w-20 h-20 sm:w-28 sm:h-28 md:w-32 md:h-32 aspect-square rounded-full overflow-hidden border-2 sm:border-4 border-neutral-100 group-hover:border-black shadow-modal group-hover:scale-105 transition-all duration-300 bg-neutral-100 p-0.5">
+              {/* Circular Photo Container */}
+              <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 aspect-square rounded-full overflow-hidden border-2 sm:border-3 border-neutral-200 group-hover:border-black shadow-sm group-hover:shadow-lg group-hover:scale-105 transition-all duration-300 bg-neutral-100 p-0.5 relative">
                 <img
-                  src={cat.image}
+                  src={cat.image || 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=400&auto=format&fit=crop'}
                   alt={cat.name}
-                  className="w-full h-full object-cover rounded-full group-hover:rotate-3 transition-transform duration-500"
+                  className="w-full h-full object-cover rounded-full group-hover:rotate-2 transition-transform duration-500"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src =
+                      'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=400&auto=format&fit=crop';
+                  }}
                 />
               </div>
 
-              {/* Bold Title Underneath */}
-              <span className="text-xs sm:text-sm font-extrabold text-black group-hover:underline leading-tight">
-                {cat.name}
-              </span>
+              {/* Bold Title & Count Underneath */}
+              <div className="w-full px-1">
+                <span className="text-xs sm:text-sm font-extrabold text-black group-hover:underline leading-tight block truncate">
+                  {cat.name}
+                </span>
+                {cat.itemCount !== undefined && cat.itemCount > 0 && (
+                  <span className="text-[10px] text-neutral-400 font-medium block mt-0.5">
+                    {cat.itemCount} items
+                  </span>
+                )}
+              </div>
             </div>
           ))}
         </div>

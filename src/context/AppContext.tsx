@@ -564,6 +564,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
 
   useEffect(() => {
+    localStorage.setItem('aura_categories', JSON.stringify(categories));
+  }, [categories]);
+
+  useEffect(() => {
+    localStorage.setItem('aura_products', JSON.stringify(products));
+  }, [products]);
+
+  useEffect(() => {
     localStorage.setItem('aura_hero_banners', JSON.stringify(heroBanners));
   }, [heroBanners]);
 
