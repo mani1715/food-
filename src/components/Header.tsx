@@ -92,7 +92,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
       </div>
 
       {/* 2. MAIN HEADER NAVIGATION BAR */}
-      <div className="w-full max-w-[1500px] mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-3 lg:gap-6">
+      <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-3.5 flex items-center justify-between gap-4 lg:gap-6">
         
         {/* Left Side: Brand Logo & Mobile Menu Toggle */}
         <div className="flex items-center gap-2 sm:gap-4 shrink-0">
@@ -105,9 +105,9 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
 
-          {/* Store Logo */}
-          <div onClick={() => navigate('/')} className="flex items-center cursor-pointer group shrink-0 relative z-30 py-0.5">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 lg:w-18 lg:h-18 xl:w-20 xl:h-20 rounded-full overflow-hidden border-2 border-neutral-900 bg-black flex items-center justify-center shadow-md group-hover:scale-105 group-hover:shadow-lg transition-all duration-300 shrink-0">
+          {/* Circular Overhanging Brand Logo (Exact match with reference) */}
+          <div onClick={() => navigate('/')} className="flex items-center cursor-pointer group shrink-0 relative z-30 -mb-6 sm:-mb-8 lg:-mb-11 mt-0.5">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 lg:w-30 lg:h-30 xl:w-34 xl:h-34 rounded-full overflow-hidden shadow-2xl group-hover:scale-105 transition-all duration-300 shrink-0 bg-black border-2 border-neutral-900 flex items-center justify-center">
               <img
                 src={siteLogo && siteLogo !== '/aishu-logo.jpg' ? siteLogo : '/aishu-logo.png'}
                 alt="Aishu Foods Logo"
@@ -117,18 +117,18 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
           </div>
         </div>
 
-        {/* Center: Category Navigation Links (Desktop - Evenly Distributed Single Row) */}
-        <nav className="hidden lg:flex flex-1 items-center justify-center gap-x-3.5 xl:gap-x-5 2xl:gap-x-7 px-2">
+        {/* Center: Category Navigation Links (Centered Balanced 2-Row / Multi-Category Layout) */}
+        <nav className="hidden lg:flex flex-1 flex-wrap items-center justify-center gap-x-6 xl:gap-x-8 gap-y-1.5 px-4 max-w-[850px] mx-auto">
           {categoryMenus.map((menu) => {
             const hasSub = menu.subCategories && menu.subCategories.length > 0;
             const isActive = location.pathname + location.search === menu.path;
 
             return (
-              <div key={menu.label} className="relative group py-2">
+              <div key={menu.label} className="relative group">
                 <button
                   onClick={() => navigate(menu.path)}
-                  className={`flex items-center gap-1 py-1 text-[11px] xl:text-xs 2xl:text-[13px] font-extrabold hover:text-black transition-colors cursor-pointer whitespace-nowrap tracking-wider uppercase ${
-                    isActive ? 'text-black font-black border-b-2 border-black' : 'text-neutral-800'
+                  className={`flex items-center gap-1.5 py-1 text-xs xl:text-[13px] font-bold hover:text-black transition-colors cursor-pointer whitespace-nowrap tracking-wide uppercase ${
+                    isActive ? 'text-black font-extrabold border-b-2 border-black' : 'text-neutral-800'
                   }`}
                 >
                   <span>{menu.label}</span>
@@ -139,7 +139,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
 
                 {/* Hover Dropdown Sub-Menu */}
                 {hasSub && (
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-0.5 w-56 bg-white border border-neutral-200 rounded-2xl shadow-modal opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 p-2 space-y-1 text-left">
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 w-56 bg-white border border-neutral-200 rounded-2xl shadow-modal opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 p-2 space-y-1 text-left">
                     {menu.subCategories?.map((sub) => (
                       <button
                         key={sub.label}
@@ -157,16 +157,16 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
         </nav>
 
         {/* Right Side: Action Icons (Search, Wishlist, Profile, Track, Cart) */}
-        <div className="flex items-center justify-end gap-1.5 sm:gap-2.5 lg:gap-3 shrink-0">
+        <div className="flex items-center justify-end gap-2 sm:gap-3 lg:gap-4 shrink-0">
           
           {/* Search Icon */}
           {headerSettings?.showSearch !== false && (
             <button
               onClick={onOpenSearch}
-              className="p-2 sm:p-2.5 text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer"
+              className="p-2 sm:p-2.5 text-neutral-800 hover:text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer"
               title="Search Store"
             >
-              <Search className="w-5 h-5 sm:w-5.5 sm:h-5.5" />
+              <Search className="w-5 h-5 sm:w-5.5 sm:h-5.5 stroke-[1.75]" />
             </button>
           )}
 
@@ -174,10 +174,10 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
           {headerSettings?.showWishlist !== false && (
             <button
               onClick={() => navigate('/wishlist')}
-              className="relative p-2 sm:p-2.5 text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer"
+              className="relative p-2 sm:p-2.5 text-neutral-800 hover:text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer"
               title="Wishlist"
             >
-              <Heart className="w-5 h-5 sm:w-5.5 sm:h-5.5" />
+              <Heart className="w-5 h-5 sm:w-5.5 sm:h-5.5 stroke-[1.75]" />
               {wishlistProductIds.length > 0 && (
                 <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black text-white text-[9px] font-bold flex items-center justify-center">
                   {wishlistProductIds.length}
@@ -190,10 +190,10 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
           {headerSettings?.showAccount !== false && (
             <button
               onClick={() => navigate('/profile')}
-              className="p-2 sm:p-2.5 text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer"
+              className="p-2 sm:p-2.5 text-neutral-800 hover:text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer"
               title="Account Profile"
             >
-              <User className="w-5 h-5 sm:w-5.5 sm:h-5.5" />
+              <User className="w-5 h-5 sm:w-5.5 sm:h-5.5 stroke-[1.75]" />
             </button>
           )}
 
@@ -201,10 +201,10 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
           {headerSettings?.showTrackOrder !== false && (
             <button
               onClick={() => navigate('/track-order')}
-              className="p-2 sm:p-2.5 text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer hidden sm:block"
+              className="p-2 sm:p-2.5 text-neutral-800 hover:text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer hidden sm:block"
               title="Track Order"
             >
-              <Package className="w-5 h-5 sm:w-5.5 sm:h-5.5" />
+              <Package className="w-5 h-5 sm:w-5.5 sm:h-5.5 stroke-[1.75]" />
             </button>
           )}
 
@@ -212,10 +212,10 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
           {headerSettings?.showCart !== false && (
             <button
               onClick={() => navigate('/cart')}
-              className="relative p-2 sm:p-2.5 text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer"
+              className="relative p-2 sm:p-2.5 text-neutral-800 hover:text-black hover:bg-neutral-100 rounded-full transition-colors cursor-pointer"
               title="Shopping Cart"
             >
-              <ShoppingBag className="w-5 h-5 sm:w-5.5 sm:h-5.5" />
+              <ShoppingBag className="w-5 h-5 sm:w-5.5 sm:h-5.5 stroke-[1.75]" />
               {cartCount > 0 && (
                 <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black text-white text-[9px] font-bold flex items-center justify-center">
                   {cartCount}
