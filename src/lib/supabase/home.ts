@@ -42,7 +42,7 @@ export const fetchHeroBanners = async (): Promise<HeroBannerSlide[]> => {
 
   if (!data) return [];
 
-  return data.map((b: DbHeroBanner) => ({
+  return data.map((b: any) => ({
     id: b.id,
     image: b.image_url,
     badge: b.badge,
@@ -53,6 +53,9 @@ export const fetchHeroBanners = async (): Promise<HeroBannerSlide[]> => {
     enabled: b.is_enabled,
     objectPosition: (b.object_position as any) || 'center',
     objectFit: (b.object_fit as any) || 'cover',
+    imageScale: b.image_scale !== undefined && b.image_scale !== null ? Number(b.image_scale) : (b.imageScale !== undefined ? Number(b.imageScale) : 1),
+    panOffsetX: b.pan_offset_x !== undefined && b.pan_offset_x !== null ? Number(b.pan_offset_x) : (b.panOffsetX !== undefined ? Number(b.panOffsetX) : 0),
+    panOffsetY: b.pan_offset_y !== undefined && b.pan_offset_y !== null ? Number(b.pan_offset_y) : (b.panOffsetY !== undefined ? Number(b.panOffsetY) : 0),
   }));
 };
 
@@ -171,21 +174,29 @@ export const deleteHomeSectionFromDb = async (id: string) => {
 export const saveHeroBannersInDb = async (banners: HeroBannerSlide[]) => {
   for (let idx = 0; idx < banners.length; idx++) {
     const b = banners[idx];
-    await supabase.from('hero_banners').upsert([
-      {
-        id: b.id,
-        image_url: b.image,
-        badge: b.badge || null,
-        title: b.title,
-        subtitle: b.subtitle || null,
-        cta_text: b.ctaText || 'Shop Now',
-        cta_link: b.ctaLink || '/products',
-        is_enabled: b.enabled,
-        display_order: idx,
-        object_position: b.objectPosition || 'center',
-        object_fit: b.objectFit || 'cover',
-      },
-    ]);
+    const payload: any = {
+      id: b.id,
+      image_url: b.image,
+      badge: b.badge || null,
+      title: b.title,
+      subtitle: b.subtitle || null,
+      cta_text: b.ctaText || 'Shop Now',
+      cta_link: b.ctaLink || '/products',
+      is_enabled: b.enabled,
+      display_order: idx,
+      object_position: b.objectPosition || 'center',
+      object_fit: b.objectFit || 'cover',
+      image_scale: b.imageScale ?? 1,
+      pan_offset_x: b.panOffsetX ?? 0,
+      pan_offset_y: b.panOffsetY ?? 0,
+    };
+    const { error } = await supabase.from('hero_banners').upsert([payload]);
+    if (error) {
+      delete payload.image_scale;
+      delete payload.pan_offset_x;
+      delete payload.pan_offset_y;
+      await supabase.from('hero_banners').upsert([payload]);
+    }
   }
 };
 

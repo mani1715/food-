@@ -106,9 +106,9 @@ export const HomePage: React.FC = () => {
             slide.objectFit === 'contain' ? 'object-contain' :
             slide.objectFit === 'fill' ? 'object-fill' : 'object-cover';
 
-          const zoomScale = slide.imageScale !== undefined ? slide.imageScale : 1;
-          const panX = slide.panOffsetX || 0;
-          const panY = slide.panOffsetY || 0;
+          const zoomScale = typeof slide.imageScale === 'number' ? slide.imageScale : (Number(slide.imageScale) || 1);
+          const panX = typeof slide.panOffsetX === 'number' ? slide.panOffsetX : (Number(slide.panOffsetX) || 0);
+          const panY = typeof slide.panOffsetY === 'number' ? slide.panOffsetY : (Number(slide.panOffsetY) || 0);
 
           return (
             <div

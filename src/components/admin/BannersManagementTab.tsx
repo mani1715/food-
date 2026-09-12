@@ -244,10 +244,17 @@ export const BannersManagementTab: React.FC = () => {
     e.preventDefault();
     if (!bannerForm.title.trim() || !bannerForm.image.trim()) return;
 
+    const formattedBanner: Omit<HeroBannerSlide, 'id'> = {
+      ...bannerForm,
+      imageScale: typeof bannerForm.imageScale === 'number' ? bannerForm.imageScale : (Number(bannerForm.imageScale) || 1),
+      panOffsetX: typeof bannerForm.panOffsetX === 'number' ? bannerForm.panOffsetX : (Number(bannerForm.panOffsetX) || 0),
+      panOffsetY: typeof bannerForm.panOffsetY === 'number' ? bannerForm.panOffsetY : (Number(bannerForm.panOffsetY) || 0),
+    };
+
     if (editingBannerId) {
-      updateHeroBanner(editingBannerId, bannerForm);
+      updateHeroBanner(editingBannerId, formattedBanner);
     } else {
-      addHeroBanner(bannerForm);
+      addHeroBanner(formattedBanner);
     }
 
     setShowBannerModal(false);

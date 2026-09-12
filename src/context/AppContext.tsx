@@ -487,7 +487,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setHomeSections(dbSectionsResult.value);
         }
         if (dbBannersResult.status === 'fulfilled' && dbBannersResult.value.length > 0) {
-          setHeroBanners(dbBannersResult.value);
+          const localBanners = getInitialState<HeroBannerSlide[]>('aura_hero_banners', []);
+          const merged = dbBannersResult.value.map((dbBanner) => {
+            const local = localBanners.find((lb) => lb.id === dbBanner.id);
+            return {
+              ...dbBanner,
+              imageScale: dbBanner.imageScale !== undefined ? dbBanner.imageScale : (local?.imageScale ?? 1),
+              panOffsetX: dbBanner.panOffsetX !== undefined ? dbBanner.panOffsetX : (local?.panOffsetX ?? 0),
+              panOffsetY: dbBanner.panOffsetY !== undefined ? dbBanner.panOffsetY : (local?.panOffsetY ?? 0),
+            };
+          });
+          setHeroBanners(merged);
         }
         if (dbAnnouncementsResult.status === 'fulfilled' && dbAnnouncementsResult.value.length > 0) {
           setHeaderAnnouncements(dbAnnouncementsResult.value);
@@ -552,6 +562,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [subAdmins, setSubAdmins] = useState<SubAdmin[]>(() =>
     getInitialState('aura_sub_admins', [])
   );
+
+  useEffect(() => {
+    localStorage.setItem('aura_hero_banners', JSON.stringify(heroBanners));
+  }, [heroBanners]);
+
+  useEffect(() => {
+    localStorage.setItem('aura_header_announcements', JSON.stringify(headerAnnouncements));
+  }, [headerAnnouncements]);
 
   useEffect(() => {
     localStorage.setItem('aura_header_settings', JSON.stringify(headerSettings));
