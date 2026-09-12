@@ -74,12 +74,17 @@ export const WelcomeOfferNotificationModal: React.FC = () => {
               <div
                 onClick={() => {
                   handleClose();
-                  navigate(`/product/${dayProduct.id}`);
+                  const target = weeklyHighlights.specialOfDay.redirectLink || `/product/${dayProduct.id}`;
+                  if (target.startsWith('http')) {
+                    window.location.href = target;
+                  } else {
+                    navigate(target);
+                  }
                 }}
                 className="p-4 rounded-2xl bg-neutral-950 text-white flex items-center justify-between gap-3 cursor-pointer hover:border-white transition-all border border-neutral-800 shadow-subtle group"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <img src={dayProduct.image} alt={dayProduct.name} className="w-14 h-14 rounded-xl object-cover border border-neutral-800 shrink-0" />
+                  <img src={weeklyHighlights.specialOfDay.image || dayProduct.image} alt={dayProduct.name} className="w-14 h-14 rounded-xl object-cover border border-neutral-800 shrink-0" />
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 mb-0.5">
                       <span className="bg-white text-black text-[9px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -105,12 +110,17 @@ export const WelcomeOfferNotificationModal: React.FC = () => {
               <div
                 onClick={() => {
                   handleClose();
-                  navigate(`/product/${weekProduct.id}`);
+                  const target = weeklyHighlights.specialOfWeek.redirectLink || `/product/${weekProduct.id}`;
+                  if (target.startsWith('http')) {
+                    window.location.href = target;
+                  } else {
+                    navigate(target);
+                  }
                 }}
                 className="p-4 rounded-2xl bg-white text-black border-2 border-black flex items-center justify-between gap-3 cursor-pointer hover:bg-neutral-50 transition-all shadow-subtle group"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <img src={weekProduct.image} alt={weekProduct.name} className="w-14 h-14 rounded-xl object-cover border border-neutral-200 shrink-0" />
+                  <img src={weeklyHighlights.specialOfWeek.image || weekProduct.image} alt={weekProduct.name} className="w-14 h-14 rounded-xl object-cover border border-neutral-200 shrink-0" />
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 mb-0.5">
                       <span className="bg-black text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-1">
