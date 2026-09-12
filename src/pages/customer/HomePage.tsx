@@ -294,10 +294,10 @@ export const HomePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Categories Side-by-Side Horizontal Scroll Container (Single Line) */}
+        {/* Categories Side-by-Side Horizontal Scroll Container (Single Line, Large Visibility) */}
         <div
           ref={categoriesScrollRef}
-          className="flex flex-nowrap items-start gap-4 sm:gap-6 overflow-x-auto no-scrollbar scroll-smooth py-3 px-1 snap-x w-full"
+          className="flex flex-nowrap items-start gap-4 sm:gap-6 md:gap-8 overflow-x-auto no-scrollbar scroll-smooth py-4 px-1 snap-x w-full"
         >
           {categories.map((cat) => {
             const zoomScale = typeof cat.imageScale === 'number' ? cat.imageScale : (Number(cat.imageScale) || 1);
@@ -308,10 +308,10 @@ export const HomePage: React.FC = () => {
               <div
                 key={cat.id}
                 onClick={() => navigate(`/products?category=${encodeURIComponent(cat.name)}`)}
-                className="group flex flex-col items-center cursor-pointer text-center space-y-2 shrink-0 flex-shrink-0 snap-start select-none w-24 sm:w-28 md:w-32 transition-transform duration-200"
+                className="group flex flex-col items-center cursor-pointer text-center space-y-2.5 shrink-0 flex-shrink-0 snap-start select-none w-28 sm:w-36 md:w-44 transition-transform duration-200"
               >
-                {/* Circular Photo Container */}
-                <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 aspect-square rounded-full overflow-hidden border-2 sm:border-3 border-neutral-200 group-hover:border-black shadow-sm group-hover:shadow-lg transition-all duration-300 bg-neutral-100 p-0.5 relative">
+                {/* Circular Photo Container (Big Size) */}
+                <div className="w-24 h-24 sm:w-32 sm:h-32 md:w-36 md:h-36 lg:w-40 lg:h-40 aspect-square rounded-full overflow-hidden border-3 sm:border-4 border-neutral-200 group-hover:border-black shadow-md group-hover:shadow-xl group-hover:scale-105 transition-all duration-300 bg-neutral-100 p-0.5 relative">
                   <img
                     src={cat.image || 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=400&auto=format&fit=crop'}
                     alt={cat.name}
@@ -329,11 +329,11 @@ export const HomePage: React.FC = () => {
 
                 {/* Bold Title & Count Underneath */}
                 <div className="w-full px-1">
-                  <span className="text-xs sm:text-sm font-extrabold text-black group-hover:underline leading-tight block truncate">
+                  <span className="text-sm sm:text-base font-black text-black group-hover:underline leading-tight block truncate">
                     {cat.name}
                   </span>
                   {cat.itemCount !== undefined && cat.itemCount > 0 && (
-                    <span className="text-[10px] text-neutral-400 font-medium block mt-0.5">
+                    <span className="text-xs text-neutral-500 font-semibold block mt-1">
                       {cat.itemCount} items
                     </span>
                   )}
