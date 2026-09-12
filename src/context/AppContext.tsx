@@ -183,7 +183,7 @@ interface AppContextType {
   // Orders Admin
   updateOrderStatus: (orderId: string, status: Order['orderStatus'], notes?: string, deliveryDays?: number) => void;
   updatePaymentStatus: (orderId: string, paymentStatus: Order['paymentStatus']) => void;
-  cancelOrder: (orderId: string, reason: string) => void;
+  cancelOrder: (orderId: string, reason: string, cancelledBy?: string) => void;
 
   // Settings & WhatsApp Admin
   setPaymentEnabled: (enabled: boolean) => void;
@@ -261,63 +261,47 @@ const DEFAULT_HOME_SECTIONS: HomeSection[] = [
   },
 ];
 
+const getMockOrderDate = (daysAgo: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  return d.toISOString().split('T')[0];
+};
+
 const INITIAL_MOCK_ORDERS: Order[] = [
   {
     id: 'ord-1001',
-    orderNumber: 'AURA-98214',
-    trackingCode: 'TRK-883921',
-    date: '2026-09-01',
+    orderNumber: 'AISHU-98214',
+    trackingCode: 'TRK-DEL-883921',
+    date: getMockOrderDate(0), // Today
     items: [
-      { product: MOCK_PRODUCTS[0], selectedWeight: '500g', unitPrice: 9.99, quantity: 2 },
-      { product: MOCK_PRODUCTS[5], selectedWeight: '500g', unitPrice: 12.99, quantity: 1 },
+      { product: MOCK_PRODUCTS[0] || MOCK_PRODUCTS[0], selectedWeight: '500g', unitPrice: 299, quantity: 2 },
+      { product: MOCK_PRODUCTS[5] || MOCK_PRODUCTS[0], selectedWeight: '500g', unitPrice: 349, quantity: 1 },
     ],
-    subtotal: 32.97,
+    subtotal: 947,
     deliveryFee: 0,
-    discount: 5.0,
-    total: 27.97,
+    discount: 50,
+    total: 897,
     status: 'Active',
-    orderStatus: 'shipped',
+    orderStatus: 'placed',
     paymentStatus: 'completed',
     deliveryAddress: MOCK_LOCATIONS[0],
-    paymentMethod: 'UPI / GPay',
+    paymentMethod: 'UPI / PhonePe',
     customerName: 'Anantha Lakshmi',
     customerPhone: '9876543210',
-    customerEmail: 'anantha@example.com',
+    customerEmail: 'anantha.l@gmail.com',
     deliveryDays: 2,
+    adminNotes: 'Customer requested medium spicy oil batch.',
   },
   {
     id: 'ord-1002',
-    orderNumber: 'AURA-97410',
-    trackingCode: 'TRK-554109',
-    date: '2026-08-25',
-    items: [{ product: MOCK_PRODUCTS[6], selectedWeight: '500g', unitPrice: 15.99, quantity: 1 }],
-    subtotal: 15.99,
-    deliveryFee: 3.5,
+    orderNumber: 'AISHU-97410',
+    trackingCode: 'TRK-DTDC-554109',
+    date: getMockOrderDate(0), // Today
+    items: [{ product: MOCK_PRODUCTS[1] || MOCK_PRODUCTS[0], selectedWeight: '500g', unitPrice: 249, quantity: 1 }],
+    subtotal: 249,
+    deliveryFee: 49,
     discount: 0,
-    total: 19.49,
-    status: 'Delivered',
-    orderStatus: 'delivered',
-    paymentStatus: 'completed',
-    deliveryAddress: MOCK_LOCATIONS[1],
-    paymentMethod: 'Credit Card',
-    customerName: 'Anantha Lakshmi',
-    customerPhone: '9876543210',
-    customerEmail: 'anantha@example.com',
-    deliveryDays: 3,
-  },
-  {
-    id: 'ord-1003',
-    orderNumber: 'AURA-96112',
-    trackingCode: 'TRK-991204',
-    date: '2026-09-02',
-    items: [
-      { product: MOCK_PRODUCTS[1], selectedWeight: '1kg', unitPrice: 16.99, quantity: 2 },
-      { product: MOCK_PRODUCTS[2], selectedWeight: '500g', unitPrice: 8.99, quantity: 1 },
-    ],
-    subtotal: 42.97,
-    deliveryFee: 0,
-    discount: 4.0,
-    total: 38.97,
+    total: 298,
     status: 'Active',
     orderStatus: 'processing',
     paymentStatus: 'completed',
@@ -333,22 +317,23 @@ const INITIAL_MOCK_ORDERS: Order[] = [
     customerPhone: '9988776655',
     customerEmail: 'srinivas.rao@gmail.com',
     deliveryDays: 1,
+    adminNotes: 'Batch cooking started in kitchen.',
   },
   {
-    id: 'ord-1004',
-    orderNumber: 'AURA-95208',
-    trackingCode: 'TRK-771402',
-    date: '2026-08-28',
+    id: 'ord-1003',
+    orderNumber: 'AISHU-96112',
+    trackingCode: 'TRK-BLUEDART-991204',
+    date: getMockOrderDate(1), // Yesterday
     items: [
-      { product: MOCK_PRODUCTS[3], selectedWeight: '500g', unitPrice: 7.99, quantity: 3 },
-      { product: MOCK_PRODUCTS[7], selectedWeight: '250g', unitPrice: 11.5, quantity: 2 },
+      { product: MOCK_PRODUCTS[2] || MOCK_PRODUCTS[0], selectedWeight: '1kg', unitPrice: 549, quantity: 2 },
+      { product: MOCK_PRODUCTS[3] || MOCK_PRODUCTS[0], selectedWeight: '500g', unitPrice: 299, quantity: 1 },
     ],
-    subtotal: 46.97,
-    deliveryFee: 2.5,
-    discount: 0,
-    total: 49.47,
-    status: 'Delivered',
-    orderStatus: 'delivered',
+    subtotal: 1397,
+    deliveryFee: 0,
+    discount: 100,
+    total: 1297,
+    status: 'Active',
+    orderStatus: 'ready_to_ship',
     paymentStatus: 'completed',
     deliveryAddress: {
       id: 'loc-vjz-1',
@@ -357,26 +342,28 @@ const INITIAL_MOCK_ORDERS: Order[] = [
       city: 'Vijayawada',
       pincode: '520002',
     },
-    paymentMethod: 'Cash on Delivery',
+    paymentMethod: 'UPI / GPay',
     customerName: 'Venkatesh K.',
     customerPhone: '9123456789',
     customerEmail: 'venkatesh.k@gmail.com',
     deliveryDays: 2,
+    courierPartner: 'Delhivery',
+    adminNotes: 'Packed in authentic ceramic Jadi with clean cloth seal.',
   },
   {
-    id: 'ord-1005',
-    orderNumber: 'AURA-94109',
-    trackingCode: 'TRK-334188',
-    date: '2026-08-20',
+    id: 'ord-1004',
+    orderNumber: 'AISHU-95208',
+    trackingCode: 'TRK-DEL-771402',
+    date: getMockOrderDate(2),
     items: [
-      { product: MOCK_PRODUCTS[4], selectedWeight: '1kg', unitPrice: 22.99, quantity: 1 },
+      { product: MOCK_PRODUCTS[4] || MOCK_PRODUCTS[0], selectedWeight: '500g', unitPrice: 399, quantity: 2 },
     ],
-    subtotal: 22.99,
+    subtotal: 798,
     deliveryFee: 0,
-    discount: 2.0,
-    total: 20.99,
-    status: 'Delivered',
-    orderStatus: 'delivered',
+    discount: 0,
+    total: 798,
+    status: 'Active',
+    orderStatus: 'shipped',
     paymentStatus: 'completed',
     deliveryAddress: {
       id: 'loc-vsp-1',
@@ -385,11 +372,65 @@ const INITIAL_MOCK_ORDERS: Order[] = [
       city: 'Visakhapatnam',
       pincode: '530017',
     },
-    paymentMethod: 'UPI / PhonePe',
+    paymentMethod: 'Credit Card',
     customerName: 'Priya Sharma',
     customerPhone: '9849012345',
     customerEmail: 'priya.s@gmail.com',
     deliveryDays: 3,
+    courierPartner: 'DTDC Express',
+  },
+  {
+    id: 'ord-1005',
+    orderNumber: 'AISHU-94109',
+    trackingCode: 'TRK-POST-334188',
+    date: getMockOrderDate(4),
+    items: [
+      { product: MOCK_PRODUCTS[0] || MOCK_PRODUCTS[0], selectedWeight: '1kg', unitPrice: 549, quantity: 1 },
+    ],
+    subtotal: 549,
+    deliveryFee: 0,
+    discount: 50,
+    total: 499,
+    status: 'Delivered',
+    orderStatus: 'delivered',
+    paymentStatus: 'completed',
+    deliveryAddress: MOCK_LOCATIONS[0],
+    paymentMethod: 'Cash on Delivery',
+    customerName: 'Rajesh Varma',
+    customerPhone: '9848011223',
+    customerEmail: 'rajesh.varma@yahoo.com',
+    deliveryDays: 2,
+  },
+  {
+    id: 'ord-1006',
+    orderNumber: 'AISHU-93005',
+    trackingCode: 'TRK-CAN-119283',
+    date: getMockOrderDate(1), // Yesterday
+    items: [
+      { product: MOCK_PRODUCTS[0] || MOCK_PRODUCTS[0], selectedWeight: '1kg', unitPrice: 549, quantity: 2 },
+    ],
+    subtotal: 1098,
+    deliveryFee: 0,
+    discount: 0,
+    total: 1098,
+    status: 'Cancelled',
+    orderStatus: 'cancelled',
+    paymentStatus: 'refunded',
+    deliveryAddress: {
+      id: 'loc-blr-1',
+      label: 'Home',
+      address: 'Indiranagar 100ft Road',
+      city: 'Bengaluru',
+      pincode: '560038',
+    },
+    paymentMethod: 'UPI / PhonePe',
+    customerName: 'Kavitha Reddy',
+    customerPhone: '9740112345',
+    customerEmail: 'kavitha.reddy@gmail.com',
+    deliveryDays: 3,
+    cancelReason: '🚨 Product Item Out of Stock / Kitchen Batch Exhausted: Raw mango seasonal harvest batch completed. Spoke with customer and initiated full refund.',
+    cancelledAt: `${getMockOrderDate(1)} 02:45 PM`,
+    cancelledBy: 'Store Admin',
   },
 ];
 
@@ -489,7 +530,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (dbCategoriesResult.status === 'fulfilled' && dbCategoriesResult.value.length > 0) {
           setCategories(dbCategoriesResult.value);
         }
-        if (dbOrdersResult.status === 'fulfilled') {
+        if (dbOrdersResult.status === 'fulfilled' && dbOrdersResult.value && dbOrdersResult.value.length > 0) {
           setOrders(dbOrdersResult.value);
         }
         if (dbSectionsResult.status === 'fulfilled' && dbSectionsResult.value.length > 0) {
@@ -1732,11 +1773,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast('Payment Status Updated', `Payment status updated to ${paymentStatus}.`, 'success');
   };
 
-  const cancelOrder = (orderId: string, reason: string) => {
+  const cancelOrder = (orderId: string, reason: string, cancelledBy = 'Store Admin') => {
+    const now = new Date();
+    const cancelledAt = `${now.toISOString().split('T')[0]} ${now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`;
+
     setOrders((prev) =>
       prev.map((o) =>
         o.id === orderId || o.orderNumber === orderId
-          ? { ...o, orderStatus: 'cancelled', status: 'Cancelled', cancelReason: reason }
+          ? {
+              ...o,
+              orderStatus: 'cancelled',
+              status: 'Cancelled',
+              cancelReason: reason,
+              cancelledAt,
+              cancelledBy,
+            }
           : o
       )
     );
@@ -1746,7 +1797,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.warn('Could not cancel order in Supabase:', err)
       );
     }
-    addToast('Order Cancelled', 'Order has been cancelled.', 'info');
+    addToast('Order Cancelled 🚨', `Order #${orderId} marked as Cancelled.`, 'info');
   };
 
   // Settings & WhatsApp Admin

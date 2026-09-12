@@ -120,7 +120,7 @@ export interface Order {
   total: number;
   status: 'Active' | 'Delivered' | 'Cancelled';
   orderStatus: 'placed' | 'pending' | 'confirmed' | 'processing' | 'ready_to_ship' | 'shipped' | 'out for delivery' | 'delivered' | 'cancelled';
-  paymentStatus: 'pending' | 'completed' | 'failed';
+  paymentStatus: 'pending' | 'completed' | 'failed' | 'refunded';
   deliveryAddress: UserLocation;
   paymentMethod: string;
   customerName?: string;
@@ -129,6 +129,9 @@ export interface Order {
   adminNotes?: string;
   deliveryDays?: number;
   cancelReason?: string;
+  cancelledAt?: string;
+  cancelledBy?: string;
+  courierPartner?: string;
 }
 
 export interface ToastMessage {
