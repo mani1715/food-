@@ -689,12 +689,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const restockProduct = (productId: string, quantity: number, note = 'Inventory Restock') => {
     let prodName = '';
+    let oldQty = 0;
     let newQty = 0;
     setProducts((prev) =>
       prev.map((p) => {
         if (p.id === productId) {
           prodName = p.name;
-          newQty = (p.inventoryCount ?? 0) + quantity;
+          oldQty = p.inventoryCount ?? 0;
+          newQty = oldQty + quantity;
           return { ...p, inventoryCount: newQty, outOfStock: false, inStock: true };
         }
         return p;
@@ -717,6 +719,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       productName: prodName || 'Product',
       type: 'restock',
       quantity,
+      previousStock: oldQty,
+      newStock: newQty,
       date: now.toISOString().split('T')[0],
       time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       note,
@@ -724,19 +728,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setStockHistoryLogs((prev) => [newLog, ...prev]);
-    addToast('Stock Restocked ✅', `Added +${quantity} units to ${prodName || 'Product'}.`, 'success');
+    addToast('Stock Restocked ✅', `Added +${quantity} units to ${prodName || 'Product'} (Total: ${newQty}).`, 'success');
   };
 
   const destockProduct = (productId: string, quantity: number, note = 'Inventory Destock') => {
     let prodName = '';
+    let oldQty = 0;
     let newQty = 0;
     let isOut = false;
     setProducts((prev) =>
       prev.map((p) => {
         if (p.id === productId) {
           prodName = p.name;
-          const current = p.inventoryCount ?? 0;
-          newQty = Math.max(0, current - quantity);
+          oldQty = p.inventoryCount ?? 0;
+          newQty = Math.max(0, oldQty - quantity);
           isOut = newQty <= 0;
           return { ...p, inventoryCount: newQty, outOfStock: isOut, inStock: !isOut };
         }
@@ -760,6 +765,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       productName: prodName || 'Product',
       type: 'destock',
       quantity,
+      previousStock: oldQty,
+      newStock: newQty,
       date: now.toISOString().split('T')[0],
       time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       note,
@@ -767,7 +774,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setStockHistoryLogs((prev) => [newLog, ...prev]);
-    addToast('Stock Destocked 🔻', `Removed -${quantity} units from ${prodName || 'Product'}.`, 'info');
+    addToast('Stock Destocked 🔻', `Removed -${quantity} units from ${prodName || 'Product'} (${newQty} left).`, 'info');
   };
 
   const toggleProductOutOfStock = (productId: string, reason?: string) => {
@@ -1145,6 +1152,75 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       deliveryDays: 3,
     };
 
+    // 1. Deduct Stock in real-time for all sold products
+    if (cartItems.length > 0) {
+      const now = new Date();
+      const dateStr = now.toISOString().split('T')[0];
+      const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      setProducts((prevProducts) =>
+        prevProducts.map((p) => {
+          const purchasedItems = cartItems.filter((ci) => ci.product.id === p.id);
+          if (purchasedItems.length === 0) return p;
+
+          const totalPurchasedQty = purchasedItems.reduce((sum, item) => sum + item.quantity, 0);
+          const currentStock = p.inventoryCount ?? 100;
+          const newStock = Math.max(0, currentStock - totalPurchasedQty);
+          const isOut = newStock <= 0;
+
+          if (isSupabaseConfigured()) {
+            updateProductInDb(p.id, { inventoryCount: newStock, outOfStock: isOut }).catch(console.warn);
+            logStockMovementInDb(
+              p.id,
+              p.name,
+              'destock',
+              totalPurchasedQty,
+              `Live Order Sale #${newOrder.orderNumber} (${totalPurchasedQty} units)`
+            ).catch(console.warn);
+          }
+
+          if (newStock < 10 && newStock > 0) {
+            setTimeout(() => {
+              addToast('⚠️ Low Stock Alert', `"${p.name}" stock reduced to ${newStock} units left!`, 'info');
+            }, 500);
+          } else if (isOut) {
+            setTimeout(() => {
+              addToast('🚨 Out of Stock', `"${p.name}" has sold out and marked Out of Stock!`, 'error');
+            }, 500);
+          }
+
+          return {
+            ...p,
+            inventoryCount: newStock,
+            outOfStock: isOut,
+            inStock: !isOut,
+          };
+        })
+      );
+
+      // 2. Create Stock History Log entry for each purchased product
+      const newStockLogs: StockHistoryLog[] = cartItems.map((ci, idx) => {
+        const prod = products.find((p) => p.id === ci.product.id) || ci.product;
+        const currentStock = prod.inventoryCount ?? 100;
+        const newStock = Math.max(0, currentStock - ci.quantity);
+        return {
+          id: `log-sale-${Date.now()}-${idx}-${ci.product.id}`,
+          productId: ci.product.id,
+          productName: ci.product.name,
+          type: 'destock',
+          quantity: ci.quantity,
+          previousStock: currentStock,
+          newStock: newStock,
+          date: dateStr,
+          time: timeStr,
+          note: `Live Order Sale #${newOrder.orderNumber} (${ci.quantity} × ${ci.selectedWeight || '500g'})`,
+          adminName: 'Live Order System',
+        };
+      });
+
+      setStockHistoryLogs((prev) => [...newStockLogs, ...prev]);
+    }
+
     setOrders((prev) => [newOrder, ...prev]);
 
     if (isSupabaseConfigured()) {
@@ -1325,7 +1401,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addProduct = (product: Omit<Product, 'id'> & { id?: string }): Product => {
-    const newProd: Product = { ...product, id: product.id || `prod-${Date.now()}` };
+    const initialQty = typeof product.inventoryCount === 'number' ? product.inventoryCount : 100;
+    const isOut = Boolean(product.outOfStock) || initialQty <= 0;
+    const newProd: Product = {
+      ...product,
+      id: product.id || `prod-${Date.now()}`,
+      inventoryCount: initialQty,
+      outOfStock: isOut,
+      inStock: !isOut,
+    };
     setProducts((prev) => [newProd, ...prev]);
 
     if (isSupabaseConfigured()) {
@@ -1334,7 +1418,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       );
     }
 
-    addToast('Product Created', `${newProd.name} added to catalog.`, 'success');
+    const now = new Date();
+    const newLog: StockHistoryLog = {
+      id: `log-init-${Date.now()}`,
+      productId: newProd.id,
+      productName: newProd.name,
+      type: 'restock',
+      quantity: initialQty,
+      previousStock: 0,
+      newStock: initialQty,
+      date: now.toISOString().split('T')[0],
+      time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      note: 'Initial catalog stock batch added',
+      adminName: 'Store Admin',
+    };
+    setStockHistoryLogs((prev) => [newLog, ...prev]);
+
+    addToast('Product Created ✅', `${newProd.name} added to catalog with ${initialQty} units in stock.`, 'success');
     return newProd;
   };
 
@@ -1854,7 +1954,64 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const cancelOrder = (orderId: string, reason: string, cancelledBy = 'Store Admin') => {
     const now = new Date();
-    const cancelledAt = `${now.toISOString().split('T')[0]} ${now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`;
+    const dateStr = now.toISOString().split('T')[0];
+    const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    const cancelledAt = `${dateStr} ${timeStr}`;
+
+    const targetOrder = orders.find((o) => o.id === orderId || o.orderNumber === orderId);
+
+    // Restore stock if the order had purchased items
+    if (targetOrder && targetOrder.items && targetOrder.items.length > 0 && targetOrder.orderStatus !== 'cancelled') {
+      setProducts((prevProducts) =>
+        prevProducts.map((p) => {
+          const matchingItems = targetOrder.items.filter((item) => item.product.id === p.id);
+          if (matchingItems.length === 0) return p;
+
+          const totalRestoredQty = matchingItems.reduce((acc, item) => acc + item.quantity, 0);
+          const currentStock = p.inventoryCount ?? 0;
+          const newStock = currentStock + totalRestoredQty;
+
+          if (isSupabaseConfigured()) {
+            updateProductInDb(p.id, { inventoryCount: newStock, outOfStock: false }).catch(console.warn);
+            logStockMovementInDb(
+              p.id,
+              p.name,
+              'restock',
+              totalRestoredQty,
+              `Order #${targetOrder.orderNumber} Cancelled - Restocked units (${reason})`
+            ).catch(console.warn);
+          }
+
+          return {
+            ...p,
+            inventoryCount: newStock,
+            outOfStock: false,
+            inStock: true,
+          };
+        })
+      );
+
+      const restoreLogs: StockHistoryLog[] = targetOrder.items.map((ci, idx) => {
+        const prod = products.find((p) => p.id === ci.product.id) || ci.product;
+        const currentStock = prod.inventoryCount ?? 0;
+        const newStock = currentStock + ci.quantity;
+        return {
+          id: `log-cancel-${Date.now()}-${idx}-${ci.product.id}`,
+          productId: ci.product.id,
+          productName: ci.product.name,
+          type: 'restock',
+          quantity: ci.quantity,
+          previousStock: currentStock,
+          newStock: newStock,
+          date: dateStr,
+          time: timeStr,
+          note: `Order #${targetOrder.orderNumber} Cancelled - Restocked items (${reason})`,
+          adminName: cancelledBy,
+        };
+      });
+
+      setStockHistoryLogs((prev) => [...restoreLogs, ...prev]);
+    }
 
     setOrders((prev) =>
       prev.map((o) =>
@@ -1876,7 +2033,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.warn('Could not cancel order in Supabase:', err)
       );
     }
-    addToast('Order Cancelled 🚨', `Order #${orderId} marked as Cancelled.`, 'info');
+    addToast('Order Cancelled 🚨', `Order #${orderId} marked as Cancelled & stock restored.`, 'info');
   };
 
   // Settings & WhatsApp Admin
