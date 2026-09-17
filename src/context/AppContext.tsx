@@ -15,6 +15,7 @@ import {
   HeroBannerSlide,
   HeaderAnnouncement,
   Coupon,
+  CartOffer,
   HeaderSettings,
   StockHistoryLog,
   SubAdmin,
@@ -33,6 +34,7 @@ import {
   MOCK_HERO_BANNERS,
   MOCK_HEADER_ANNOUNCEMENTS,
   MOCK_COUPONS,
+  MOCK_CART_OFFERS,
 } from '../data/mockData';
 import {
   sanitizeInput,
@@ -110,6 +112,29 @@ interface AppContextType {
     cartSubtotal: number
   ) => { success: boolean; discountAmount: number; coupon?: Coupon; message: string };
 
+  // Cart Offers State & Actions
+  cartOffers: CartOffer[];
+  addCartOffer: (offer: Omit<CartOffer, 'id' | 'usageCount'>) => void;
+  updateCartOffer: (id: string, updated: Partial<CartOffer>) => void;
+  deleteCartOffer: (id: string) => void;
+  toggleCartOfferStatus: (id: string) => void;
+  getBestCartOffer: (
+    cartItemsList: CartItem[],
+    cartSubtotal: number
+  ) => {
+    eligibleOffers: CartOffer[];
+    bestOffer?: CartOffer;
+    discountAmount: number;
+    freeGift?: string;
+    isFreeShipping: boolean;
+    nextOffer?: {
+      offer: CartOffer;
+      missingAmount: number;
+      missingQuantity: number;
+      progressPercentage: number;
+    };
+  };
+
   // Admin Data & State
   isAdminAuthenticated: boolean;
   deliveryCities: DeliveryCity[];
@@ -128,7 +153,7 @@ interface AppContextType {
   createOrder: (
     paymentMethod: string,
     deliveryAddress: UserLocation,
-    customerDetails?: { name?: string; phone?: string; email?: string }
+    customerDetails?: { name?: string; phone?: string; email?: string; discount?: number; appliedOfferTitle?: string }
   ) => Order;
   updateUserProfile: (profile: Partial<UserProfile>) => void;
   setCurrentLocation: (loc: UserLocation) => void;
@@ -523,6 +548,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
   const [coupons, setCoupons] = useState<Coupon[]>(() =>
     getInitialState('aura_coupons', MOCK_COUPONS)
+  );
+  const [cartOffers, setCartOffers] = useState<CartOffer[]>(() =>
+    getInitialState('aura_cart_offers', MOCK_CART_OFFERS)
   );
 
   // Load data from Supabase when configured
@@ -994,6 +1022,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [coupons]);
 
   useEffect(() => {
+    localStorage.setItem('aura_cart_offers', JSON.stringify(cartOffers));
+  }, [cartOffers]);
+
+  useEffect(() => {
     localStorage.setItem('aura_delivery_cities', JSON.stringify(deliveryCities));
   }, [deliveryCities]);
 
@@ -1111,11 +1143,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const createOrder = (
     paymentMethod: string,
     deliveryAddress: UserLocation,
-    customerDetails?: { name?: string; phone?: string; email?: string }
+    customerDetails?: { name?: string; phone?: string; email?: string; discount?: number; appliedOfferTitle?: string }
   ): Order => {
     const subtotal = cartItems.reduce((acc, i) => acc + i.unitPrice * i.quantity, 0);
-    const deliveryFee = subtotal > 35 ? 0 : 3.5;
-    const total = subtotal + deliveryFee;
+    const appliedDiscount = customerDetails?.discount || 0;
+    const deliveryFee = subtotal > 499 || subtotal === 0 ? 0 : 49;
+    const total = Math.max(0, subtotal + deliveryFee - appliedDiscount);
 
     const finalName = sanitizeInput(customerDetails?.name || userProfile.name || 'Customer');
     const finalPhone = sanitizeInput(customerDetails?.phone || userProfile.phone || '');
@@ -1139,7 +1172,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       items: [...cartItems],
       subtotal,
       deliveryFee,
-      discount: 0,
+      discount: appliedDiscount,
       total,
       status: 'Active',
       orderStatus: 'placed',
@@ -1815,6 +1848,129 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   };
 
+
+  // Cart Offers Admin & Dynamic Evaluation
+  const addCartOffer = (offer: Omit<CartOffer, 'id' | 'usageCount'>) => {
+    const newOffer: CartOffer = {
+      ...offer,
+      id: `co-${Date.now()}`,
+      title: sanitizeInput(offer.title).trim(),
+      description: sanitizeInput(offer.description).trim(),
+      usageCount: 0,
+    };
+    setCartOffers((prev) => [newOffer, ...prev]);
+    addToast('Cart Offer Created 🎉', `Cart offer "${newOffer.title}" activated.`, 'success');
+  };
+
+  const updateCartOffer = (id: string, updated: Partial<CartOffer>) => {
+    setCartOffers((prev) =>
+      prev.map((o) =>
+        o.id === id
+          ? {
+              ...o,
+              ...updated,
+              title: updated.title ? sanitizeInput(updated.title).trim() : o.title,
+              description: updated.description ? sanitizeInput(updated.description).trim() : o.description,
+            }
+          : o
+      )
+    );
+    addToast('Cart Offer Updated', 'Cart offer settings saved successfully.', 'success');
+  };
+
+  const deleteCartOffer = (id: string) => {
+    setCartOffers((prev) => prev.filter((o) => o.id !== id));
+    addToast('Cart Offer Removed', 'Cart offer removed from store.', 'info');
+  };
+
+  const toggleCartOfferStatus = (id: string) => {
+    setCartOffers((prev) =>
+      prev.map((o) => (o.id === id ? { ...o, enabled: !o.enabled } : o))
+    );
+    addToast('Status Updated', 'Cart offer status toggled.', 'info');
+  };
+
+  const getBestCartOffer = (
+    cartItemsList: CartItem[],
+    cartSubtotal: number
+  ) => {
+    const totalQty = cartItemsList.reduce((acc, i) => acc + i.quantity, 0);
+    const activeOffers = cartOffers.filter((o) => {
+      if (!o.enabled) return false;
+      if (o.expiryDate) {
+        const today = new Date().toISOString().split('T')[0];
+        if (today > o.expiryDate) return false;
+      }
+      return true;
+    });
+
+    const eligibleOffers: CartOffer[] = [];
+    let nextOffer: { offer: CartOffer; missingAmount: number; missingQuantity: number; progressPercentage: number } | undefined = undefined;
+    let smallestMissingVal = Infinity;
+
+    for (const offer of activeOffers) {
+      const meetsValue = cartSubtotal >= offer.minCartValue;
+      const meetsQty = !offer.minCartQuantity || totalQty >= offer.minCartQuantity;
+
+      if (meetsValue && meetsQty) {
+        eligibleOffers.push(offer);
+      } else {
+        const missingAmount = Math.max(0, offer.minCartValue - cartSubtotal);
+        const missingQuantity = offer.minCartQuantity ? Math.max(0, offer.minCartQuantity - totalQty) : 0;
+
+        if (missingAmount > 0 && missingAmount < smallestMissingVal) {
+          smallestMissingVal = missingAmount;
+          const progress = Math.min(99, Math.round((cartSubtotal / offer.minCartValue) * 100));
+          nextOffer = {
+            offer,
+            missingAmount,
+            missingQuantity,
+            progressPercentage: Math.max(10, progress),
+          };
+        }
+      }
+    }
+
+    let bestOffer: CartOffer | undefined = undefined;
+    let bestDiscount = 0;
+    let freeGift: string | undefined = undefined;
+    let isFreeShipping = false;
+
+    for (const offer of eligibleOffers) {
+      let currentDiscount = 0;
+      if (offer.offerType === 'percentage') {
+        const raw = Math.round((cartSubtotal * offer.discountValue) / 100);
+        currentDiscount = offer.maxDiscount ? Math.min(raw, offer.maxDiscount) : raw;
+      } else if (offer.offerType === 'flat') {
+        currentDiscount = Math.min(cartSubtotal, offer.discountValue);
+      } else if (offer.offerType === 'free_shipping') {
+        isFreeShipping = true;
+      } else if (offer.offerType === 'free_gift') {
+        if (offer.freeGiftItemName) {
+          freeGift = offer.freeGiftItemName;
+        }
+      }
+
+      if (currentDiscount > bestDiscount) {
+        bestDiscount = currentDiscount;
+        bestOffer = offer;
+      }
+    }
+
+    if (!bestOffer && eligibleOffers.length > 0) {
+      bestOffer = eligibleOffers[0];
+    }
+
+    return {
+      eligibleOffers,
+      bestOffer,
+      discountAmount: bestDiscount,
+      freeGift,
+      isFreeShipping,
+      nextOffer,
+    };
+  };
+
   // Locations & Suggestions Admin
   const addDeliveryCity = (city: Omit<DeliveryCity, 'id'>) => {
     const newCity: DeliveryCity = { ...city, id: `city-${Date.now()}` };
@@ -2174,6 +2330,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateCoupon,
         deleteCoupon,
         validateAndApplyCoupon,
+        cartOffers,
+        addCartOffer,
+        updateCartOffer,
+        deleteCartOffer,
+        toggleCartOfferStatus,
+        getBestCartOffer,
         addDeliveryCity,
         updateDeliveryCity,
         deleteDeliveryCity,

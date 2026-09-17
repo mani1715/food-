@@ -5,7 +5,7 @@ import { ChevronDown, ChevronUp, ArrowUp, ShoppingBag, Gift, Sparkles, X } from 
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const FloatingBundleWidget: React.FC = () => {
-  const { cartItems } = useApp();
+  const { cartItems, getBestCartOffer } = useApp();
   const navigate = useNavigate();
 
   const [isMinimized, setIsMinimized] = useState(false);
@@ -14,30 +14,23 @@ export const FloatingBundleWidget: React.FC = () => {
   const itemCount = cartItems.reduce((acc, i) => acc + i.quantity, 0);
   const subtotal = cartItems.reduce((acc, i) => acc + i.unitPrice * i.quantity, 0);
 
-  // Dynamic Discount Tier Logic
-  let discountAmount = 0;
-  let nextTierMessage = 'Add 2 items to get Rs.201 off.';
+  // Dynamic Cart Offer Evaluation
+  const { bestOffer, discountAmount, nextOffer } = getBestCartOffer(cartItems, subtotal);
+
+  let nextTierMessage = 'Add items to unlock exclusive Cart Offers!';
   let progressPercentage = 0;
 
-  if (itemCount >= 6) {
-    discountAmount = 603;
-    nextTierMessage = '🎉 Maximum tier achieved! You unlocked Rs.603 OFF!';
+  if (bestOffer && !nextOffer) {
+    nextTierMessage = `🎉 Maximum Tier: ${bestOffer.title} Unlocked!`;
     progressPercentage = 100;
-  } else if (itemCount >= 4) {
-    discountAmount = 402;
-    const needed = 6 - itemCount;
-    nextTierMessage = `Add ${needed} more to get Rs.603 off.`;
-    progressPercentage = 66;
-  } else if (itemCount >= 2) {
-    discountAmount = 201;
-    const needed = 4 - itemCount;
-    nextTierMessage = `Add ${needed} more to get Rs.402 off.`;
-    progressPercentage = 33;
-  } else {
-    const needed = 2 - itemCount;
-    nextTierMessage = `Add ${needed} more to get Rs.201 off.`;
-    progressPercentage = Math.round((itemCount / 2) * 33);
+  } else if (nextOffer) {
+    nextTierMessage = `Add ₹${nextOffer.missingAmount} more to unlock ${nextOffer.offer.title}!`;
+    progressPercentage = nextOffer.progressPercentage;
+  } else if (itemCount > 0) {
+    nextTierMessage = 'Great picks! Explore offers in your cart.';
+    progressPercentage = 25;
   }
+
 
   const handleScrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });

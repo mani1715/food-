@@ -1,4 +1,4 @@
-import { Product, ProductCategory, UserLocation, DeliveryCity, CitySuggestion, WhatsAppContact, WeeklyHighlights, HeroBannerSlide, HeaderAnnouncement, Coupon } from '../types';
+import { Product, ProductCategory, UserLocation, DeliveryCity, CitySuggestion, WhatsAppContact, WeeklyHighlights, HeroBannerSlide, HeaderAnnouncement, Coupon, CartOffer } from '../types';
 
 export const MOCK_HERO_BANNERS: HeroBannerSlide[] = [
   {
@@ -534,3 +534,75 @@ export const MOCK_COUPONS: Coupon[] = [
     usageCount: 52,
   },
 ];
+
+export const MOCK_CART_OFFERS: CartOffer[] = [
+  {
+    id: 'co-1',
+    title: 'Flat ₹100 Cart Savings',
+    description: 'Instant Flat ₹100 OFF applied automatically when your cart reaches ₹999 or more.',
+    offerType: 'flat',
+    discountValue: 100,
+    minCartValue: 999,
+    badgeText: 'POPULAR CART OFFER',
+    expiryDate: '2026-12-31',
+    enabled: true,
+    autoApply: true,
+    usageCount: 210,
+  },
+  {
+    id: 'co-2',
+    title: '15% Mega Cart Discount',
+    description: 'Enjoy 15% OFF across your complete cart on orders above ₹1,499 (Max discount ₹350).',
+    offerType: 'percentage',
+    discountValue: 15,
+    minCartValue: 1499,
+    maxDiscount: 350,
+    badgeText: 'FESTIVE SPECIAL',
+    expiryDate: '2026-12-31',
+    enabled: true,
+    autoApply: true,
+    usageCount: 145,
+  },
+  {
+    id: 'co-3',
+    title: 'Free Express Delivery on ₹499+',
+    description: 'Free doorstep shipping automatically unlocked on carts reaching ₹499.',
+    offerType: 'free_shipping',
+    discountValue: 49,
+    minCartValue: 499,
+    badgeText: 'FREE SHIPPING',
+    expiryDate: '2026-12-31',
+    enabled: true,
+    autoApply: true,
+    usageCount: 520,
+  },
+  {
+    id: 'co-4',
+    title: 'Free Traditional Sweet Box',
+    description: 'Complimentary 200g Authentic A2 Ghee Mysore Pak Box included with cart value ₹1,999+.',
+    offerType: 'free_gift',
+    discountValue: 0,
+    minCartValue: 1999,
+    freeGiftItemName: 'Complimentary Pure Ghee Mysore Pak Box (200g)',
+    badgeText: 'FREE GIFT',
+    expiryDate: '2026-12-31',
+    enabled: true,
+    autoApply: true,
+    usageCount: 88,
+  },
+  {
+    id: 'co-5',
+    title: 'Super Saver 3+ Items Bundle',
+    description: 'Buy any 3 or more homemade items and get Flat ₹150 OFF.',
+    offerType: 'flat',
+    discountValue: 150,
+    minCartValue: 700,
+    minCartQuantity: 3,
+    badgeText: 'QUANTITY BONUS',
+    expiryDate: '2026-12-31',
+    enabled: true,
+    autoApply: false,
+    usageCount: 63,
+  },
+];
+

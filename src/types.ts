@@ -209,6 +209,24 @@ export interface Coupon {
   usageCount: number;
 }
 
+export interface CartOffer {
+  id: string;
+  title: string;
+  description: string;
+  offerType: 'percentage' | 'flat' | 'free_shipping' | 'free_gift';
+  discountValue: number; // e.g. 10 (10%) or 150 (₹150)
+  minCartValue: number;  // min subtotal in ₹ to qualify
+  minCartQuantity?: number; // min item count to qualify
+  maxDiscount?: number; // maximum discount cap for percentage offers
+  freeGiftItemName?: string; // name of complimentary item (e.g. "Mini Kaju Katli Sample Box")
+  badgeText?: string; // e.g. "HOT DEAL", "LIMITED TIME", "POPULAR"
+  expiryDate?: string;
+  enabled: boolean;
+  autoApply: boolean; // if true, automatically applied when qualifying; otherwise 1-click apply
+  usageCount?: number;
+}
+
+
 export type AdminTab =
   | 'analytics'
   | 'products'

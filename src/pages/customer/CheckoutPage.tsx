@@ -6,7 +6,7 @@ import { MapPin, CreditCard, Smartphone, DollarSign, ShieldCheck, ArrowRight, Na
 import { validateEmail, validateIndianPhone, validatePincode } from '../../utils/security';
 
 export const CheckoutPage: React.FC = () => {
-  const { cartItems, userProfile, locations, currentLocation, setCurrentLocation, createOrder, addToast } = useApp();
+  const { cartItems, userProfile, locations, currentLocation, setCurrentLocation, createOrder, addToast, getBestCartOffer } = useApp();
   const navigate = useNavigate();
 
   // Form State for Customer & Delivery Details
@@ -25,8 +25,13 @@ export const CheckoutPage: React.FC = () => {
   const [isDetecting, setIsDetecting] = useState(false);
 
   const subtotal = cartItems.reduce((acc, i) => acc + i.unitPrice * i.quantity, 0);
-  const deliveryFee = subtotal > 499 ? 0 : 49;
-  const grandTotal = subtotal + deliveryFee;
+
+  // Dynamic Cart Offer Evaluation
+  const { bestOffer, discountAmount: cartOfferDiscount, freeGift, isFreeShipping } = getBestCartOffer(cartItems, subtotal);
+  const isFreeDeliveryQualified = subtotal > 499 || isFreeShipping || (bestOffer?.offerType === 'free_shipping');
+  const deliveryFee = isFreeDeliveryQualified || subtotal === 0 ? 0 : 49;
+  const grandTotal = Math.max(0, subtotal + deliveryFee - cartOfferDiscount);
+
 
   // Auto-Detect GPS Location directly into Checkout Fields
   const handleAutoDetectLocation = () => {
@@ -127,11 +132,14 @@ export const CheckoutPage: React.FC = () => {
         name: customerName.trim(),
         phone: customerPhone.trim(),
         email: customerEmail.trim(),
+        discount: cartOfferDiscount,
+        appliedOfferTitle: bestOffer?.title,
       });
       setIsProcessing(false);
       navigate(`/order-success/${order.id}`);
     }, 1500);
   };
+
 
   return (
     <div className="min-h-screen bg-white text-black py-8 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto text-left space-y-8">
@@ -374,12 +382,30 @@ export const CheckoutPage: React.FC = () => {
 
             <div className="space-y-1.5 text-xs text-neutral-600 font-mono pt-2">
               <div className="flex justify-between"><span>Subtotal</span><span>₹{subtotal}</span></div>
-              <div className="flex justify-between"><span>Shipping</span><span>{deliveryFee === 0 ? 'FREE' : `₹${deliveryFee}`}</span></div>
+              <div className="flex justify-between">
+                <span>Shipping</span>
+                <span className={deliveryFee === 0 ? 'text-emerald-700 font-bold' : ''}>
+                  {deliveryFee === 0 ? 'FREE' : `₹${deliveryFee}`}
+                </span>
+              </div>
+              {cartOfferDiscount > 0 && (
+                <div className="flex justify-between text-emerald-700 font-bold">
+                  <span>Cart Offer ({bestOffer?.title})</span>
+                  <span>-₹{cartOfferDiscount}</span>
+                </div>
+              )}
+              {freeGift && (
+                <div className="flex justify-between text-amber-700 font-bold">
+                  <span>Free Gift Included</span>
+                  <span>{freeGift}</span>
+                </div>
+              )}
               <div className="flex justify-between text-black font-extrabold text-base pt-3 border-t border-neutral-200 font-sans">
                 <span>Total Amount</span>
                 <span className="font-mono">₹{grandTotal}</span>
               </div>
             </div>
+
 
             <button
               type="submit"
