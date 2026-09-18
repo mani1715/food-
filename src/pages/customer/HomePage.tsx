@@ -86,7 +86,7 @@ export const HomePage: React.FC = () => {
 
   const scrollCategories = (direction: 'left' | 'right') => {
     if (categoriesScrollRef.current) {
-      const scrollAmount = direction === 'left' ? -260 : 260;
+      const scrollAmount = direction === 'left' ? -Math.max(categoriesScrollRef.current.clientWidth * 0.75, 280) : Math.max(categoriesScrollRef.current.clientWidth * 0.75, 280);
       categoriesScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
     }
   };
@@ -94,7 +94,7 @@ export const HomePage: React.FC = () => {
   const scrollSection = (secId: string, direction: 'left' | 'right') => {
     const el = sectionScrollRefs.current[secId];
     if (el) {
-      const scrollAmount = direction === 'left' ? -320 : 320;
+      const scrollAmount = direction === 'left' ? -Math.max(el.clientWidth * 0.75, 320) : Math.max(el.clientWidth * 0.75, 320);
       el.scrollBy({ left: scrollAmount, behavior: 'smooth' });
     }
   };
@@ -303,53 +303,76 @@ export const HomePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Categories Side-by-Side Horizontal Scroll Container (Single Line, Large Visibility) */}
-        <div
-          ref={categoriesScrollRef}
-          className="flex flex-nowrap items-start gap-4 sm:gap-6 md:gap-8 overflow-x-auto no-scrollbar scroll-smooth py-4 px-1 snap-x w-full"
-        >
-          {categories.map((cat) => {
-            const zoomScale = typeof cat.imageScale === 'number' ? cat.imageScale : (Number(cat.imageScale) || 1);
-            const panX = typeof cat.panOffsetX === 'number' ? cat.panOffsetX : (Number(cat.panOffsetX) || 0);
-            const panY = typeof cat.panOffsetY === 'number' ? cat.panOffsetY : (Number(cat.panOffsetY) || 0);
+        {/* Categories Side-by-Side Horizontal Scroll Container with Floating Left/Right Arrow Navigation */}
+        <div className="relative group/categories w-full">
+          {/* Floating Left Arrow */}
+          <button
+            onClick={() => scrollCategories('left')}
+            className="absolute -left-2 sm:-left-4 top-1/2 -translate-y-1/2 z-20 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/95 text-black hover:bg-black hover:text-white border border-neutral-300 shadow-xl flex items-center justify-center transition-all cursor-pointer hover:scale-110 active:scale-95"
+            title="Scroll Categories Left"
+            aria-label="Scroll Categories Left"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
 
-            return (
-              <div
-                key={cat.id}
-                onClick={() => navigate(`/products?category=${encodeURIComponent(cat.name)}`)}
-                className="group flex flex-col items-center cursor-pointer text-center space-y-2.5 shrink-0 flex-shrink-0 snap-start select-none w-28 sm:w-36 md:w-44 transition-transform duration-200"
-              >
-                {/* Circular Photo Container (Big Size) */}
-                <div className="w-24 h-24 sm:w-32 sm:h-32 md:w-36 md:h-36 lg:w-40 lg:h-40 aspect-square rounded-full overflow-hidden border-3 sm:border-4 border-neutral-200 group-hover:border-black shadow-md group-hover:shadow-xl group-hover:scale-105 transition-all duration-300 bg-neutral-100 p-0.5 relative">
-                  <img
-                    src={cat.image || 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=400&auto=format&fit=crop'}
-                    alt={cat.name}
-                    style={{
-                      transform: `translate(${panX}px, ${panY}px) scale(${zoomScale})`,
-                      transformOrigin: 'center center',
-                    }}
-                    className="w-full h-full object-cover rounded-full transition-transform duration-300"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src =
-                        'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=400&auto=format&fit=crop';
-                    }}
-                  />
-                </div>
+          {/* Categories Horizontal Scroll List */}
+          <div
+            ref={categoriesScrollRef}
+            className="flex flex-nowrap items-start gap-4 sm:gap-6 md:gap-8 overflow-x-auto no-scrollbar scroll-smooth py-4 px-1 snap-x w-full"
+          >
+            {categories.map((cat) => {
+              const zoomScale = typeof cat.imageScale === 'number' ? cat.imageScale : (Number(cat.imageScale) || 1);
+              const panX = typeof cat.panOffsetX === 'number' ? cat.panOffsetX : (Number(cat.panOffsetX) || 0);
+              const panY = typeof cat.panOffsetY === 'number' ? cat.panOffsetY : (Number(cat.panOffsetY) || 0);
 
-                {/* Bold Title & Count Underneath */}
-                <div className="w-full px-1">
-                  <span className="text-sm sm:text-base font-black text-black group-hover:underline leading-tight block truncate">
-                    {cat.name}
-                  </span>
-                  {cat.itemCount !== undefined && cat.itemCount > 0 && (
-                    <span className="text-xs text-neutral-500 font-semibold block mt-1">
-                      {cat.itemCount} items
+              return (
+                <div
+                  key={cat.id}
+                  onClick={() => navigate(`/products?category=${encodeURIComponent(cat.name)}`)}
+                  className="group flex flex-col items-center cursor-pointer text-center space-y-2.5 shrink-0 flex-shrink-0 snap-start select-none w-28 sm:w-36 md:w-44 transition-transform duration-200"
+                >
+                  {/* Circular Photo Container (Big Size) */}
+                  <div className="w-24 h-24 sm:w-32 sm:h-32 md:w-36 md:h-36 lg:w-40 lg:h-40 aspect-square rounded-full overflow-hidden border-3 sm:border-4 border-neutral-200 group-hover:border-black shadow-md group-hover:shadow-xl group-hover:scale-105 transition-all duration-300 bg-neutral-100 p-0.5 relative">
+                    <img
+                      src={cat.image || 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=400&auto=format&fit=crop'}
+                      alt={cat.name}
+                      style={{
+                        transform: `translate(${panX}px, ${panY}px) scale(${zoomScale})`,
+                        transformOrigin: 'center center',
+                      }}
+                      className="w-full h-full object-cover rounded-full transition-transform duration-300"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src =
+                          'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=400&auto=format&fit=crop';
+                      }}
+                    />
+                  </div>
+
+                  {/* Bold Title & Count Underneath */}
+                  <div className="w-full px-1">
+                    <span className="text-sm sm:text-base font-black text-black group-hover:underline leading-tight block truncate">
+                      {cat.name}
                     </span>
-                  )}
+                    {cat.itemCount !== undefined && cat.itemCount > 0 && (
+                      <span className="text-xs text-neutral-500 font-semibold block mt-1">
+                        {cat.itemCount} items
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+
+          {/* Floating Right Arrow */}
+          <button
+            onClick={() => scrollCategories('right')}
+            className="absolute -right-2 sm:-right-4 top-1/2 -translate-y-1/2 z-20 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/95 text-black hover:bg-black hover:text-white border border-neutral-300 shadow-xl flex items-center justify-center transition-all cursor-pointer hover:scale-110 active:scale-95"
+            title="Scroll Categories Right"
+            aria-label="Scroll Categories Right"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
         </div>
       </section>
 
@@ -454,20 +477,42 @@ export const HomePage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Single-Line Side-by-Side Horizontal Scroll Container (Scrolls Left to Right) */}
-              <div
-                ref={(el) => (sectionScrollRefs.current[sec.id] = el)}
-                className="flex flex-nowrap items-stretch gap-3.5 sm:gap-5 md:gap-6 overflow-x-auto no-scrollbar scroll-smooth py-3 px-1 snap-x snap-mandatory w-full"
-              >
-                {sectionProducts.map((product) => (
-                  <div
-                    key={product.id}
-                    className="w-[235px] sm:w-[280px] md:w-[295px] lg:w-[310px] shrink-0 flex-shrink-0 snap-start select-none flex flex-col"
-                  >
-                    <ProductCard product={product} />
-                  </div>
-                ))}
+              {/* Single-Line Side-by-Side Horizontal Scroll Container (Scrolls Left to Right with Floating Arrow Controls) */}
+              <div className="relative group/carousel w-full">
+                {/* Floating Left Arrow on Product Row */}
+                <button
+                  onClick={() => scrollSection(sec.id, 'left')}
+                  className="absolute -left-2 sm:-left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/95 text-black hover:bg-black hover:text-white border border-neutral-300 shadow-2xl flex items-center justify-center transition-all cursor-pointer hover:scale-110 active:scale-95"
+                  title="Scroll Left"
+                  aria-label={`Scroll ${sec.title} Left`}
+                >
+                  <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+                </button>
 
+                {/* Horizontal Scroll Product List */}
+                <div
+                  ref={(el) => (sectionScrollRefs.current[sec.id] = el)}
+                  className="flex flex-nowrap items-stretch gap-3.5 sm:gap-5 md:gap-6 overflow-x-auto no-scrollbar scroll-smooth py-3 px-1 snap-x snap-mandatory w-full"
+                >
+                  {sectionProducts.map((product) => (
+                    <div
+                      key={product.id}
+                      className="w-[235px] sm:w-[280px] md:w-[295px] lg:w-[310px] shrink-0 flex-shrink-0 snap-start select-none flex flex-col"
+                    >
+                      <ProductCard product={product} />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Floating Right Arrow on Product Row */}
+                <button
+                  onClick={() => scrollSection(sec.id, 'right')}
+                  className="absolute -right-2 sm:-right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/95 text-black hover:bg-black hover:text-white border border-neutral-300 shadow-2xl flex items-center justify-center transition-all cursor-pointer hover:scale-110 active:scale-95"
+                  title="Scroll Right"
+                  aria-label={`Scroll ${sec.title} Right`}
+                >
+                  <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+                </button>
               </div>
             </section>
           );
