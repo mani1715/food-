@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
-import { WeeklyHighlights, HighlightItem, HomeSection } from '../../types';
+import { WeeklyHighlights, HighlightItem, HomeSection, Product, ProductCategory } from '../../types';
 import {
   Star,
   Tag,
-  Flame,
   Save,
   Plus,
   Trash2,
@@ -25,10 +24,9 @@ import {
   Crosshair,
   Link as LinkIcon,
   Image as ImageIcon,
-  Sliders,
-  ExternalLink,
   Edit3,
   X,
+  ChevronRight,
 } from 'lucide-react';
 import { DragDropImagePicker } from './DragDropImagePicker';
 
@@ -37,8 +35,10 @@ const SectionEditor: React.FC<{
   sec: HomeSection;
   secIdx: number;
   totalSections: number;
-  products: ReturnType<typeof useApp>['products'];
-  categories: ReturnType<typeof useApp>['categories'];
+  products: Product[];
+  categories: ProductCategory[];
+  isExpanded: boolean;
+  onToggleExpand: () => void;
   onToggleProduct: (secId: string, prodId: string) => void;
   onSelectAllInCat: (secId: string, catName: string) => void;
   onDeselectAllInCat: (secId: string, catName: string) => void;
@@ -47,12 +47,14 @@ const SectionEditor: React.FC<{
   onDelete: (secId: string) => void;
   onMoveUp: (secId: string) => void;
   onMoveDown: (secId: string) => void;
-}> = ({
+}> = React.memo(({
   sec,
   secIdx,
   totalSections,
   products,
   categories,
+  isExpanded,
+  onToggleExpand,
   onToggleProduct,
   onSelectAllInCat,
   onDeselectAllInCat,
@@ -76,6 +78,7 @@ const SectionEditor: React.FC<{
 
   // Close dropdown on outside click
   useEffect(() => {
+    if (!isCategoryDropdownOpen) return;
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsCategoryDropdownOpen(false);
@@ -83,14 +86,14 @@ const SectionEditor: React.FC<{
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [isCategoryDropdownOpen]);
 
   useEffect(() => {
     setDraftBadge(sec.badge || '');
     setDraftTitle(sec.title);
     setDraftSubtitle(sec.subtitle || '');
     setIsDirty(false);
-  }, [sec.id]);
+  }, [sec.id, sec.title, sec.badge, sec.subtitle]);
 
   const handleSave = () => {
     onSave(sec.id, {
@@ -101,25 +104,48 @@ const SectionEditor: React.FC<{
     setIsDirty(false);
   };
 
+  // Efficient Category count calculation in single pass
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, { total: number; selected: number }> = {};
+    for (const cat of categories) {
+      counts[cat.name.toLowerCase()] = { total: 0, selected: 0 };
+    }
+    const secProductSet = new Set(sec.productIds);
+    for (const prod of products) {
+      const key = prod.category.toLowerCase();
+      if (!counts[key]) counts[key] = { total: 0, selected: 0 };
+      counts[key].total++;
+      if (secProductSet.has(prod.id)) {
+        counts[key].selected++;
+      }
+    }
+    return counts;
+  }, [products, categories, sec.productIds]);
+
   // Filter products by selected category and search query
-  const filteredProducts = products.filter((p) => {
-    const matchesCategory = selectedCategory === 'All' || p.category.toLowerCase() === selectedCategory.toLowerCase();
-    const matchesSearch = !searchQuery.trim() || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.category.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  const filteredProducts = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const selCat = selectedCategory.toLowerCase();
+    return products.filter((p) => {
+      const matchesCategory = selectedCategory === 'All' || p.category.toLowerCase() === selCat;
+      const matchesSearch = !query || p.name.toLowerCase().includes(query) || p.category.toLowerCase().includes(query);
+      return matchesCategory && matchesSearch;
+    });
+  }, [products, selectedCategory, searchQuery]);
 
   return (
-    <div className={`bg-neutral-50 border rounded-3xl p-6 space-y-6 shadow-subtle transition-all ${isDirty ? 'border-black ring-2 ring-black/10' : 'border-neutral-200 hover:border-neutral-400'}`}>
+    <div className={`bg-neutral-50 border rounded-3xl p-5 sm:p-6 space-y-5 shadow-subtle transition-all ${isDirty ? 'border-black ring-2 ring-black/10' : 'border-neutral-200 hover:border-neutral-300'}`}>
       {/* Sticky Save Bar — appears at top when changes are pending */}
       {isDirty && (
-        <div className="sticky top-2 z-20 -mx-6 -mt-6 mb-2 px-6 py-3 bg-black rounded-t-3xl flex items-center justify-between">
+        <div className="sticky top-2 z-20 -mx-5 sm:-mx-6 -mt-5 sm:-mt-6 mb-2 px-5 sm:px-6 py-3 bg-black rounded-t-3xl flex items-center justify-between shadow-lg">
           <span className="text-xs font-bold text-white flex items-center gap-2">
             <ChevronUp className="w-3.5 h-3.5" />
             Unsaved changes in "{draftTitle || sec.title}"
           </span>
           <button
+            type="button"
             onClick={handleSave}
-            className="px-4 py-1.5 bg-white text-black text-xs font-extrabold rounded-xl hover:bg-neutral-100 flex items-center gap-1.5 cursor-pointer"
+            className="px-4 py-1.5 bg-white text-black text-xs font-extrabold rounded-xl hover:bg-neutral-100 flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 transition-transform"
           >
             <Save className="w-3.5 h-3.5" />
             Save Changes
@@ -128,21 +154,23 @@ const SectionEditor: React.FC<{
       )}
 
       {/* Section Header Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-200 pb-4">
-        <div className="flex items-center gap-3">
-          <span className="w-8 h-8 rounded-2xl bg-black text-white font-mono text-xs font-bold flex items-center justify-center shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-200/80 pb-4">
+        <div className="flex items-center gap-3 cursor-pointer group select-none" onClick={onToggleExpand}>
+          <span className="w-8 h-8 rounded-2xl bg-black text-white font-mono text-xs font-bold flex items-center justify-center shrink-0 shadow-xs">
             {secIdx + 1}
           </span>
           <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-extrabold text-black font-sans">{sec.title}</h3>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-base font-extrabold text-black font-sans group-hover:text-neutral-700 transition-colors">
+                {sec.title}
+              </h3>
               {sec.badge && (
                 <span className="px-2.5 py-0.5 bg-neutral-200 text-black text-[10px] font-extrabold rounded-full">
                   {sec.badge}
                 </span>
               )}
             </div>
-            <p className="text-xs text-neutral-500 font-medium">
+            <p className="text-xs text-neutral-500 font-medium mt-0.5">
               <strong className="text-black font-bold">{sec.productIds.length}</strong> products assigned to homepage
             </p>
           </div>
@@ -150,7 +178,7 @@ const SectionEditor: React.FC<{
 
         <div className="flex items-center gap-2 flex-wrap">
           {/* Reorder Buttons */}
-          <div className="flex items-center bg-white border border-neutral-200 rounded-xl p-0.5">
+          <div className="flex items-center bg-white border border-neutral-200 rounded-xl p-0.5 shadow-xs">
             <button
               type="button"
               disabled={secIdx === 0}
@@ -173,28 +201,46 @@ const SectionEditor: React.FC<{
 
           {isDirty && (
             <button
+              type="button"
               onClick={handleSave}
-              className="px-3 py-1.5 rounded-xl border bg-black text-white border-black text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-3 py-1.5 rounded-xl border bg-black text-white border-black text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
             >
               <Save className="w-3.5 h-3.5" />
               <span>Save</span>
             </button>
           )}
+
           <button
+            type="button"
             onClick={() => onToggleVisible(sec.id, !sec.enabled)}
-            className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-              sec.enabled ? 'bg-black text-white border-black' : 'bg-white text-neutral-400 border-neutral-200'
+            className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
+              sec.enabled ? 'bg-black text-white border-black' : 'bg-white text-neutral-400 border-neutral-200 hover:text-black'
             }`}
+            title={sec.enabled ? 'Visible on Homepage' : 'Hidden on Homepage'}
           >
             {sec.enabled ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-            <span>{sec.enabled ? 'Visible on Homepage' : 'Hidden'}</span>
+            <span>{sec.enabled ? 'Visible' : 'Hidden'}</span>
           </button>
+
           <button
+            type="button"
             onClick={() => setShowConfirmDelete(true)}
-            className="p-2 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
+            className="p-2 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer shadow-xs"
             title="Delete Section"
           >
             <Trash2 className="w-4 h-4" />
+          </button>
+
+          {/* Expand / Collapse Button */}
+          <button
+            type="button"
+            onClick={onToggleExpand}
+            className={`px-3 py-1.5 rounded-xl border text-xs font-extrabold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
+              isExpanded ? 'bg-neutral-200 text-black border-neutral-300' : 'bg-white text-black border-neutral-300 hover:border-black'
+            }`}
+          >
+            <span>{isExpanded ? 'Collapse' : 'Customize & Products'}</span>
+            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
         </div>
       </div>
@@ -204,255 +250,289 @@ const SectionEditor: React.FC<{
         <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl space-y-3">
           <p className="text-xs font-bold text-rose-800">Delete "{sec.title}" section from homepage?</p>
           <div className="flex gap-2">
-            <button onClick={() => setShowConfirmDelete(false)} className="flex-1 py-2 border border-neutral-200 rounded-xl text-xs font-bold cursor-pointer bg-white">Cancel</button>
-            <button onClick={() => onDelete(sec.id)} className="flex-1 py-2 bg-rose-600 text-white rounded-xl text-xs font-extrabold cursor-pointer">Yes, Delete Section</button>
+            <button type="button" onClick={() => setShowConfirmDelete(false)} className="flex-1 py-2 border border-neutral-200 rounded-xl text-xs font-bold cursor-pointer bg-white hover:bg-neutral-50">Cancel</button>
+            <button type="button" onClick={() => onDelete(sec.id)} className="flex-1 py-2 bg-rose-600 text-white rounded-xl text-xs font-extrabold cursor-pointer hover:bg-rose-700">Yes, Delete Section</button>
           </div>
         </div>
       )}
 
-      {/* Title & Subtitle Edit Inputs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-bold">
-        <div>
-          <label className="block text-neutral-500 mb-1">Badge / Tagline</label>
-          <input
-            type="text"
-            value={draftBadge}
-            onChange={(e) => { setDraftBadge(e.target.value); setIsDirty(true); }}
-            placeholder="e.g. Pure Ghee Delights"
-            className="w-full p-3 rounded-2xl border border-neutral-300 bg-white font-mono"
-          />
-        </div>
-        <div>
-          <label className="block text-neutral-500 mb-1">Section Heading Title *</label>
-          <input
-            type="text"
-            value={draftTitle}
-            onChange={(e) => { setDraftTitle(e.target.value); setIsDirty(true); }}
-            placeholder="e.g. Authentic Traditional Sweets"
-            className="w-full p-3 rounded-2xl border border-neutral-300 bg-white text-sm font-extrabold"
-          />
-        </div>
-        <div>
-          <label className="block text-neutral-500 mb-1">Subtitle / Description</label>
-          <input
-            type="text"
-            value={draftSubtitle}
-            onChange={(e) => { setDraftSubtitle(e.target.value); setIsDirty(true); }}
-            placeholder="Brief description of this section"
-            className="w-full p-3 rounded-2xl border border-neutral-300 bg-white font-sans"
-          />
-        </div>
-      </div>
-
-      {/* Product Assignment Picker with Category Dropdown & Filter */}
-      <div className="space-y-4 pt-2 border-t border-neutral-200">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <span className="text-xs font-extrabold uppercase tracking-wider text-black flex items-center gap-1.5">
-              <Layers className="w-4 h-4 text-neutral-600" />
-              <span>Select Products for "{sec.title}"</span>
-            </span>
-            <p className="text-[11px] text-neutral-500">Filter by category or search to choose products for this homepage section.</p>
+      {/* EXPANDED CONTENT (Rendered only when section is open for instant performance) */}
+      {isExpanded ? (
+        <div className="space-y-5 pt-1">
+          {/* Title & Subtitle Edit Inputs */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-bold">
+            <div>
+              <label className="block text-neutral-500 mb-1">Badge / Tagline</label>
+              <input
+                type="text"
+                value={draftBadge}
+                onChange={(e) => { setDraftBadge(e.target.value); setIsDirty(true); }}
+                placeholder="e.g. Pure Ghee Delights"
+                className="w-full p-3 rounded-2xl border border-neutral-300 bg-white font-mono focus:border-black focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-neutral-500 mb-1">Section Heading Title *</label>
+              <input
+                type="text"
+                value={draftTitle}
+                onChange={(e) => { setDraftTitle(e.target.value); setIsDirty(true); }}
+                placeholder="e.g. Authentic Traditional Sweets"
+                className="w-full p-3 rounded-2xl border border-neutral-300 bg-white text-sm font-extrabold focus:border-black focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-neutral-500 mb-1">Subtitle / Description</label>
+              <input
+                type="text"
+                value={draftSubtitle}
+                onChange={(e) => { setDraftSubtitle(e.target.value); setIsDirty(true); }}
+                placeholder="Brief description of this section"
+                className="w-full p-3 rounded-2xl border border-neutral-300 bg-white font-sans focus:border-black focus:outline-none"
+              />
+            </div>
           </div>
-          <span className="text-[11px] font-mono text-black font-bold bg-neutral-200 px-3 py-1 rounded-full shrink-0 self-start sm:self-auto">
-            {sec.productIds.length} Total Selected
-          </span>
-        </div>
 
-        {/* Category Selector Controls: Dropdown + Search */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-          {/* Category Dropdown with Arrow */}
-          <div className="relative" ref={dropdownRef}>
-            <button
-              type="button"
-              onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-              className="w-full sm:w-auto px-4 py-2.5 bg-white border border-neutral-300 hover:border-black rounded-2xl text-xs font-extrabold text-black flex items-center justify-between gap-2 transition-all cursor-pointer shadow-sm"
-            >
-              <div className="flex items-center gap-1.5">
-                <Filter className="w-3.5 h-3.5 text-neutral-500" />
-                <span>Category: <strong className="underline">{selectedCategory}</strong></span>
-                <span className="text-[10px] text-neutral-400 font-mono">
-                  ({selectedCategory === 'All' ? products.length : products.filter(p => p.category.toLowerCase() === selectedCategory.toLowerCase()).length})
+          {/* Product Assignment Picker with Category Dropdown & Filter */}
+          <div className="space-y-4 pt-3 border-t border-neutral-200/80">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <span className="text-xs font-extrabold uppercase tracking-wider text-black flex items-center gap-1.5">
+                  <Layers className="w-4 h-4 text-neutral-600" />
+                  <span>Select Products for "{sec.title}"</span>
                 </span>
+                <p className="text-[11px] text-neutral-500">Filter by category or search to choose products for this homepage section.</p>
               </div>
-              {isCategoryDropdownOpen ? (
-                <ChevronUp className="w-4 h-4 text-black shrink-0" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-black shrink-0" />
-              )}
-            </button>
+              <span className="text-[11px] font-mono text-black font-bold bg-neutral-200 px-3 py-1 rounded-full shrink-0 self-start sm:self-auto">
+                {sec.productIds.length} Total Selected
+              </span>
+            </div>
 
-            {/* Dropdown Menu */}
-            {isCategoryDropdownOpen && (
-              <div className="absolute left-0 top-full mt-1.5 w-64 bg-white rounded-2xl border border-neutral-200 shadow-xl z-30 py-2 space-y-0.5 max-h-60 overflow-y-auto">
+            {/* Category Selector Controls: Dropdown + Search */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              {/* Category Dropdown with Arrow */}
+              <div className="relative" ref={dropdownRef}>
                 <button
                   type="button"
-                  onClick={() => {
-                    setSelectedCategory('All');
-                    setIsCategoryDropdownOpen(false);
-                  }}
-                  className={`w-full px-4 py-2 text-left text-xs font-bold flex items-center justify-between hover:bg-neutral-100 cursor-pointer ${
-                    selectedCategory === 'All' ? 'bg-black text-white hover:bg-neutral-800' : 'text-black'
-                  }`}
+                  onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                  className="w-full sm:w-auto px-4 py-2.5 bg-white border border-neutral-300 hover:border-black rounded-2xl text-xs font-extrabold text-black flex items-center justify-between gap-2 transition-all cursor-pointer shadow-xs"
                 >
-                  <span>All Categories</span>
-                  <span className="text-[10px] font-mono opacity-70">({products.length} products)</span>
+                  <div className="flex items-center gap-1.5">
+                    <Filter className="w-3.5 h-3.5 text-neutral-500" />
+                    <span>Category: <strong className="underline">{selectedCategory}</strong></span>
+                    <span className="text-[10px] text-neutral-400 font-mono">
+                      ({selectedCategory === 'All' ? products.length : (categoryCounts[selectedCategory.toLowerCase()]?.total ?? 0)})
+                    </span>
+                  </div>
+                  {isCategoryDropdownOpen ? (
+                    <ChevronUp className="w-4 h-4 text-black shrink-0" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-black shrink-0" />
+                  )}
                 </button>
-                {categories.map((cat) => {
-                  const catCount = products.filter((p) => p.category.toLowerCase() === cat.name.toLowerCase()).length;
-                  const selectedInCat = products.filter((p) => p.category.toLowerCase() === cat.name.toLowerCase() && sec.productIds.includes(p.id)).length;
-                  const isCatSelected = selectedCategory.toLowerCase() === cat.name.toLowerCase();
-                  return (
+
+                {/* Dropdown Menu */}
+                {isCategoryDropdownOpen && (
+                  <div className="absolute left-0 top-full mt-1.5 w-64 bg-white rounded-2xl border border-neutral-200 shadow-xl z-30 py-2 space-y-0.5 max-h-60 overflow-y-auto">
                     <button
-                      key={cat.id}
                       type="button"
                       onClick={() => {
-                        setSelectedCategory(cat.name);
+                        setSelectedCategory('All');
                         setIsCategoryDropdownOpen(false);
                       }}
                       className={`w-full px-4 py-2 text-left text-xs font-bold flex items-center justify-between hover:bg-neutral-100 cursor-pointer ${
-                        isCatSelected ? 'bg-black text-white hover:bg-neutral-800' : 'text-black'
+                        selectedCategory === 'All' ? 'bg-black text-white hover:bg-neutral-800' : 'text-black'
                       }`}
                     >
-                      <span>{cat.name}</span>
-                      <span className="text-[10px] font-mono opacity-70">
-                        {selectedInCat > 0 ? `(${selectedInCat}/${catCount})` : `(${catCount})`}
-                      </span>
+                      <span>All Categories</span>
+                      <span className="text-[10px] font-mono opacity-70">({products.length} products)</span>
+                    </button>
+                    {categories.map((cat) => {
+                      const countInfo = categoryCounts[cat.name.toLowerCase()] || { total: 0, selected: 0 };
+                      const isCatSelected = selectedCategory.toLowerCase() === cat.name.toLowerCase();
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedCategory(cat.name);
+                            setIsCategoryDropdownOpen(false);
+                          }}
+                          className={`w-full px-4 py-2 text-left text-xs font-bold flex items-center justify-between hover:bg-neutral-100 cursor-pointer ${
+                            isCatSelected ? 'bg-black text-white hover:bg-neutral-800' : 'text-black'
+                          }`}
+                        >
+                          <span>{cat.name}</span>
+                          <span className="text-[10px] font-mono opacity-70">
+                            {countInfo.selected > 0 ? `(${countInfo.selected}/${countInfo.total})` : `(${countInfo.total})`}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Quick Category Pills Scrollable Bar */}
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory('All')}
+                  className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold border whitespace-nowrap cursor-pointer transition-all ${
+                    selectedCategory === 'All'
+                      ? 'bg-black text-white border-black shadow-xs'
+                      : 'bg-white text-neutral-600 border-neutral-200 hover:border-black'
+                  }`}
+                >
+                  All ({products.length})
+                </button>
+                {categories.map((c) => {
+                  const count = categoryCounts[c.name.toLowerCase()]?.total ?? 0;
+                  const isSelected = selectedCategory.toLowerCase() === c.name.toLowerCase();
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setSelectedCategory(c.name)}
+                      className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold border whitespace-nowrap cursor-pointer transition-all ${
+                        isSelected
+                          ? 'bg-black text-white border-black shadow-xs'
+                          : 'bg-white text-neutral-600 border-neutral-200 hover:border-black'
+                      }`}
+                    >
+                      {c.name} ({count})
                     </button>
                   );
                 })}
               </div>
+
+              {/* Product Search */}
+              <div className="relative sm:ml-auto w-full sm:w-56">
+                <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search products..."
+                  className="w-full pl-8 pr-3 py-2 bg-white border border-neutral-300 rounded-xl text-xs font-medium focus:outline-none focus:border-black"
+                />
+              </div>
+            </div>
+
+            {/* Showing Filter Info & Batch Select Buttons */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-neutral-500 font-medium bg-neutral-100/60 p-2.5 rounded-2xl border border-neutral-200">
+              <span>
+                Showing <strong className="text-black">{filteredProducts.length}</strong> product(s) {selectedCategory !== 'All' && <span>in <strong className="text-black">{selectedCategory}</strong></span>}
+              </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => onSelectAllInCat(sec.id, selectedCategory)}
+                  className="px-2.5 py-1 bg-white border border-neutral-300 hover:border-black text-black font-extrabold rounded-lg text-[10px] transition-all cursor-pointer shadow-xs active:scale-95"
+                >
+                  + Select All {selectedCategory === 'All' ? 'Catalog' : selectedCategory}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDeselectAllInCat(sec.id, selectedCategory)}
+                  className="px-2.5 py-1 bg-white border border-neutral-300 hover:border-rose-400 text-rose-600 font-extrabold rounded-lg text-[10px] transition-all cursor-pointer shadow-xs active:scale-95"
+                >
+                  - Deselect All {selectedCategory === 'All' ? 'Catalog' : selectedCategory}
+                </button>
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="text-black font-bold hover:underline cursor-pointer ml-1"
+                  >
+                    Clear search
+                  </button>
+                )}
+              </div>
+            </div>
+            
+            {/* Product Cards Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {filteredProducts.map((prod) => {
+                const isSelected = sec.productIds.includes(prod.id);
+                return (
+                  <div
+                    key={prod.id}
+                    onClick={() => onToggleProduct(sec.id, prod.id)}
+                    className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center gap-3 ${
+                      isSelected
+                        ? 'bg-white border-black shadow-subtle ring-2 ring-black/10'
+                        : 'bg-white/60 border-neutral-200 hover:border-black opacity-70 hover:opacity-100'
+                    }`}
+                  >
+                    <img
+                      src={prod.image}
+                      alt={prod.name}
+                      loading="lazy"
+                      decoding="async"
+                      className="w-10 h-10 rounded-xl object-cover border border-neutral-200 shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-xs font-bold text-black truncate">{prod.name}</h4>
+                      <p className="text-[10px] text-neutral-400 font-mono">{prod.category} • ₹{prod.price}</p>
+                    </div>
+                    <div className={`w-5 h-5 rounded-lg border flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'bg-black border-black text-white' : 'border-neutral-300 bg-neutral-100'}`}>
+                      {isSelected && <Check className="w-3.5 h-3.5" />}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {filteredProducts.length === 0 && (
+              <div className="py-8 text-center text-xs text-neutral-400 border-2 border-dashed border-neutral-200 rounded-2xl">
+                {searchQuery
+                  ? `No products found matching "${searchQuery}" in ${selectedCategory}.`
+                  : `No products in the "${selectedCategory}" category yet.`}
+              </div>
             )}
           </div>
 
-          {/* Quick Category Pills Scrollable Bar */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+          {/* Bottom Save Button for title/badge/subtitle */}
+          <div className="flex justify-between items-center pt-3 border-t border-neutral-200/80">
             <button
               type="button"
-              onClick={() => setSelectedCategory('All')}
-              className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold border whitespace-nowrap cursor-pointer transition-all ${
-                selectedCategory === 'All'
-                  ? 'bg-black text-white border-black'
-                  : 'bg-white text-neutral-600 border-neutral-200 hover:border-black'
+              onClick={onToggleExpand}
+              className="text-xs text-neutral-500 hover:text-black font-bold flex items-center gap-1 cursor-pointer"
+            >
+              <ChevronUp className="w-3.5 h-3.5" />
+              <span>Collapse Section</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              className={`px-5 py-2.5 rounded-2xl text-xs font-extrabold flex items-center gap-1.5 cursor-pointer transition-all shadow-xs ${
+                isDirty ? 'bg-black text-white hover:bg-neutral-800 shadow-subtle active:scale-95' : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'
               }`}
             >
-              All ({products.length})
+              <Save className="w-3.5 h-3.5" />
+              {isDirty ? 'Save Section Changes' : 'Section Saved ✓'}
             </button>
-            {categories.map((c) => {
-              const count = products.filter((p) => p.category.toLowerCase() === c.name.toLowerCase()).length;
-              const isSelected = selectedCategory.toLowerCase() === c.name.toLowerCase();
-              return (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => setSelectedCategory(c.name)}
-                  className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold border whitespace-nowrap cursor-pointer transition-all ${
-                    isSelected
-                      ? 'bg-black text-white border-black'
-                      : 'bg-white text-neutral-600 border-neutral-200 hover:border-black'
-                  }`}
-                >
-                  {c.name} ({count})
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Product Search */}
-          <div className="relative sm:ml-auto w-full sm:w-56">
-            <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search products..."
-              className="w-full pl-8 pr-3 py-2 bg-white border border-neutral-300 rounded-xl text-xs font-medium focus:outline-none focus:border-black"
-            />
           </div>
         </div>
-
-        {/* Showing Filter Info & Batch Select Buttons */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-neutral-500 font-medium bg-neutral-100/60 p-2.5 rounded-2xl border border-neutral-200">
-          <span>
-            Showing <strong className="text-black">{filteredProducts.length}</strong> product(s) {selectedCategory !== 'All' && <span>in <strong className="text-black">{selectedCategory}</strong></span>}
-          </span>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => onSelectAllInCat(sec.id, selectedCategory)}
-              className="px-2.5 py-1 bg-white border border-neutral-300 hover:border-black text-black font-extrabold rounded-lg text-[10px] transition-all cursor-pointer shadow-xs"
-            >
-              + Select All {selectedCategory === 'All' ? 'Catalog' : selectedCategory}
-            </button>
-            <button
-              type="button"
-              onClick={() => onDeselectAllInCat(sec.id, selectedCategory)}
-              className="px-2.5 py-1 bg-white border border-neutral-300 hover:border-rose-400 text-rose-600 font-extrabold rounded-lg text-[10px] transition-all cursor-pointer shadow-xs"
-            >
-              - Deselect All {selectedCategory === 'All' ? 'Catalog' : selectedCategory}
-            </button>
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="text-black font-bold hover:underline cursor-pointer ml-1"
-              >
-                Clear search
-              </button>
-            )}
-          </div>
-        </div>
-        
-        {/* Product Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {filteredProducts.map((prod) => {
-            const isSelected = sec.productIds.includes(prod.id);
-            return (
-              <div
-                key={prod.id}
-                onClick={() => onToggleProduct(sec.id, prod.id)}
-                className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center gap-3 ${
-                  isSelected
-                    ? 'bg-white border-black shadow-subtle ring-2 ring-black/10'
-                    : 'bg-white/60 border-neutral-200 hover:border-black opacity-70'
-                }`}
-              >
-                <img src={prod.image} alt={prod.name} className="w-10 h-10 rounded-xl object-cover border border-neutral-200 shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <h4 className="text-xs font-bold text-black truncate">{prod.name}</h4>
-                  <p className="text-[10px] text-neutral-400 font-mono">{prod.category} • ₹{prod.price}</p>
-                </div>
-                <div className={`w-5 h-5 rounded-lg border flex items-center justify-center shrink-0 ${isSelected ? 'bg-black border-black text-white' : 'border-neutral-300 bg-neutral-100'}`}>
-                  {isSelected && <Check className="w-3.5 h-3.5" />}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {filteredProducts.length === 0 && (
-          <div className="py-8 text-center text-xs text-neutral-400 border-2 border-dashed border-neutral-200 rounded-2xl">
-            {searchQuery
-              ? `No products found matching "${searchQuery}" in ${selectedCategory}.`
-              : `No products in the "${selectedCategory}" category yet.`}
-          </div>
-        )}
-      </div>
-
-      {/* Bottom Save Button for title/badge/subtitle */}
-      <div className="flex justify-end pt-2 border-t border-neutral-200">
-        <button
-          onClick={handleSave}
-          className={`px-5 py-2.5 rounded-2xl text-xs font-extrabold flex items-center gap-1.5 cursor-pointer transition-all ${
-            isDirty ? 'bg-black text-white hover:bg-neutral-800 shadow-subtle' : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'
-          }`}
+      ) : (
+        /* COLLAPSED PREVIEW SUMMARY BAR */
+        <div
+          onClick={onToggleExpand}
+          className="flex items-center justify-between text-xs text-neutral-500 bg-white/70 hover:bg-white p-3 rounded-2xl border border-neutral-200/60 cursor-pointer transition-colors group"
         >
-          <Save className="w-3.5 h-3.5" />
-          {isDirty ? 'Save Section Changes' : 'Section Saved ✓'}
-        </button>
-      </div>
+          <div className="flex items-center gap-2 truncate">
+            <span className="font-bold text-neutral-700">{sec.subtitle || 'Click to expand and customize products'}</span>
+          </div>
+          <span className="text-[11px] font-extrabold text-black group-hover:underline flex items-center gap-1 shrink-0 ml-2">
+            Edit Products ({sec.productIds.length})
+            <ChevronRight className="w-3.5 h-3.5 text-neutral-400 group-hover:text-black" />
+          </span>
+        </div>
+      )}
     </div>
   );
-};
+});
 
 export const FeaturedManagementTab: React.FC = () => {
   const {
@@ -478,6 +558,39 @@ export const FeaturedManagementTab: React.FC = () => {
   const [newBadge, setNewBadge] = useState('');
   const [newCategoryFilter, setNewCategoryFilter] = useState('all');
 
+  // Collapsible sections state: By default, expand first section for rapid responsiveness
+  const [expandedSectionIds, setExpandedSectionIds] = useState<string[]>(() => {
+    return homeSections[0] ? [homeSections[0].id] : [];
+  });
+
+  const toggleSectionExpand = useCallback((secId: string) => {
+    setExpandedSectionIds((prev) =>
+      prev.includes(secId) ? prev.filter((id) => id !== secId) : [...prev, secId]
+    );
+  }, []);
+
+  const handleExpandAll = useCallback(() => {
+    setExpandedSectionIds(homeSections.map((s) => s.id));
+  }, [homeSections]);
+
+  const handleCollapseAll = useCallback(() => {
+    setExpandedSectionIds([]);
+  }, []);
+
+  // Section 3: Flag management search and category filter
+  const [flagSearch, setFlagSearch] = useState('');
+  const [flagCategory, setFlagCategory] = useState('All');
+
+  const filteredFlagProducts = useMemo(() => {
+    const q = flagSearch.trim().toLowerCase();
+    const cat = flagCategory.toLowerCase();
+    return products.filter((p) => {
+      const matchCat = flagCategory === 'All' || p.category.toLowerCase() === cat;
+      const matchQ = !q || p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q);
+      return matchCat && matchQ;
+    });
+  }, [products, flagSearch, flagCategory]);
+
   // Modal / Adjuster State for Highlights
   const [editingHighlightKey, setEditingHighlightKey] = useState<'specialOfDay' | 'specialOfWeek' | 'festivalSpecial' | null>(null);
   const [highlightLinkMode, setHighlightLinkMode] = useState<'product' | 'category' | 'custom'>('product');
@@ -494,7 +607,7 @@ export const FeaturedManagementTab: React.FC = () => {
     setFormHighlights(weeklyHighlights);
   }, [weeklyHighlights]);
 
-  const handleOpenHighlightEditor = (key: 'specialOfDay' | 'specialOfWeek' | 'festivalSpecial') => {
+  const handleOpenHighlightEditor = useCallback((key: 'specialOfDay' | 'specialOfWeek' | 'festivalSpecial') => {
     setEditingHighlightKey(key);
     const item = formHighlights[key];
     const link = item.redirectLink || `/product/${item.productId}`;
@@ -521,17 +634,17 @@ export const FeaturedManagementTab: React.FC = () => {
       setSelectedHighlightCat(categories[0]?.name || '');
       setSelectedHighlightProdId(item.productId);
     }
-  };
+  }, [formHighlights, categories]);
 
-  const handleItemChange = (
+  const handleItemChange = useCallback((
     key: 'specialOfDay' | 'specialOfWeek' | 'festivalSpecial',
     field: keyof HighlightItem,
     value: any
   ) => {
     setFormHighlights((prev) => ({ ...prev, [key]: { ...prev[key], [field]: value } }));
-  };
+  }, []);
 
-  const handleProductSelect = (key: 'specialOfDay' | 'specialOfWeek' | 'festivalSpecial', prodId: string) => {
+  const handleProductSelect = useCallback((key: 'specialOfDay' | 'specialOfWeek' | 'festivalSpecial', prodId: string) => {
     const prod = products.find((p) => p.id === prodId);
     if (!prod) return;
     setFormHighlights((prev) => {
@@ -551,9 +664,9 @@ export const FeaturedManagementTab: React.FC = () => {
     if (highlightLinkMode === 'product') {
       setSelectedHighlightProdId(prodId);
     }
-  };
+  }, [products, highlightLinkMode]);
 
-  const handleLinkModeChange = (key: 'specialOfDay' | 'specialOfWeek' | 'festivalSpecial', mode: 'product' | 'category' | 'custom') => {
+  const handleLinkModeChange = useCallback((key: 'specialOfDay' | 'specialOfWeek' | 'festivalSpecial', mode: 'product' | 'category' | 'custom') => {
     setHighlightLinkMode(mode);
     const item = formHighlights[key];
     if (mode === 'product') {
@@ -565,7 +678,7 @@ export const FeaturedManagementTab: React.FC = () => {
     } else {
       handleItemChange(key, 'redirectLink', customHighlightLink || '/products');
     }
-  };
+  }, [formHighlights, selectedHighlightProdId, products, selectedHighlightCat, categories, customHighlightLink, handleItemChange]);
 
   // Canvas Hand Gestures
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
@@ -587,21 +700,23 @@ export const FeaturedManagementTab: React.FC = () => {
     const deltaY = e.clientY - dragStartRef.current.y;
     handleItemChange(editingHighlightKey, 'panOffsetX', Math.round(dragStartRef.current.initialPanX + deltaX));
     handleItemChange(editingHighlightKey, 'panOffsetY', Math.round(dragStartRef.current.initialPanY + deltaY));
-  }, [editingHighlightKey]);
+  }, [editingHighlightKey, handleItemChange]);
 
   const handleCanvasMouseUp = useCallback(() => {
     setIsInteracting(false);
     dragStartRef.current = null;
   }, []);
 
+  // ONLY attach global listeners when user is actively dragging in canvas modal
   useEffect(() => {
+    if (!isInteracting) return;
     window.addEventListener('mousemove', handleCanvasMouseMove);
     window.addEventListener('mouseup', handleCanvasMouseUp);
     return () => {
       window.removeEventListener('mousemove', handleCanvasMouseMove);
       window.removeEventListener('mouseup', handleCanvasMouseUp);
     };
-  }, [handleCanvasMouseMove, handleCanvasMouseUp]);
+  }, [isInteracting, handleCanvasMouseMove, handleCanvasMouseUp]);
 
   // Touch Hand Gestures
   const handleCanvasTouchStart = (e: React.TouchEvent) => {
@@ -665,21 +780,21 @@ export const FeaturedManagementTab: React.FC = () => {
     setEditingHighlightKey(null);
   };
 
-  const handleSelectAllInCat = (secId: string, catName: string) => {
+  const handleSelectAllInCat = useCallback((secId: string, catName: string) => {
     const sec = homeSections.find((s) => s.id === secId);
     if (!sec) return;
     const catProds = products.filter((p) => catName === 'All' || p.category.toLowerCase() === catName.toLowerCase()).map((p) => p.id);
     const combined = Array.from(new Set([...sec.productIds, ...catProds]));
     setSectionProducts(secId, combined);
-  };
+  }, [homeSections, products, setSectionProducts]);
 
-  const handleDeselectAllInCat = (secId: string, catName: string) => {
+  const handleDeselectAllInCat = useCallback((secId: string, catName: string) => {
     const sec = homeSections.find((s) => s.id === secId);
     if (!sec) return;
     const catProds = new Set(products.filter((p) => catName === 'All' || p.category.toLowerCase() === catName.toLowerCase()).map((p) => p.id));
     const remaining = sec.productIds.filter((pId) => !catProds.has(pId));
     setSectionProducts(secId, remaining);
-  };
+  }, [homeSections, products, setSectionProducts]);
 
   const handleCreateSection = (e: React.FormEvent) => {
     e.preventDefault();
@@ -708,19 +823,29 @@ export const FeaturedManagementTab: React.FC = () => {
               <h2 className="text-xl font-extrabold text-black tracking-tight">Homepage Showcase Collections & Titles</h2>
             </div>
             <p className="text-xs text-neutral-500 mt-1">
-              Click any product to instantly add/remove it from a homepage section. Edit titles then click Save.
+              Click any section to customize titles or pick products. Changes update homepage showcase sections instantly.
             </p>
           </div>
-          <button
-            onClick={() => setShowAddSectionModal(true)}
-            className="px-4 py-2.5 bg-black text-white text-xs font-extrabold rounded-2xl hover:bg-neutral-800 transition-all flex items-center gap-1.5 shadow-subtle shrink-0 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add New Showcase Section</span>
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={expandedSectionIds.length === homeSections.length ? handleCollapseAll : handleExpandAll}
+              className="px-3 py-2 bg-white border border-neutral-300 hover:border-black text-black text-xs font-bold rounded-2xl transition-all cursor-pointer shadow-xs"
+            >
+              {expandedSectionIds.length === homeSections.length ? 'Collapse All' : 'Expand All'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowAddSectionModal(true)}
+              className="px-4 py-2 bg-black text-white text-xs font-extrabold rounded-2xl hover:bg-neutral-800 transition-all flex items-center gap-1.5 shadow-subtle shrink-0 cursor-pointer active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Showcase Section</span>
+            </button>
+          </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           {homeSections.map((sec, secIdx) => (
             <SectionEditor
               key={sec.id}
@@ -729,7 +854,9 @@ export const FeaturedManagementTab: React.FC = () => {
               totalSections={homeSections.length}
               products={products}
               categories={categories}
-              onToggleProduct={(secId, prodId) => toggleProductInHomeSection(secId, prodId)}
+              isExpanded={expandedSectionIds.includes(sec.id)}
+              onToggleExpand={() => toggleSectionExpand(sec.id)}
+              onToggleProduct={toggleProductInHomeSection}
               onSelectAllInCat={handleSelectAllInCat}
               onDeselectAllInCat={handleDeselectAllInCat}
               onToggleVisible={(secId, enabled) => updateHomeSection(secId, { enabled })}
@@ -757,7 +884,7 @@ export const FeaturedManagementTab: React.FC = () => {
           <button
             type="button"
             onClick={() => handleSaveHighlights()}
-            className="px-5 py-2.5 bg-black text-white text-xs font-extrabold rounded-2xl hover:bg-neutral-800 transition-all flex items-center gap-2 shadow-subtle cursor-pointer"
+            className="px-5 py-2.5 bg-black text-white text-xs font-extrabold rounded-2xl hover:bg-neutral-800 transition-all flex items-center gap-2 shadow-subtle cursor-pointer active:scale-95"
           >
             <Save className="w-4 h-4" />
             <span>Save All Highlights</span>
@@ -783,6 +910,8 @@ export const FeaturedManagementTab: React.FC = () => {
                     <img
                       src={displayImg}
                       alt={item.title || prod?.name}
+                      loading="lazy"
+                      decoding="async"
                       style={{
                         transform: `translate(${panX}px, ${panY}px) scale(${zoom})`,
                         transformOrigin: 'center center',
@@ -851,30 +980,91 @@ export const FeaturedManagementTab: React.FC = () => {
         </div>
       </div>
 
-      {/* SECTION 3: BEST SELLER & FESTIVAL TOGGLES */}
+      {/* SECTION 3: QUICK TOGGLE BEST SELLER & FESTIVAL CATALOG FLAGS */}
       <div className="pt-6 border-t border-neutral-200 space-y-4">
-        <span className="text-xs font-extrabold uppercase tracking-wider text-neutral-400">Quick Toggle Best Seller & Festival Catalog Flags</span>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {products.map((prod) => (
-            <div key={prod.id} className="bg-white border border-neutral-200 rounded-3xl p-4 shadow-subtle flex items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <span className="text-xs font-extrabold uppercase tracking-wider text-black flex items-center gap-1.5">
+              <Star className="w-4 h-4 text-amber-500" />
+              <span>Quick Toggle Best Seller & Festival Catalog Flags</span>
+            </span>
+            <p className="text-[11px] text-neutral-500">Quickly mark products as Best Sellers or Festival Specials for badges across the store.</p>
+          </div>
+
+          {/* Quick Search & Category Filter for Flags */}
+          <div className="flex items-center gap-2">
+            <select
+              value={flagCategory}
+              onChange={(e) => setFlagCategory(e.target.value)}
+              className="p-2 bg-white border border-neutral-300 rounded-xl text-xs font-bold text-black focus:outline-none"
+            >
+              <option value="All">All Categories</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.name}>{c.name}</option>
+              ))}
+            </select>
+            <div className="relative w-40 sm:w-52">
+              <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={flagSearch}
+                onChange={(e) => setFlagSearch(e.target.value)}
+                placeholder="Search products..."
+                className="w-full pl-7 pr-3 py-2 bg-white border border-neutral-300 rounded-xl text-xs font-medium focus:outline-none"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {filteredFlagProducts.map((prod) => (
+            <div key={prod.id} className="bg-white border border-neutral-200 rounded-2xl p-3 shadow-xs hover:border-black transition-all flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
-                <img src={prod.image} alt={prod.name} className="w-12 h-12 rounded-xl object-cover border border-neutral-200 shrink-0" />
+                <img
+                  src={prod.image}
+                  alt={prod.name}
+                  loading="lazy"
+                  decoding="async"
+                  className="w-11 h-11 rounded-xl object-cover border border-neutral-200 shrink-0"
+                />
                 <div className="min-w-0">
                   <h4 className="text-xs font-bold text-black truncate">{prod.name}</h4>
                   <p className="text-[10px] text-neutral-400 font-mono">{prod.category} • ₹{prod.price}</p>
                 </div>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
-                <button type="button" onClick={() => toggleProductBestSeller(prod.id)} className={`px-2.5 py-1.5 rounded-xl border text-[10px] font-extrabold transition-all flex items-center gap-1 cursor-pointer ${prod.isBestSeller ? 'bg-black text-white border-black' : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-black'}`}>
-                  <Star className="w-3 h-3" /><span>Best Seller</span>
+                <button
+                  type="button"
+                  onClick={() => toggleProductBestSeller(prod.id)}
+                  className={`px-2.5 py-1.5 rounded-xl border text-[10px] font-extrabold transition-all flex items-center gap-1 cursor-pointer shadow-xs ${
+                    prod.isBestSeller ? 'bg-black text-white border-black' : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-black'
+                  }`}
+                  title="Toggle Best Seller Badge"
+                >
+                  <Star className="w-3 h-3" />
+                  <span>Best Seller</span>
                 </button>
-                <button type="button" onClick={() => toggleProductFestival(prod.id)} className={`px-2.5 py-1.5 rounded-xl border text-[10px] font-extrabold transition-all flex items-center gap-1 cursor-pointer ${prod.isFestival ? 'bg-black text-white border-black' : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-black'}`}>
-                  <Tag className="w-3 h-3" /><span>Festival</span>
+                <button
+                  type="button"
+                  onClick={() => toggleProductFestival(prod.id)}
+                  className={`px-2.5 py-1.5 rounded-xl border text-[10px] font-extrabold transition-all flex items-center gap-1 cursor-pointer shadow-xs ${
+                    prod.isFestival ? 'bg-black text-white border-black' : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-black'
+                  }`}
+                  title="Toggle Festival Badge"
+                >
+                  <Tag className="w-3 h-3" />
+                  <span>Festival</span>
                 </button>
               </div>
             </div>
           ))}
         </div>
+
+        {filteredFlagProducts.length === 0 && (
+          <div className="py-6 text-center text-xs text-neutral-400 border border-dashed border-neutral-200 rounded-2xl">
+            No products found matching filter criteria.
+          </div>
+        )}
       </div>
 
       {/* HIGHLIGHT PHOTO ADJUSTER & REDIRECTION MODAL */}
@@ -1268,7 +1458,7 @@ export const FeaturedManagementTab: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleSaveHighlights()}
-                className="flex-1 py-3.5 bg-black hover:bg-neutral-800 text-white rounded-2xl text-xs font-extrabold transition-all cursor-pointer shadow-subtle flex items-center justify-center gap-2"
+                className="flex-1 py-3.5 bg-black hover:bg-neutral-800 text-white rounded-2xl text-xs font-extrabold transition-all cursor-pointer shadow-subtle flex items-center justify-center gap-2 active:scale-95"
               >
                 <Save className="w-4 h-4" />
                 <span>Save Banner Adjustments</span>
@@ -1287,7 +1477,7 @@ export const FeaturedManagementTab: React.FC = () => {
                 <h3 className="text-lg font-black text-black">Create New Showcase Section</h3>
                 <p className="text-xs text-neutral-500 font-medium">Adds a new live section to your homepage catalog display.</p>
               </div>
-              <button type="button" onClick={() => setShowAddSectionModal(false)} className="text-neutral-400 hover:text-black text-sm p-1">✕</button>
+              <button type="button" onClick={() => setShowAddSectionModal(false)} className="text-neutral-400 hover:text-black text-sm p-1 cursor-pointer">✕</button>
             </div>
 
             {/* Quick 1-Click Presets */}
@@ -1329,7 +1519,7 @@ export const FeaturedManagementTab: React.FC = () => {
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   placeholder="e.g. Festival Specials & Hampers"
-                  className="w-full p-3 rounded-2xl border border-neutral-300 font-extrabold text-sm bg-white"
+                  className="w-full p-3 rounded-2xl border border-neutral-300 font-extrabold text-sm bg-white focus:border-black focus:outline-none"
                 />
               </div>
 
@@ -1341,7 +1531,7 @@ export const FeaturedManagementTab: React.FC = () => {
                     value={newBadge}
                     onChange={(e) => setNewBadge(e.target.value)}
                     placeholder="e.g. Festive Delights"
-                    className="w-full p-3 rounded-2xl border border-neutral-300 font-mono bg-white"
+                    className="w-full p-3 rounded-2xl border border-neutral-300 font-mono bg-white focus:border-black focus:outline-none"
                   />
                 </div>
                 <div>
@@ -1349,7 +1539,7 @@ export const FeaturedManagementTab: React.FC = () => {
                   <select
                     value={newCategoryFilter}
                     onChange={(e) => setNewCategoryFilter(e.target.value)}
-                    className="w-full p-3 rounded-2xl border border-neutral-300 bg-white"
+                    className="w-full p-3 rounded-2xl border border-neutral-300 bg-white focus:border-black focus:outline-none"
                   >
                     <option value="all">All Categories (Curated)</option>
                     {categories.map((c) => (
@@ -1366,7 +1556,7 @@ export const FeaturedManagementTab: React.FC = () => {
                   value={newSubtitle}
                   onChange={(e) => setNewSubtitle(e.target.value)}
                   placeholder="e.g. Handcrafted traditional delicacies prepared fresh with pure love."
-                  className="w-full p-3 rounded-2xl border border-neutral-300 font-sans bg-white"
+                  className="w-full p-3 rounded-2xl border border-neutral-300 font-sans bg-white focus:border-black focus:outline-none"
                 />
               </div>
             </div>
@@ -1381,7 +1571,7 @@ export const FeaturedManagementTab: React.FC = () => {
               </button>
               <button
                 type="submit"
-                className="flex-1 py-3 bg-black hover:bg-neutral-800 text-white rounded-2xl text-xs font-extrabold transition-all cursor-pointer shadow-subtle"
+                className="flex-1 py-3 bg-black hover:bg-neutral-800 text-white rounded-2xl text-xs font-extrabold transition-all cursor-pointer shadow-subtle active:scale-95"
               >
                 Create Section on Homepage
               </button>
