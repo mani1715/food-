@@ -462,11 +462,12 @@ export const HomePage: React.FC = () => {
                 {sectionProducts.map((product) => (
                   <div
                     key={product.id}
-                    className="w-[210px] sm:w-[260px] md:w-[280px] lg:w-[290px] shrink-0 flex-shrink-0 snap-start select-none flex flex-col"
+                    className="w-[235px] sm:w-[280px] md:w-[295px] lg:w-[310px] shrink-0 flex-shrink-0 snap-start select-none flex flex-col"
                   >
                     <ProductCard product={product} />
                   </div>
                 ))}
+
               </div>
             </section>
           );

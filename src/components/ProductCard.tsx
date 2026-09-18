@@ -119,13 +119,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         </div>
 
         {/* Gram Package Weight Selector (e.g. 250g, 400g, 500g, 1kg) */}
-        <div className="space-y-1">
-          <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">Package Weight & Price</span>
+        <div className="space-y-1.5">
+          <span className="text-[11px] font-extrabold text-neutral-600 uppercase tracking-wider block">
+            Package Weight & Price
+          </span>
           <div className="relative">
             <select
               value={selectedWeight}
               onChange={(e) => setSelectedWeight(e.target.value)}
-              className="w-full py-1.5 pl-2.5 pr-7 rounded-xl border border-neutral-300 bg-neutral-50 text-xs font-extrabold text-black focus:outline-none focus:border-black appearance-none cursor-pointer"
+              className="w-full py-2.5 pl-3.5 pr-8 rounded-2xl border-2 border-neutral-300 hover:border-black bg-white text-xs sm:text-sm font-black text-black shadow-xs appearance-none cursor-pointer transition-all focus:outline-none focus:border-black"
             >
               {product.weightOptions.map((opt) => (
                 <option key={opt.weight} value={opt.weight}>
@@ -133,47 +135,52 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                 </option>
               ))}
             </select>
-            <ChevronDown className="w-3.5 h-3.5 text-neutral-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <ChevronDown className="w-4 h-4 text-neutral-700 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
         </div>
 
         {/* Price & Action Buttons (Quick Add + Buy Now) */}
-        <div className="pt-2.5 border-t border-neutral-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div className="pt-3 border-t border-neutral-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           <div className="flex items-center justify-between sm:block">
-            <span className="text-[9px] text-neutral-400 font-bold block uppercase">{selectedWeight} Price</span>
-            <span className="text-sm font-extrabold font-mono text-black">₹{currentPrice}</span>
+            <span className="text-[10px] text-neutral-500 font-extrabold block uppercase tracking-wide leading-none mb-0.5">
+              {selectedWeight} Price
+            </span>
+            <span className="text-base sm:text-lg font-black font-mono text-black leading-tight">
+              ₹{currentPrice}
+            </span>
           </div>
 
           {isOutOfStock ? (
-            <span className="w-full sm:w-auto text-center px-3 py-1.5 bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-extrabold rounded-xl">
+            <span className="w-full sm:w-auto text-center px-4 py-2 bg-rose-50 text-rose-700 border border-rose-200 text-xs font-black rounded-2xl">
               Out of Stock 🚨
             </span>
           ) : (
-            <div className="flex items-center gap-1.5 w-full sm:w-auto">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   addToCart(product, selectedWeight, 1);
                 }}
-                className="flex-1 sm:flex-initial px-2 py-1.5 bg-neutral-100 border border-neutral-300 text-black text-[10px] font-extrabold rounded-xl hover:bg-neutral-200 transition-all flex items-center justify-center gap-1 shadow-subtle cursor-pointer whitespace-nowrap"
+                className="flex-1 sm:flex-initial px-3.5 py-2 sm:py-2.5 bg-neutral-100 border border-neutral-300 hover:border-black text-black text-xs font-black rounded-2xl hover:bg-neutral-200 transition-all flex items-center justify-center gap-1.5 shadow-subtle cursor-pointer whitespace-nowrap active:scale-95"
                 title="Add to Basket"
               >
-                <Plus className="w-3.5 h-3.5 shrink-0" />
+                <Plus className="w-4 h-4 shrink-0 stroke-[2.5]" />
                 <span>Add</span>
               </button>
 
               <button
                 onClick={handleBuyNow}
-                className="flex-1 sm:flex-initial px-2 py-1.5 bg-black text-white text-[10px] font-extrabold rounded-xl hover:bg-neutral-800 transition-all flex items-center justify-center gap-1 shadow-subtle cursor-pointer whitespace-nowrap"
+                className="flex-1 sm:flex-initial px-4 py-2 sm:py-2.5 bg-black text-white text-xs font-black rounded-2xl hover:bg-neutral-800 transition-all flex items-center justify-center gap-1.5 shadow-subtle cursor-pointer whitespace-nowrap active:scale-95"
                 title="Instant Checkout"
               >
-                <Zap className="w-3.5 h-3.5 shrink-0" />
+                <Zap className="w-4 h-4 shrink-0 fill-white" />
                 <span>Buy Now</span>
               </button>
             </div>
           )}
         </div>
       </div>
+
 
     </div>
   );

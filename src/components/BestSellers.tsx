@@ -33,11 +33,12 @@ export const BestSellers: React.FC<BestSellersProps> = ({ products }) => {
       {/* Horizontal Side-by-Side Scroll Container when > 5 items */}
       <div className="flex overflow-x-auto gap-4 sm:gap-6 pb-4 scrollbar-none snap-x snap-mandatory">
         {itemsToRender.map((product) => (
-          <div key={product.id} className="min-w-[220px] sm:min-w-[270px] max-w-[280px] shrink-0 snap-start">
+          <div key={product.id} className="min-w-[235px] sm:min-w-[285px] max-w-[300px] shrink-0 snap-start">
             <ProductCard product={product} />
           </div>
         ))}
       </div>
+
     </section>
   );
 };
