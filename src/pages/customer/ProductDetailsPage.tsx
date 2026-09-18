@@ -25,6 +25,11 @@ export const ProductDetailsPage: React.FC = () => {
   const selectedOption = product.weightOptions.find((w) => w.weight === selectedWeight) || product.weightOptions[0];
   const currentPrice = selectedOption ? selectedOption.price : product.price;
 
+  const hasDiscount = Boolean(product.discountPercentage && product.discountPercentage > 0);
+  const discountedPrice = hasDiscount
+    ? Math.round(currentPrice * (1 - (product.discountPercentage || 0) / 100))
+    : currentPrice;
+
   const relatedProducts = products
     .filter((p) => !p.isHidden && p.category === product.category && p.id !== product.id)
     .slice(0, 4);
@@ -49,7 +54,14 @@ export const ProductDetailsPage: React.FC = () => {
           <span>Back to Products</span>
         </button>
 
-        <span className="text-xs font-mono text-neutral-400 uppercase tracking-widest">{product.category}</span>
+        <div className="flex items-center gap-2">
+          {hasDiscount && (
+            <span className="bg-rose-600 text-white text-[10px] font-black uppercase px-3 py-1 rounded-full shadow-subtle">
+              🏷️ {product.discountPercentage}% OFF Active
+            </span>
+          )}
+          <span className="text-xs font-mono text-neutral-400 uppercase tracking-widest">{product.category}</span>
+        </div>
       </div>
 
       {/* Main Details Grid */}
@@ -99,7 +111,14 @@ export const ProductDetailsPage: React.FC = () => {
             </div>
 
             <h1 className="text-3xl sm:text-4xl font-extrabold text-black tracking-tight">{product.name}</h1>
-            <p className="text-2xl font-black font-mono text-black">₹{currentPrice * quantity}</p>
+            <div className="flex items-baseline gap-3">
+              <p className="text-2xl sm:text-3xl font-black font-mono text-black">₹{discountedPrice * quantity}</p>
+              {hasDiscount && (
+                <p className="text-lg font-mono line-through text-neutral-400 font-bold">
+                  ₹{currentPrice * quantity}
+                </p>
+              )}
+            </div>
           </div>
 
           <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed">{product.description}</p>
@@ -110,22 +129,30 @@ export const ProductDetailsPage: React.FC = () => {
               Select Package Weight
             </label>
             <div className="flex flex-wrap gap-2">
-              {product.weightOptions.map((opt) => (
-                <button
-                  key={opt.weight}
-                  onClick={() => setSelectedWeight(opt.weight)}
-                  className={`px-4 py-2.5 rounded-2xl border text-xs font-bold transition-all flex items-center justify-between gap-3 cursor-pointer ${
-                    selectedWeight === opt.weight
-                      ? 'bg-black text-white border-black shadow-subtle'
-                      : 'bg-white text-black border-neutral-200 hover:border-black'
-                  }`}
-                >
-                  <span>{opt.weight}</span>
-                  <span className="font-mono text-[11px] opacity-80">₹{opt.price}</span>
-                </button>
-              ))}
+              {product.weightOptions.map((opt) => {
+                const optDiscounted = hasDiscount
+                  ? Math.round(opt.price * (1 - (product.discountPercentage || 0) / 100))
+                  : opt.price;
+                return (
+                  <button
+                    key={opt.weight}
+                    onClick={() => setSelectedWeight(opt.weight)}
+                    className={`px-4 py-2.5 rounded-2xl border text-xs font-bold transition-all flex items-center justify-between gap-3 cursor-pointer ${
+                      selectedWeight === opt.weight
+                        ? 'bg-black text-white border-black shadow-subtle'
+                        : 'bg-white text-black border-neutral-200 hover:border-black'
+                    }`}
+                  >
+                    <span>{opt.weight}</span>
+                    <span className="font-mono text-[11px] opacity-80">
+                      ₹{optDiscounted} {hasDiscount ? `(was ₹${opt.price})` : ''}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
+
 
           {/* Ingredients Checklist */}
           {product.ingredients && product.ingredients.length > 0 && (

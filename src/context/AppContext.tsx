@@ -1086,7 +1086,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       );
 
       const weightOpt = product.weightOptions.find((w) => w.weight === selectedWeight) || product.weightOptions[0];
-      const unitPrice = weightOpt ? weightOpt.price : product.price;
+      const rawPrice = weightOpt ? weightOpt.price : product.price;
+      const unitPrice = product.discountPercentage && product.discountPercentage > 0
+        ? Math.round(rawPrice * (1 - product.discountPercentage / 100))
+        : rawPrice;
 
       if (existingIndex > -1) {
         const updated = [...prev];
@@ -1099,6 +1102,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     addToast('Added to Cart', `${product.name} (${selectedWeight}) added.`, 'success');
   };
+
 
   const updateCartQuantity = (productId: string, selectedWeight: string, newQuantity: number) => {
     setCartItems((prev) =>
@@ -1256,14 +1260,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setOrders((prev) => [newOrder, ...prev]);
 
+    // Increment usage count for applied offer / coupon if applicable
+    if (customerDetails?.appliedOfferTitle) {
+      const appliedTitle = customerDetails.appliedOfferTitle.trim().toLowerCase();
+      setCartOffers((prev) =>
+        prev.map((o) =>
+          o.title.toLowerCase() === appliedTitle || o.badgeText?.toLowerCase() === appliedTitle
+            ? { ...o, usageCount: (o.usageCount || 0) + 1 }
+            : o
+        )
+      );
+      setCoupons((prev) =>
+        prev.map((c) =>
+          c.code.toLowerCase() === appliedTitle
+            ? { ...c, usageCount: (c.usageCount || 0) + 1 }
+            : c
+        )
+      );
+    }
+
     if (isSupabaseConfigured()) {
-      createOrderInDb(paymentMethod, deliveryAddress, cartItems, subtotal, deliveryFee, 0, total, {
+      createOrderInDb(paymentMethod, deliveryAddress, cartItems, subtotal, deliveryFee, appliedDiscount, total, {
         name: finalName,
         phone: finalPhone,
         email: finalEmail,
         userId: supabaseUser?.id,
       }).catch((err) => console.warn('Could not insert order to Supabase:', err));
     }
+
 
     clearCart();
     return newOrder;

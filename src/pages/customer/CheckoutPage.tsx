@@ -1,13 +1,21 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { useNavigate } from 'react-router-dom';
-import { MapPin, CreditCard, Smartphone, DollarSign, ShieldCheck, ArrowRight, Navigation, User, Phone, Mail, FileText, Home, Briefcase } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { MapPin, CreditCard, Smartphone, DollarSign, ShieldCheck, ArrowRight, Navigation, User, Phone, Mail, FileText, Home, Briefcase, Tag, Gift } from 'lucide-react';
 
 import { validateEmail, validateIndianPhone, validatePincode } from '../../utils/security';
 
 export const CheckoutPage: React.FC = () => {
   const { cartItems, userProfile, locations, currentLocation, setCurrentLocation, createOrder, addToast, getBestCartOffer } = useApp();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const passedState = location.state as {
+    couponCode?: string;
+    couponDiscount?: number;
+    cartOfferDiscount?: number;
+    appliedOfferTitle?: string;
+  } | undefined;
 
   // Form State for Customer & Delivery Details
   const [customerName, setCustomerName] = useState(userProfile.name || 'Lakshmi Narayana');
@@ -26,11 +34,16 @@ export const CheckoutPage: React.FC = () => {
 
   const subtotal = cartItems.reduce((acc, i) => acc + i.unitPrice * i.quantity, 0);
 
-  // Dynamic Cart Offer Evaluation
-  const { bestOffer, discountAmount: cartOfferDiscount, freeGift, isFreeShipping } = getBestCartOffer(cartItems, subtotal);
+  // Dynamic Cart Offer & Coupon Evaluation
+  const { bestOffer, discountAmount: autoCartDiscount, freeGift, isFreeShipping } = getBestCartOffer(cartItems, subtotal);
+  const cartOfferDiscount = passedState?.cartOfferDiscount !== undefined ? passedState.cartOfferDiscount : autoCartDiscount;
+  const couponDiscount = passedState?.couponDiscount || 0;
+  const totalDiscount = cartOfferDiscount + couponDiscount;
+
   const isFreeDeliveryQualified = subtotal > 499 || isFreeShipping || (bestOffer?.offerType === 'free_shipping');
   const deliveryFee = isFreeDeliveryQualified || subtotal === 0 ? 0 : 49;
-  const grandTotal = Math.max(0, subtotal + deliveryFee - cartOfferDiscount);
+  const grandTotal = Math.max(0, subtotal + deliveryFee - totalDiscount);
+
 
 
   // Auto-Detect GPS Location directly into Checkout Fields
@@ -126,19 +139,21 @@ export const CheckoutPage: React.FC = () => {
         city,
         pincode,
       };
-      setCurrentLocation(orderLocation);
+      const appliedTitle =
+        passedState?.couponCode || passedState?.appliedOfferTitle || bestOffer?.title;
 
       const order = createOrder(paymentMethod, orderLocation, {
         name: customerName.trim(),
         phone: customerPhone.trim(),
         email: customerEmail.trim(),
-        discount: cartOfferDiscount,
-        appliedOfferTitle: bestOffer?.title,
+        discount: totalDiscount,
+        appliedOfferTitle: appliedTitle,
       });
       setIsProcessing(false);
       navigate(`/order-success/${order.id}`);
     }, 1500);
   };
+
 
 
   return (
@@ -390,8 +405,14 @@ export const CheckoutPage: React.FC = () => {
               </div>
               {cartOfferDiscount > 0 && (
                 <div className="flex justify-between text-emerald-700 font-bold">
-                  <span>Cart Offer ({bestOffer?.title})</span>
+                  <span>Cart Offer ({passedState?.appliedOfferTitle || bestOffer?.title})</span>
                   <span>-₹{cartOfferDiscount}</span>
+                </div>
+              )}
+              {couponDiscount > 0 && (
+                <div className="flex justify-between text-emerald-700 font-bold">
+                  <span>Coupon Code ({passedState?.couponCode || 'APPLIED'})</span>
+                  <span>-₹{couponDiscount}</span>
                 </div>
               )}
               {freeGift && (
@@ -400,6 +421,7 @@ export const CheckoutPage: React.FC = () => {
                   <span>{freeGift}</span>
                 </div>
               )}
+
               <div className="flex justify-between text-black font-extrabold text-base pt-3 border-t border-neutral-200 font-sans">
                 <span>Total Amount</span>
                 <span className="font-mono">₹{grandTotal}</span>

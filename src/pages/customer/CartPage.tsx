@@ -392,12 +392,22 @@ export const CartPage: React.FC = () => {
                 </div>
 
                 <button
-                  onClick={() => navigate('/checkout')}
+                  onClick={() =>
+                    navigate('/checkout', {
+                      state: {
+                        couponCode: appliedCouponInfo?.code,
+                        couponDiscount,
+                        cartOfferDiscount,
+                        appliedOfferTitle: activeCartOffer?.title,
+                      },
+                    })
+                  }
                   className="w-full py-4 bg-black text-white text-xs font-extrabold rounded-2xl hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 shadow-subtle cursor-pointer"
                 >
                   <span>Proceed To Checkout</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
+
               </div>
 
               <div className="flex items-center justify-center gap-2 text-xs text-neutral-400 font-semibold">

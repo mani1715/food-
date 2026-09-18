@@ -23,6 +23,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     product.weightOptions.find((w) => w.weight === selectedWeight) || product.weightOptions[0];
   const currentPrice = selectedOption ? selectedOption.price : product.price;
 
+  const hasDiscount = Boolean(product.discountPercentage && product.discountPercentage > 0);
+  const discountedPrice = hasDiscount
+    ? Math.round(currentPrice * (1 - (product.discountPercentage || 0) / 100))
+    : currentPrice;
+
   const handleCardClick = () => {
     addRecentlyViewed(product.id);
     navigate(`/product/${product.id}`);
@@ -47,7 +52,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${isOutOfStock ? 'grayscale-[30%]' : ''}`}
         />
         
-        {/* Top Left Badges: Best Seller, New, Veg/Non-Veg, Out of Stock */}
+        {/* Top Left Badges: Best Seller, New, Veg/Non-Veg, Discount, Out of Stock */}
         <div className="absolute top-2 left-2 flex flex-col gap-1 items-start z-10">
           {isOutOfStock ? (
             <span className="bg-rose-600 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full shadow-subtle flex items-center gap-1">
@@ -56,6 +61,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             </span>
           ) : (
             <>
+              {hasDiscount && (
+                <span className="bg-rose-600 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full shadow-subtle flex items-center gap-1">
+                  <span>🏷️</span>
+                  <span>{product.discountPercentage}% OFF</span>
+                </span>
+              )}
+
               {product.isVeg ? (
                 <span className="bg-white/90 backdrop-blur-sm border border-emerald-800 text-emerald-900 text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow-subtle flex items-center gap-1">
                   <span className="w-2 h-2 rounded-full bg-emerald-700 inline-block" />
@@ -129,11 +141,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               onChange={(e) => setSelectedWeight(e.target.value)}
               className="w-full py-2.5 pl-3.5 pr-8 rounded-2xl border-2 border-neutral-300 hover:border-black bg-white text-xs sm:text-sm font-black text-black shadow-xs appearance-none cursor-pointer transition-all focus:outline-none focus:border-black"
             >
-              {product.weightOptions.map((opt) => (
-                <option key={opt.weight} value={opt.weight}>
-                  {opt.weight} — ₹{opt.price}
-                </option>
-              ))}
+              {product.weightOptions.map((opt) => {
+                const optDiscounted = hasDiscount
+                  ? Math.round(opt.price * (1 - (product.discountPercentage || 0) / 100))
+                  : opt.price;
+                return (
+                  <option key={opt.weight} value={opt.weight}>
+                    {opt.weight} — ₹{optDiscounted} {hasDiscount ? `(was ₹${opt.price})` : ''}
+                  </option>
+                );
+              })}
             </select>
             <ChevronDown className="w-4 h-4 text-neutral-700 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
@@ -145,10 +162,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             <span className="text-[10px] text-neutral-500 font-extrabold block uppercase tracking-wide leading-none mb-0.5">
               {selectedWeight} Price
             </span>
-            <span className="text-base sm:text-lg font-black font-mono text-black leading-tight">
-              ₹{currentPrice}
-            </span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-base sm:text-lg font-black font-mono text-black leading-tight">
+                ₹{discountedPrice}
+              </span>
+              {hasDiscount && (
+                <span className="line-through text-neutral-400 text-xs font-mono font-bold">
+                  ₹{currentPrice}
+                </span>
+              )}
+            </div>
           </div>
+
 
           {isOutOfStock ? (
             <span className="w-full sm:w-auto text-center px-4 py-2 bg-rose-50 text-rose-700 border border-rose-200 text-xs font-black rounded-2xl">
