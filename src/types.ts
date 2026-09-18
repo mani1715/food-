@@ -312,3 +312,14 @@ export interface StoreInfo {
   deliveryTimeNotice?: string;
 }
 
+export type AdminRole = 'super_admin' | 'admin' | 'sub_admin';
+
+export interface StoreAdminUser {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin';
+  createdAt: string;
+  password?: string;
+}
+

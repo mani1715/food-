@@ -27,6 +27,10 @@ import {
   Coffee,
   CheckCircle2,
   XCircle,
+  Crown,
+  ShieldAlert,
+  KeyRound,
+  UserX,
 } from 'lucide-react';
 import { DragDropImagePicker } from './DragDropImagePicker';
 import { AdminTab, StoreInfo } from '../../types';
@@ -47,7 +51,17 @@ export const SettingsManagementTab: React.FC = () => {
     updateStoreInfo,
     exportStoreBackupJson,
     resetStoreToDefault,
+    currentAdminRole,
+    currentAdminEmail,
+    storeAdminUsers,
+    addStoreAdminUser,
+    deleteStoreAdminUser,
   } = useApp();
+
+  // Mega Super Admin Local Form States
+  const [newStoreAdminName, setNewStoreAdminName] = useState('');
+  const [newStoreAdminEmail, setNewStoreAdminEmail] = useState('');
+  const [newStoreAdminPass, setNewStoreAdminPass] = useState('');
 
   // Local Draft States for Business Details
   const [draftStoreName, setDraftStoreName] = useState(storeInfo.storeName || '');
@@ -105,6 +119,24 @@ export const SettingsManagementTab: React.FC = () => {
     });
   };
 
+  const isSuperAdmin = currentAdminRole === 'super_admin';
+
+  const handleCreateStoreAdminSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newStoreAdminName.trim() || !newStoreAdminEmail.trim() || !newStoreAdminPass.trim()) return;
+
+    addStoreAdminUser({
+      name: newStoreAdminName.trim(),
+      email: newStoreAdminEmail.trim(),
+      password: newStoreAdminPass.trim(),
+      role: 'admin',
+    });
+
+    setNewStoreAdminName('');
+    setNewStoreAdminEmail('');
+    setNewStoreAdminPass('');
+  };
+
   const handleCreateSubAdminSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!subAdminName.trim() || !subAdminEmail.trim() || !subAdminPass.trim()) return;
@@ -160,7 +192,14 @@ export const SettingsManagementTab: React.FC = () => {
       <div className="border-b border-neutral-200 pb-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-black text-black tracking-tight">Store Settings & Business Controls</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-2xl font-black text-black tracking-tight">Store Settings & Business Controls</h2>
+              {isSuperAdmin && (
+                <span className="text-[10px] font-black bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-500 text-black px-2.5 py-0.5 rounded-full uppercase border border-amber-500/30 shadow-xs">
+                  👑 Super Admin Master Mode
+                </span>
+              )}
+            </div>
             <p className="text-xs text-neutral-500 mt-1">
               Manage complete store identity, food safety license, checkout pricing rules, vacation mode, and team administration.
             </p>
@@ -179,6 +218,138 @@ export const SettingsManagementTab: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {/* 👑 MEGA SUPER ADMIN MASTER CONTROL (EXCLUSIVE & HIDDEN FROM NORMAL ADMINS) */}
+        {isSuperAdmin && (
+          <div className="bg-gradient-to-br from-neutral-900 via-black to-neutral-950 text-white border-2 border-amber-500/50 rounded-3xl p-6 sm:p-8 shadow-modal space-y-6 md:col-span-2 relative overflow-hidden">
+            {/* Background luxury glow */}
+            <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-800 pb-5 relative z-10">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-300 text-black flex items-center justify-center shrink-0 shadow-lg">
+                  <Crown className="w-7 h-7" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-black tracking-tight text-white">
+                      Mega Super Admin Master Governance
+                    </h3>
+                    <span className="bg-amber-400 text-black text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full">
+                      Full Root Access
+                    </span>
+                  </div>
+                  <p className="text-xs text-neutral-400 mt-0.5">
+                    Private master control panel. Manage, add, or permanently delete client store admins and sub-admins.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-neutral-800/80 border border-neutral-700 px-4 py-2.5 rounded-2xl flex items-center gap-2 text-xs font-mono">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="text-neutral-400">Master User:</span>
+                <span className="font-extrabold text-amber-300">ettelamaneesh@gmail.com</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2 relative z-10">
+              {/* Active Store Admins List */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase tracking-wider text-amber-400 block">
+                    Active Store Admin Accounts ({storeAdminUsers.length})
+                  </span>
+                  <span className="text-[10px] text-neutral-400 font-bold">Can delete any admin below</span>
+                </div>
+
+                <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                  {storeAdminUsers.length === 0 ? (
+                    <p className="text-xs text-neutral-500 italic p-6 border border-dashed border-neutral-800 rounded-2xl text-center">
+                      No store admins registered.
+                    </p>
+                  ) : (
+                    storeAdminUsers.map((admin) => (
+                      <div
+                        key={admin.id}
+                        className="p-4 rounded-2xl bg-neutral-900/90 border border-neutral-800 flex items-center justify-between text-xs hover:border-neutral-700 transition-all"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-extrabold text-white text-sm">{admin.name}</span>
+                            <span className="bg-neutral-800 text-amber-400 text-[9px] font-bold px-2 py-0.5 rounded-md border border-neutral-700">
+                              Store Admin
+                            </span>
+                          </div>
+                          <p className="text-neutral-400 font-mono text-[11px]">{admin.email}</p>
+                          <p className="text-[10px] text-neutral-500">Created: {admin.createdAt}</p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.confirm(`Are you sure you want to permanently delete store admin "${admin.name}" (${admin.email})? They will lose all access immediately.`)) {
+                              deleteStoreAdminUser(admin.id);
+                            }
+                          }}
+                          className="px-3 py-2 bg-rose-950/60 hover:bg-rose-600 text-rose-300 hover:text-white rounded-xl text-xs font-bold transition-all border border-rose-800/50 flex items-center gap-1.5 cursor-pointer shadow-sm"
+                          title="Delete Store Admin"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Delete Admin</span>
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Add New Store Admin */}
+              <form onSubmit={handleCreateStoreAdminSubmit} className="p-5 rounded-2xl bg-neutral-900/90 border border-neutral-800 space-y-3.5 text-xs font-bold">
+                <span className="text-xs font-black uppercase tracking-wider text-amber-400 block">
+                  Create Client Store Admin Account
+                </span>
+                <p className="text-[11px] text-neutral-400 font-normal">
+                  Create an admin account to provide to your client (e.g. aishuhomefoods@gmail.com). They cannot see your super admin profile or credentials.
+                </p>
+
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    required
+                    placeholder="Admin Full Name (e.g. Aishu Store Manager)"
+                    value={newStoreAdminName}
+                    onChange={(e) => setNewStoreAdminName(e.target.value)}
+                    className="w-full p-3 bg-black/60 border border-neutral-700 rounded-xl text-white placeholder-neutral-500"
+                  />
+                  <input
+                    type="email"
+                    required
+                    placeholder="Admin Email (e.g. aishuhomefoods@gmail.com)"
+                    value={newStoreAdminEmail}
+                    onChange={(e) => setNewStoreAdminEmail(e.target.value)}
+                    className="w-full p-3 bg-black/60 border border-neutral-700 rounded-xl text-white font-mono placeholder-neutral-500"
+                  />
+                  <input
+                    type="password"
+                    required
+                    placeholder="Admin Password"
+                    value={newStoreAdminPass}
+                    onChange={(e) => setNewStoreAdminPass(e.target.value)}
+                    className="w-full p-3 bg-black/60 border border-neutral-700 rounded-xl text-white placeholder-neutral-500"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-3 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black text-xs font-black rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md active:scale-95"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>Create Store Admin Account</span>
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* 1. STORE & KITCHEN BUSINESS PROFILE */}
         <div className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-subtle space-y-5">

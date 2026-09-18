@@ -40,11 +40,36 @@ export const AdminDashboardPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const {
     isAdminAuthenticated,
+    currentAdminRole,
+    currentAdminEmail,
+    subAdmins,
     logoutAdmin,
     products,
     orders,
     siteLogo,
   } = useApp();
+
+  const currentSubAdmin = currentAdminRole === 'sub_admin' 
+    ? subAdmins.find((s) => s.email.toLowerCase() === currentAdminEmail?.toLowerCase())
+    : null;
+
+  const alertStockCount = products.filter((p) => (p.inventoryCount ?? 100) < 10 || p.outOfStock).length;
+
+  const allTabs = [
+    { id: 'analytics' as AdminTab, label: 'Analytics & Insights', icon: <BarChart3 className="w-4 h-4" /> },
+    { id: 'notifications' as AdminTab, label: 'Notifications & Stock', icon: <Bell className="w-4 h-4" />, badge: alertStockCount > 0 ? `${alertStockCount}` : undefined },
+    { id: 'products' as AdminTab, label: 'Product Catalog', icon: <Package className="w-4 h-4" /> },
+    { id: 'orders' as AdminTab, label: 'Orders & Fulfillment', icon: <ShoppingBag className="w-4 h-4" />, badge: orders.filter((o) => o.status === 'Active').length },
+    { id: 'banners' as AdminTab, label: 'Banners & Header Text', icon: <ImageIcon className="w-4 h-4" /> },
+    { id: 'bestsellers' as AdminTab, label: 'Featured & Festival', icon: <Star className="w-4 h-4" /> },
+    { id: 'discounts' as AdminTab, label: 'Discounts & Offers', icon: <Percent className="w-4 h-4" /> },
+    { id: 'settings' as AdminTab, label: 'Store Settings', icon: <Settings className="w-4 h-4" /> },
+    { id: 'profile' as AdminTab, label: 'Profile & Security', icon: <UserCheck className="w-4 h-4" /> },
+  ];
+
+  const visibleTabs = currentSubAdmin
+    ? allTabs.filter((t) => t.id === 'profile' || currentSubAdmin.allowedTabs.includes(t.id))
+    : allTabs;
 
   const [activeTab, setActiveTab] = useState<AdminTab>(() => {
     const param = searchParams.get('tab') as AdminTab | null;
@@ -73,19 +98,13 @@ export const AdminDashboardPage: React.FC = () => {
     setSearchParams(newParams, { replace: true });
   };
 
-  const alertStockCount = products.filter((p) => (p.inventoryCount ?? 100) < 10 || p.outOfStock).length;
-
-  const tabs = [
-    { id: 'analytics', label: 'Analytics & Insights', icon: <BarChart3 className="w-4 h-4" /> },
-    { id: 'notifications', label: 'Notifications & Stock', icon: <Bell className="w-4 h-4" />, badge: alertStockCount > 0 ? `${alertStockCount}` : undefined },
-    { id: 'products', label: 'Product Catalog', icon: <Package className="w-4 h-4" /> },
-    { id: 'orders', label: 'Orders & Fulfillment', icon: <ShoppingBag className="w-4 h-4" />, badge: orders.filter((o) => o.status === 'Active').length },
-    { id: 'banners', label: 'Banners & Header Text', icon: <ImageIcon className="w-4 h-4" /> },
-    { id: 'bestsellers', label: 'Featured & Festival', icon: <Star className="w-4 h-4" /> },
-    { id: 'discounts', label: 'Discounts & Offers', icon: <Percent className="w-4 h-4" /> },
-    { id: 'settings', label: 'Store Settings', icon: <Settings className="w-4 h-4" /> },
-    { id: 'profile', label: 'Profile & Security', icon: <UserCheck className="w-4 h-4" /> },
-  ];
+  // Ensure sub-admins don't stay on an unauthorized tab
+  useEffect(() => {
+    if (currentSubAdmin && !visibleTabs.some((t) => t.id === activeTab)) {
+      const fallbackTab = visibleTabs[0]?.id || 'profile';
+      setActiveTab(fallbackTab);
+    }
+  }, [currentSubAdmin, visibleTabs, activeTab]);
 
   if (!isAdminAuthenticated) {
     return (
@@ -192,7 +211,20 @@ export const AdminDashboardPage: React.FC = () => {
               <h1 className="text-2xl font-extrabold text-black tracking-tight group-hover:underline">
                 Aishu Foods Admin Portal
               </h1>
-              <span className="text-[10px] font-bold bg-black text-white px-2.5 py-0.5 rounded-full uppercase">Master</span>
+              {currentAdminRole === 'super_admin' ? (
+                <span className="text-[10px] font-black bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-500 text-black px-3 py-1 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-1 border border-amber-500/30">
+                  <span>👑</span>
+                  <span>Mega Super Admin</span>
+                </span>
+              ) : currentAdminRole === 'sub_admin' ? (
+                <span className="text-[10px] font-bold bg-neutral-800 text-white px-2.5 py-0.5 rounded-full uppercase">
+                  {currentSubAdmin?.roleTitle || 'Sub-Admin'}
+                </span>
+              ) : (
+                <span className="text-[10px] font-bold bg-black text-white px-2.5 py-0.5 rounded-full uppercase">
+                  Store Admin
+                </span>
+              )}
             </div>
             <p className="text-xs text-neutral-500 mt-0.5 flex items-center gap-1 group-hover:text-black transition-colors">
               <Home className="w-3 h-3 text-neutral-400 group-hover:text-black" />
@@ -261,7 +293,7 @@ export const AdminDashboardPage: React.FC = () => {
               onChange={(e) => handleTabChange(e.target.value as AdminTab)}
               className="w-full p-3 bg-white border border-neutral-300 rounded-2xl text-xs font-extrabold text-black focus:outline-none focus:border-black appearance-none cursor-pointer"
             >
-              {tabs.map((tab) => (
+              {visibleTabs.map((tab) => (
                 <option key={tab.id} value={tab.id}>
                   {tab.label} {tab.badge ? `(${tab.badge})` : ''}
                 </option>
@@ -275,7 +307,7 @@ export const AdminDashboardPage: React.FC = () => {
               Navigation Menu
             </span>
 
-            {tabs.map((tab) => {
+            {visibleTabs.map((tab) => {
               const isActive = activeTab === tab.id;
               return (
                 <button

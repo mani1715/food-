@@ -35,8 +35,8 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
   };
 
   const handleDemoFill = () => {
-    setEmail('admin@aura.com');
-    setPassword('admin123');
+    setEmail('aishuhomefoods@gmail.com');
+    setPassword('Rabbani@123');
   };
 
   return (

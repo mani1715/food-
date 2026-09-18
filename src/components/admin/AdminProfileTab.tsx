@@ -3,10 +3,12 @@ import { useApp } from '../../context/AppContext';
 import { ShieldCheck, KeyRound, CheckCircle2, ArrowRight } from 'lucide-react';
 
 export const AdminProfileTab: React.FC = () => {
-  const { addToast } = useApp();
+  const { addToast, currentAdminRole, currentAdminEmail } = useApp();
 
-  const [email, setEmail] = useState('admin@aura.com');
-  const [phone, setPhone] = useState('+91 98765 00000');
+  const isSuperAdmin = currentAdminRole === 'super_admin';
+  const defaultEmail = isSuperAdmin ? 'ettelamaneesh@gmail.com' : (currentAdminEmail || 'aishuhomefoods@gmail.com');
+  const [email, setEmail] = useState(defaultEmail);
+  const [phone, setPhone] = useState(isSuperAdmin ? '+91 99999 00000' : '+91 98480 12345');
 
   // Security Password OTP State
   const [showOtpModal, setShowOtpModal] = useState(false);
@@ -16,7 +18,7 @@ export const AdminProfileTab: React.FC = () => {
 
   const handleUpdateProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    addToast('Profile Updated', 'Admin account credentials updated.', 'success');
+    addToast('Profile Updated', 'Administrator credentials saved.', 'success');
   };
 
   const handleSendOTP = () => {
@@ -27,7 +29,7 @@ export const AdminProfileTab: React.FC = () => {
   const handleVerifyOTP = (e: React.FormEvent) => {
     e.preventDefault();
     if (otpInput === '123456' || otpInput.length === 6) {
-      addToast('Password Changed', 'Admin master password updated successfully.', 'success');
+      addToast('Password Changed', 'Administrator password updated successfully.', 'success');
       setShowOtpModal(false);
       setOtpSent(false);
       setOtpInput('');
@@ -40,8 +42,21 @@ export const AdminProfileTab: React.FC = () => {
   return (
     <div className="space-y-6 text-left">
       <div className="border-b border-neutral-200 pb-4">
-        <h2 className="text-xl font-extrabold text-black tracking-tight">Admin Profile & Master Security</h2>
-        <p className="text-xs text-neutral-500">Manage administrator account profile and security credentials.</p>
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl font-extrabold text-black tracking-tight">
+            {isSuperAdmin ? 'Mega Super Admin Profile & Master Controls' : 'Admin Profile & Account Security'}
+          </h2>
+          {isSuperAdmin && (
+            <span className="text-[10px] font-black bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-500 text-black px-2.5 py-0.5 rounded-full uppercase border border-amber-500/30 shadow-xs">
+              👑 Master
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-neutral-500">
+          {isSuperAdmin 
+            ? 'Master administrator owner profile with total platform governance rights.' 
+            : 'Manage store administrator account profile and security credentials.'}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -49,18 +64,22 @@ export const AdminProfileTab: React.FC = () => {
         {/* Profile Card */}
         <form onSubmit={handleUpdateProfile} className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-subtle space-y-4 text-xs font-bold">
           <div className="flex items-center gap-3 border-b border-neutral-100 pb-3">
-            <div className="w-10 h-10 rounded-2xl bg-black text-white flex items-center justify-center font-extrabold text-sm">
-              A
+            <div className={`w-10 h-10 rounded-2xl ${isSuperAdmin ? 'bg-amber-400 text-black font-black' : 'bg-black text-white font-extrabold'} flex items-center justify-center text-sm shadow-xs`}>
+              {isSuperAdmin ? '👑' : 'A'}
             </div>
             <div>
-              <h3 className="text-sm font-extrabold text-black">Aura Master Administrator</h3>
-              <p className="text-[10px] text-neutral-400 font-mono">Store Superuser</p>
+              <h3 className="text-sm font-extrabold text-black">
+                {isSuperAdmin ? 'Mega Super Administrator (Maneesh)' : 'Aishu Foods Store Admin'}
+              </h3>
+              <p className="text-[10px] text-neutral-400 font-mono">
+                {isSuperAdmin ? 'Platform Creator & Master Controller' : 'Store Administrator'}
+              </p>
             </div>
           </div>
 
           <div>
             <label className="block text-neutral-500 mb-1">Admin Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-3 rounded-2xl border border-neutral-300" />
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-3 rounded-2xl border border-neutral-300 font-mono" />
           </div>
 
           <div>
@@ -68,7 +87,7 @@ export const AdminProfileTab: React.FC = () => {
             <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full p-3 rounded-2xl border border-neutral-300 font-mono" />
           </div>
 
-          <button type="submit" className="w-full py-3.5 bg-black text-white text-xs font-extrabold rounded-2xl">
+          <button type="submit" className="w-full py-3.5 bg-black text-white text-xs font-extrabold rounded-2xl hover:bg-neutral-800 transition-all cursor-pointer">
             Save Profile Details
           </button>
         </form>

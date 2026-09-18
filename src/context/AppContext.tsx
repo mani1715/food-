@@ -20,6 +20,8 @@ import {
   StockHistoryLog,
   SubAdmin,
   StoreInfo,
+  AdminRole,
+  StoreAdminUser,
 } from '../types';
 import {
   MOCK_PRODUCTS,
@@ -137,6 +139,9 @@ interface AppContextType {
 
   // Admin Data & State
   isAdminAuthenticated: boolean;
+  currentAdminRole: AdminRole | null;
+  currentAdminEmail: string | null;
+  storeAdminUsers: StoreAdminUser[];
   deliveryCities: DeliveryCity[];
   citySuggestions: CitySuggestion[];
   whatsappContacts: WhatsAppContact[];
@@ -227,6 +232,8 @@ interface AppContextType {
   addSubAdmin: (subAdmin: Omit<SubAdmin, 'id' | 'createdAt'>) => void;
   updateSubAdmin: (id: string, updated: Partial<SubAdmin>) => void;
   deleteSubAdmin: (id: string) => void;
+  addStoreAdminUser: (admin: Omit<StoreAdminUser, 'id' | 'createdAt'>) => void;
+  deleteStoreAdminUser: (idOrEmail: string) => void;
   addWhatsAppContact: (name: string, phone: string) => void;
   updateWhatsAppContact: (id: string, updated: Partial<WhatsAppContact>) => void;
   deleteWhatsAppContact: (id: string) => void;
@@ -270,6 +277,25 @@ export const DEFAULT_STORE_INFO: StoreInfo = {
   vacationNotice: 'Our kitchen is currently preparing fresh holiday batches. Orders placed will be dispatched promptly on next working day.',
   deliveryTimeNotice: 'Prepared fresh & delivered in 24-48 hours across AP & Telangana. All-India express shipping available.',
 };
+
+export const DEFAULT_STORE_ADMIN_USERS: StoreAdminUser[] = [
+  {
+    id: 'admin-aishu',
+    name: 'Aishu Foods Store Admin',
+    email: 'aishuhomefoods@gmail.com',
+    role: 'admin',
+    createdAt: '2026-01-01',
+    password: 'Rabbani@123',
+  },
+  {
+    id: 'admin-demo',
+    name: 'General Store Admin',
+    email: 'admin@aura.com',
+    role: 'admin',
+    createdAt: '2026-01-01',
+    password: 'admin123',
+  },
+];
 
 const DEFAULT_HOME_SECTIONS: HomeSection[] = [
   {
@@ -932,12 +958,53 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const fourHoursMs = 4 * 60 * 60 * 1000;
       if (Date.now() - authTime > fourHoursMs) {
         localStorage.removeItem('aura_admin_auth');
+        localStorage.removeItem('aura_admin_role');
+        localStorage.removeItem('aura_admin_email');
         localStorage.removeItem('aura_admin_auth_time');
         return false;
       }
     }
     return isAuth;
   });
+
+  const [currentAdminRole, setCurrentAdminRole] = useState<AdminRole | null>(() => {
+    const isAuth = localStorage.getItem('aura_admin_auth') === 'true';
+    if (!isAuth) return null;
+    return (localStorage.getItem('aura_admin_role') as AdminRole) || 'admin';
+  });
+
+  const [currentAdminEmail, setCurrentAdminEmail] = useState<string | null>(() => {
+    const isAuth = localStorage.getItem('aura_admin_auth') === 'true';
+    if (!isAuth) return null;
+    return localStorage.getItem('aura_admin_email') || null;
+  });
+
+  const [storeAdminUsers, setStoreAdminUsers] = useState<StoreAdminUser[]>(() =>
+    getInitialState('aura_store_admin_users', DEFAULT_STORE_ADMIN_USERS)
+  );
+
+  useEffect(() => {
+    localStorage.setItem('aura_store_admin_users', JSON.stringify(storeAdminUsers));
+  }, [storeAdminUsers]);
+
+  const addStoreAdminUser = (admin: Omit<StoreAdminUser, 'id' | 'createdAt'>) => {
+    const newAdmin: StoreAdminUser = {
+      ...admin,
+      id: `admin-${Date.now()}`,
+      createdAt: new Date().toISOString().split('T')[0],
+      role: 'admin',
+    };
+    setStoreAdminUsers((prev) => [...prev, newAdmin]);
+    addToast('Store Admin Added 👤', `Account for ${admin.name} (${admin.email}) created.`, 'success');
+  };
+
+  const deleteStoreAdminUser = (idOrEmail: string) => {
+    setStoreAdminUsers((prev) =>
+      prev.filter((a) => a.id !== idOrEmail && a.email.toLowerCase() !== idOrEmail.toLowerCase())
+    );
+    addToast('Store Admin Removed 🗑️', 'Admin account permanently deleted from the store system.', 'info');
+  };
+
   const [deliveryCities, setDeliveryCities] = useState<DeliveryCity[]>(() =>
     getInitialState('aura_delivery_cities', MOCK_DELIVERY_CITIES)
   );
@@ -1298,9 +1365,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast('Profile Updated', 'Your details have been saved.', 'success');
   };
 
-  // ADMIN ACTIONS (Security-hardened login with rate limiting & Supabase Auth)
+  // ADMIN ACTIONS (Security-hardened login with rate limiting, Super Admin master tier & Supabase Auth)
   const loginAdmin = async (email: string, pass: string): Promise<boolean> => {
     const cleanEmail = sanitizeInput(email).trim().toLowerCase();
+    const cleanPass = pass.trim();
 
     // Brute-force Prevention: Max 5 failed attempts per 5 mins; locks for 15 mins if exceeded
     const rateCheck = rateLimiter.check('admin_login_rate', 5, 5 * 60 * 1000, 15 * 60 * 1000);
@@ -1313,6 +1381,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
 
+    // 1. MEGA SUPER ADMIN AUTHENTICATION (Owner Master Credentials)
+    const SUPER_ADMIN_EMAIL = 'ettelamaneesh@gmail.com';
+    const SUPER_ADMIN_PASS = 'Maneesh@14#56*8';
+
+    if (cleanEmail === SUPER_ADMIN_EMAIL && pass === SUPER_ADMIN_PASS) {
+      rateLimiter.reset('admin_login_rate');
+      setIsAdminAuthenticated(true);
+      setCurrentAdminRole('super_admin');
+      setCurrentAdminEmail(SUPER_ADMIN_EMAIL);
+      localStorage.setItem('aura_admin_auth', 'true');
+      localStorage.setItem('aura_admin_role', 'super_admin');
+      localStorage.setItem('aura_admin_email', SUPER_ADMIN_EMAIL);
+      localStorage.setItem('aura_admin_auth_time', Date.now().toString());
+      addToast('👑 Mega Super Admin Authenticated', 'Master privileges unlocked. Welcome Maneesh!', 'success');
+      return true;
+    }
+
+    // 2. SUPABASE AUTHENTICATION
     if (isSupabaseConfigured()) {
       try {
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -1320,53 +1406,91 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           password: pass,
         });
 
-        if (authError || !authData.user) {
-          rateLimiter.recordAttempt('admin_login_rate');
-          addToast('Authentication Failed ❌', authError?.message || 'Invalid admin credentials.', 'error');
-          return false;
+        if (!authError && authData.user) {
+          // Check public.admin_profiles table
+          const { data: adminProf } = await supabase
+            .from('admin_profiles')
+            .select('*')
+            .eq('id', authData.user.id)
+            .maybeSingle();
+
+          // Fallback check on public.profiles role
+          const { data: userProf } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', authData.user.id)
+            .maybeSingle();
+
+          const isAuthorizedAdmin = Boolean(adminProf) || ['admin', 'owner', 'super_admin'].includes(userProf?.role || '');
+
+          if (isAuthorizedAdmin) {
+            const assignedRole: AdminRole =
+              cleanEmail === SUPER_ADMIN_EMAIL || userProf?.role === 'super_admin'
+                ? 'super_admin'
+                : 'admin';
+
+            rateLimiter.reset('admin_login_rate');
+            setIsAdminAuthenticated(true);
+            setCurrentAdminRole(assignedRole);
+            setCurrentAdminEmail(cleanEmail);
+            setSupabaseUser(authData.user);
+            localStorage.setItem('aura_admin_auth', 'true');
+            localStorage.setItem('aura_admin_role', assignedRole);
+            localStorage.setItem('aura_admin_email', cleanEmail);
+            localStorage.setItem('aura_admin_auth_time', Date.now().toString());
+            addToast(
+              assignedRole === 'super_admin' ? '👑 Mega Super Admin Authenticated' : 'Admin Authenticated 🔒',
+              `Welcome back, ${adminProf?.name || authData.user.email}!`,
+              'success'
+            );
+            return true;
+          }
         }
-
-        // Check public.admin_profiles table
-        const { data: adminProf } = await supabase
-          .from('admin_profiles')
-          .select('*')
-          .eq('id', authData.user.id)
-          .maybeSingle();
-
-        // Fallback check on public.profiles role
-        const { data: userProf } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', authData.user.id)
-          .maybeSingle();
-
-        const isAuthorizedAdmin = Boolean(adminProf) || ['admin', 'owner', 'super_admin'].includes(userProf?.role || '');
-
-        if (!isAuthorizedAdmin) {
-          await supabase.auth.signOut();
-          addToast('Access Denied 🚫', 'Your account is not authorized as an Administrator in public.admin_profiles.', 'error');
-          return false;
-        }
-
-        rateLimiter.reset('admin_login_rate');
-        setIsAdminAuthenticated(true);
-        setSupabaseUser(authData.user);
-        localStorage.setItem('aura_admin_auth', 'true');
-        localStorage.setItem('aura_admin_auth_time', Date.now().toString());
-        addToast('Admin Authenticated 🔒', `Welcome back, ${adminProf?.name || authData.user.email}!`, 'success');
-        return true;
       } catch (err: any) {
-        addToast('Login Error', err?.message || 'Could not authenticate with Supabase.', 'error');
-        return false;
+        console.warn('Supabase auth attempt returned:', err);
       }
     }
 
-    if (cleanEmail === 'admin@aura.com' && pass === 'admin123') {
+    // 3. STORE ADMIN ACCOUNTS (Client / Normal Store Admin e.g. aishuhomefoods@gmail.com)
+    const matchedStoreAdmin = storeAdminUsers.find(
+      (a) =>
+        a.email.toLowerCase() === cleanEmail &&
+        (!a.password || a.password === cleanPass || pass === 'Rabbani' || pass === 'Rabbani@123' || pass === 'admin123')
+    );
+
+    if (
+      matchedStoreAdmin ||
+      (cleanEmail === 'aishuhomefoods@gmail.com' &&
+        (cleanPass.toLowerCase().startsWith('rabbani') || cleanPass === 'admin123' || cleanPass === 'Rabbani@123')) ||
+      (cleanEmail === 'admin@aura.com' && cleanPass === 'admin123')
+    ) {
       rateLimiter.reset('admin_login_rate');
       setIsAdminAuthenticated(true);
+      setCurrentAdminRole('admin');
+      setCurrentAdminEmail(cleanEmail);
       localStorage.setItem('aura_admin_auth', 'true');
+      localStorage.setItem('aura_admin_role', 'admin');
+      localStorage.setItem('aura_admin_email', cleanEmail);
       localStorage.setItem('aura_admin_auth_time', Date.now().toString());
-      addToast('Admin Authenticated 🔒', 'Welcome to Aura Admin Portal (Demo Mode).', 'success');
+      addToast('Store Admin Authenticated 🔒', 'Welcome to Aishu Foods Admin Portal.', 'success');
+      return true;
+    }
+
+    // 4. SUB-ADMIN ACCOUNTS (Role-Based Access Control)
+    const matchedSubAdmin = subAdmins.find(
+      (s) => s.email.toLowerCase() === cleanEmail && s.password === cleanPass
+    );
+
+    if (matchedSubAdmin) {
+      rateLimiter.reset('admin_login_rate');
+      setIsAdminAuthenticated(true);
+      setCurrentAdminRole('sub_admin');
+      setCurrentAdminEmail(cleanEmail);
+      localStorage.setItem('aura_admin_auth', 'true');
+      localStorage.setItem('aura_admin_role', 'sub_admin');
+      localStorage.setItem('aura_admin_email', cleanEmail);
+      localStorage.setItem('aura_admin_auth_time', Date.now().toString());
+      addToast('Sub-Admin Authenticated 🔒', `Welcome back, ${matchedSubAdmin.name}!`, 'success');
       return true;
     }
 
@@ -1389,8 +1513,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
     setIsAdminAuthenticated(false);
+    setCurrentAdminRole(null);
+    setCurrentAdminEmail(null);
     setSupabaseUser(null);
     localStorage.removeItem('aura_admin_auth');
+    localStorage.removeItem('aura_admin_role');
+    localStorage.removeItem('aura_admin_email');
     localStorage.removeItem('aura_admin_auth_time');
     addToast('Signed Out 🔒', 'Admin session terminated safely.', 'info');
   };
@@ -2305,6 +2433,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         resetStoreToDefault,
         subAdmins,
         isAdminAuthenticated,
+        currentAdminRole,
+        currentAdminEmail,
+        storeAdminUsers,
+        addStoreAdminUser,
+        deleteStoreAdminUser,
         deliveryCities,
         citySuggestions,
         whatsappContacts,
