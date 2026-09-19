@@ -44,6 +44,7 @@ export const SettingsManagementTab: React.FC = () => {
     exportStoreBackupJson,
     resetStoreToDefault,
     currentAdminRole,
+    currentAdminEmail,
     storeAdminUsers,
     addStoreAdminUser,
     deleteStoreAdminUser,
@@ -74,6 +75,7 @@ export const SettingsManagementTab: React.FC = () => {
   const [draftTagline, setDraftTagline] = useState(storeInfo.tagline || '');
   const [draftSupportEmail, setDraftSupportEmail] = useState(storeInfo.supportEmail || '');
   const [draftSupportPhone, setDraftSupportPhone] = useState(storeInfo.supportPhone || '');
+  const [draftSupportWhatsApp, setDraftSupportWhatsApp] = useState(storeInfo.supportWhatsApp || '');
   const [draftKitchenAddress, setDraftKitchenAddress] = useState(storeInfo.kitchenAddress || '');
   const [draftFssaiNumber, setDraftFssaiNumber] = useState(storeInfo.fssaiNumber || '');
   const [draftGstin, setDraftGstin] = useState(storeInfo.gstin || '');
@@ -287,7 +289,7 @@ export const SettingsManagementTab: React.FC = () => {
               <div className="bg-neutral-800/80 border border-neutral-700 px-4 py-2.5 rounded-2xl flex items-center gap-2 text-xs font-mono">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 <span className="text-neutral-400">Master User:</span>
-                <span className="font-extrabold text-amber-300">ettelamaneesh@gmail.com</span>
+                <span className="font-extrabold text-amber-300">{currentAdminEmail || 'Super Admin'}</span>
               </div>
             </div>
 

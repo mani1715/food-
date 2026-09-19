@@ -16,6 +16,10 @@ import {
   ChevronUp,
   RotateCcw,
   AlertCircle,
+  Copy,
+  Check,
+  ExternalLink,
+  ShieldCheck,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
@@ -30,6 +34,7 @@ export const TrackOrderPage: React.FC = () => {
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   // Cancellation Modal State
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -330,6 +335,65 @@ export const TrackOrderPage: React.FC = () => {
                             </button>
                           </div>
                         </div>
+
+                        {/* Customer-Facing Logistics Progress Stepper */}
+                        {ord.status !== 'Cancelled' && ord.orderStatus !== 'cancelled' && (
+                          <div className="p-6 bg-white border-b border-neutral-100 space-y-4">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-extrabold text-black uppercase tracking-wider flex items-center gap-2">
+                                <Truck className="w-4 h-4 text-black" />
+                                <span>Fulfillment & Delivery Progress</span>
+                              </span>
+
+                              {ord.courierPartner && (
+                                <span className="text-[11px] font-bold text-neutral-600 bg-neutral-100 px-3 py-1 rounded-full border border-neutral-200">
+                                  Courier: <strong>{ord.courierPartner}</strong>
+                                </span>
+                              )}
+                            </div>
+
+                            {/* 5-Step Visual Progress Bar */}
+                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs pt-1">
+                              {[
+                                { title: 'Order Placed', desc: 'Received in store', stepIdx: 0, statusKeys: ['placed', 'pending', 'confirmed', 'processing', 'ready_to_ship', 'shipped', 'out for delivery', 'delivered'] },
+                                { title: 'Batch Prepared', desc: 'Handcrafted fresh', stepIdx: 1, statusKeys: ['confirmed', 'processing', 'ready_to_ship', 'shipped', 'out for delivery', 'delivered'] },
+                                { title: 'Ready to Ship', desc: 'Airtight jar packed', stepIdx: 2, statusKeys: ['ready_to_ship', 'shipped', 'out for delivery', 'delivered'] },
+                                { title: 'Dispatched', desc: 'In courier transit', stepIdx: 3, statusKeys: ['shipped', 'out for delivery', 'delivered'] },
+                                { title: 'Delivered', desc: 'Safely received', stepIdx: 4, statusKeys: ['delivered'] },
+                              ].map((step, sIdx) => {
+                                const isPassed = step.statusKeys.includes(ord.orderStatus);
+                                const isCurrent = (
+                                  (sIdx === 0 && (ord.orderStatus === 'placed' || ord.orderStatus === 'pending')) ||
+                                  (sIdx === 1 && (ord.orderStatus === 'confirmed' || ord.orderStatus === 'processing')) ||
+                                  (sIdx === 2 && ord.orderStatus === 'ready_to_ship') ||
+                                  (sIdx === 3 && ord.orderStatus === 'shipped') ||
+                                  (sIdx === 4 && ord.orderStatus === 'delivered')
+                                );
+
+                                return (
+                                  <div
+                                    key={sIdx}
+                                    className={`p-3 rounded-2xl border transition-all ${
+                                      isCurrent
+                                        ? 'bg-black text-white border-black shadow-subtle'
+                                        : isPassed
+                                        ? 'bg-emerald-50 text-emerald-950 border-emerald-200'
+                                        : 'bg-neutral-50 text-neutral-400 border-neutral-200 opacity-60'
+                                    }`}
+                                  >
+                                    <div className="w-5 h-5 rounded-full mx-auto flex items-center justify-center mb-1.5 font-bold text-[10px] bg-white/20 border border-current">
+                                      {isPassed ? '✓' : sIdx + 1}
+                                    </div>
+                                    <span className="font-extrabold text-[11px] block">{step.title}</span>
+                                    <span className={`text-[9px] block ${isCurrent ? 'text-neutral-300' : 'text-neutral-500'}`}>
+                                      {step.desc}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
 
                         {/* Customer & Delivery Details */}
                         <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">

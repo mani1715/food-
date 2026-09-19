@@ -16,6 +16,29 @@ export interface DbAdminProfile {
   updated_at: string;
 }
 
+export interface DbAdminRole {
+  id: string;
+  user_id: string;
+  role: 'super_admin' | 'admin' | 'sub_admin';
+  status: 'active' | 'suspended' | 'revoked';
+  allowed_tabs: string[];
+  permissions?: string[];
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbAuditLog {
+  id: string;
+  actor_id?: string | null;
+  actor_email?: string | null;
+  action: string;
+  entity: string;
+  entity_id?: string | null;
+  metadata?: Record<string, any>;
+  created_at: string;
+}
+
 export interface DbCustomerAddress {
   id: string;
   user_id: string;
@@ -102,10 +125,16 @@ export interface DbOrder {
   payment_method: string;
   payment_status: string;
   order_status: string;
-  cancel_reason: string | null;
+  applied_coupon_code?: string | null;
+  applied_offer_title?: string | null;
+  free_gift_snapshot?: string | null;
+  idempotency_key?: string | null;
+  cancel_reason?: string | null;
+  admin_notes?: string | null;
   created_at: string;
-  shipped_at: string | null;
-  delivered_at: string | null;
+  shipped_at?: string | null;
+  delivered_at?: string | null;
+  cancelled_at?: string | null;
 }
 
 export interface DbOrderItem {
@@ -116,6 +145,8 @@ export interface DbOrderItem {
   selected_weight: string;
   unit_price: number;
   quantity: number;
+  line_total?: number;
+  is_free_gift?: boolean;
 }
 
 export interface DbStockHistoryLog {
@@ -174,12 +205,37 @@ export interface DbHeaderAnnouncement {
 export interface DbCoupon {
   id: string;
   code: string;
+  description?: string | null;
   discount_type: 'percentage' | 'flat';
   discount_value: number;
   min_order_amount: number;
+  applies_to?: 'all' | 'category' | 'product';
+  target_category?: string | null;
+  target_product_id?: string | null;
+  max_discount?: number | null;
+  max_usage_limit?: number | null;
   usage_count: number;
   expiry_date: string | null;
   is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbCartOffer {
+  id: string;
+  title: string;
+  description: string | null;
+  offer_type: 'percentage' | 'flat' | 'free_shipping' | 'free_gift';
+  discount_value: number;
+  min_cart_value: number;
+  min_cart_quantity?: number | null;
+  max_discount?: number | null;
+  free_gift_item_name?: string | null;
+  badge_text?: string | null;
+  expiry_date?: string | null;
+  is_active: boolean;
+  auto_apply: boolean;
+  usage_count: number;
   created_at: string;
   updated_at: string;
 }

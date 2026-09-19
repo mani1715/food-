@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { ShieldCheck, X, ArrowRight, KeyRound } from 'lucide-react';
+import { ShieldCheck, X, ArrowRight, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-
 import { sanitizeInput } from '../../utils/security';
 
 interface AdminLoginModalProps {
@@ -16,11 +15,13 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
     setIsSubmitting(true);
     try {
       const cleanEmail = sanitizeInput(email);
@@ -28,15 +29,14 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
       if (success) {
         if (onSuccess) onSuccess();
         onClose();
+      } else {
+        setErrorMessage('Authentication failed. Please verify your administrative email and password.');
       }
+    } catch {
+      setErrorMessage('An unexpected error occurred during login. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleDemoFill = () => {
-    setEmail('aishuhomefoods@gmail.com');
-    setPassword('Rabbani@123');
   };
 
   return (
@@ -51,18 +51,29 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
           {/* Header */}
           <div className="flex items-center justify-between border-b border-neutral-100 pb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-black text-white flex items-center justify-center">
-                <ShieldCheck className="w-5 h-5" />
+              <div className="w-10 h-10 rounded-2xl bg-black text-white flex items-center justify-center shadow-subtle">
+                <ShieldCheck className="w-5 h-5 text-amber-400" />
               </div>
               <div>
                 <h3 className="text-lg font-extrabold text-black tracking-tight">Admin Portal Login</h3>
                 <p className="text-xs text-neutral-400 font-mono">Restricted Store Management</p>
               </div>
             </div>
-            <button onClick={onClose} className="text-neutral-400 hover:text-black">
+            <button
+              onClick={onClose}
+              className="text-neutral-400 hover:text-black p-1 rounded-xl hover:bg-neutral-100 transition-colors"
+              title="Close modal"
+            >
               <X className="w-5 h-5" />
             </button>
           </div>
+
+          {errorMessage && (
+            <div className="p-3.5 bg-red-50 border border-red-200 rounded-2xl text-xs text-red-700 font-medium flex items-center gap-2">
+              <Lock className="w-4 h-4 text-red-500 shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -71,10 +82,11 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
               <input
                 type="email"
                 required
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="e.g. admin@aura.com"
-                className="w-full p-3 rounded-2xl border border-neutral-300 text-xs font-bold focus:outline-none focus:border-black bg-neutral-50"
+                placeholder="e.g. admin@aishufoods.com"
+                className="w-full p-3 rounded-2xl border border-neutral-300 text-xs font-bold focus:outline-none focus:border-black bg-neutral-50 transition-colors"
               />
             </div>
 
@@ -83,10 +95,11 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
               <input
                 type="password"
                 required
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full p-3 rounded-2xl border border-neutral-300 text-xs font-bold focus:outline-none focus:border-black bg-neutral-50"
+                className="w-full p-3 rounded-2xl border border-neutral-300 text-xs font-bold focus:outline-none focus:border-black bg-neutral-50 transition-colors"
               />
             </div>
 
@@ -109,17 +122,9 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
             </button>
           </form>
 
-          {/* Demo Credentials Auto-Fill Button */}
-          <div className="pt-3 border-t border-neutral-100 flex items-center justify-between text-xs">
-            <span className="text-neutral-400 font-medium">Demo Access Credentials:</span>
-            <button
-              type="button"
-              onClick={handleDemoFill}
-              className="px-3 py-1.5 rounded-xl border border-neutral-200 bg-neutral-100 hover:bg-black hover:text-white text-neutral-800 font-bold transition-all flex items-center gap-1.5"
-            >
-              <KeyRound className="w-3.5 h-3.5" />
-              <span>Auto-Fill Admin Demo</span>
-            </button>
+          {/* Security Notice */}
+          <div className="pt-3 border-t border-neutral-100 flex items-center justify-between text-xs text-neutral-400">
+            <span className="font-mono text-[11px]">🔐 Protected by PostgreSQL RBAC & RLS</span>
           </div>
         </motion.div>
       </div>

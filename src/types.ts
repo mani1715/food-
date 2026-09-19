@@ -1,6 +1,13 @@
 export interface WeightOption {
   weight: string; // e.g. "250g", "500g", "1kg"
   price: number;  // e.g. 8.99, 15.99, 29.99
+  stock?: number;  // remaining stock for this weight (e.g. 11 for 250g, 31 for 500g)
+  shippingWeightGrams?: number;
+  packageLengthCm?: number;
+  packageWidthCm?: number;
+  packageHeightCm?: number;
+  isFragile?: boolean;
+  requiresSpecialHandling?: boolean;
 }
 
 export interface ProcessStep {
@@ -42,6 +49,16 @@ export interface Product {
   sourcingText?: string;
   qualityGuaranteeText?: string;
   customProcessSteps?: ProcessStep[];
+  shelfLife?: string;
+  storageInstructions?: string;
+  allergenInfo?: string;
+  packagingInfo?: string;
+  shippingWeightGrams?: number;
+  packageLengthCm?: number;
+  packageWidthCm?: number;
+  packageHeightCm?: number;
+  isFragile?: boolean;
+  requiresSpecialHandling?: boolean;
 }
 
 export interface ProductCategory {
@@ -112,6 +129,7 @@ export interface Order {
   id: string;
   orderNumber: string;
   trackingCode?: string;
+  paymentSessionToken?: string;
   date: string;
   items: CartItem[];
   subtotal: number;
@@ -120,12 +138,16 @@ export interface Order {
   total: number;
   status: 'Active' | 'Delivered' | 'Cancelled';
   orderStatus: 'placed' | 'pending' | 'confirmed' | 'processing' | 'ready_to_ship' | 'shipped' | 'out for delivery' | 'delivered' | 'cancelled';
-  paymentStatus: 'pending' | 'completed' | 'failed' | 'refunded';
+  paymentStatus: 'pending' | 'completed' | 'authorized' | 'paid' | 'failed' | 'refunded' | 'cod_pending' | 'cod_collected' | 'cod';
   deliveryAddress: UserLocation;
   paymentMethod: string;
   customerName?: string;
   customerPhone?: string;
   customerEmail?: string;
+  appliedCouponCode?: string;
+  appliedOfferTitle?: string;
+  freeGiftSnapshot?: string;
+  idempotencyKey?: string;
   adminNotes?: string;
   deliveryDays?: number;
   cancelReason?: string;
@@ -233,6 +255,7 @@ export type AdminTab =
   | 'notifications'
   | 'banners'
   | 'orders'
+  | 'shipping'
   | 'locations'
   | 'bestsellers'
   | 'discounts'
@@ -300,6 +323,7 @@ export interface StoreInfo {
   tagline: string;
   supportEmail: string;
   supportPhone: string;
+  supportWhatsApp?: string;
   kitchenAddress: string;
   fssaiNumber: string;
   gstin: string;
@@ -313,6 +337,43 @@ export interface StoreInfo {
 }
 
 export type AdminRole = 'super_admin' | 'admin' | 'sub_admin';
+
+export type AdminPermission =
+  | 'products.read'
+  | 'products.write'
+  | 'orders.read'
+  | 'orders.update'
+  | 'inventory.read'
+  | 'inventory.write'
+  | 'coupons.read'
+  | 'coupons.write'
+  | 'banners.read'
+  | 'banners.write'
+  | 'delivery.read'
+  | 'delivery.write'
+  | 'shipping.view'
+  | 'shipping.create'
+  | 'shipping.update'
+  | 'shipping.cancel'
+  | 'shipping.pickup'
+  | 'shipping.return'
+  | 'shipping.reconcile'
+  | 'shipping.settings'
+  | 'settings.read'
+  | 'settings.write'
+  | 'analytics.read'
+  | 'staff.manage'
+  | '*';
+
+export interface AdminSessionIdentity {
+  userId: string;
+  email: string;
+  name: string;
+  role: AdminRole;
+  status: 'active' | 'suspended' | 'revoked';
+  allowedTabs: string[];
+  permissions: string[];
+}
 
 export interface StoreAdminUser {
   id: string;

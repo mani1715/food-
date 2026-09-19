@@ -19,6 +19,7 @@ import {
   Home,
   ArrowLeft,
   Store,
+  Truck,
 } from 'lucide-react';
 
 // Sub-Tab Components
@@ -30,28 +31,27 @@ import { BannersManagementTab } from '../../components/admin/BannersManagementTa
 import { FeaturedManagementTab } from '../../components/admin/FeaturedManagementTab';
 import { DiscountsManagementTab } from '../../components/admin/DiscountsManagementTab';
 import { SettingsManagementTab } from '../../components/admin/SettingsManagementTab';
+import { ShippingManagementTab } from '../../components/admin/ShippingManagementTab';
 import { AdminProfileTab } from '../../components/admin/AdminProfileTab';
 import { AdminLoginModal } from '../../components/admin/AdminLoginModal';
 
-const validTabs: AdminTab[] = ['analytics', 'products', 'notifications', 'banners', 'orders', 'locations', 'bestsellers', 'discounts', 'settings', 'newsletter', 'profile'];
+const validTabs: AdminTab[] = ['analytics', 'products', 'notifications', 'banners', 'orders', 'shipping', 'locations', 'bestsellers', 'discounts', 'settings', 'newsletter', 'profile'];
 
 export const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const {
+    adminAuthLoading,
     isAdminAuthenticated,
     currentAdminRole,
     currentAdminEmail,
-    subAdmins,
+    currentAdminIdentity,
+    hasTabAccess,
     logoutAdmin,
     products,
     orders,
     siteLogo,
   } = useApp();
-
-  const currentSubAdmin = currentAdminRole === 'sub_admin' 
-    ? subAdmins.find((s) => s.email.toLowerCase() === currentAdminEmail?.toLowerCase())
-    : null;
 
   const alertStockCount = products.filter((p) => (p.inventoryCount ?? 100) < 10 || p.outOfStock).length;
 
@@ -60,6 +60,7 @@ export const AdminDashboardPage: React.FC = () => {
     { id: 'notifications' as AdminTab, label: 'Notifications & Stock', icon: <Bell className="w-4 h-4" />, badge: alertStockCount > 0 ? `${alertStockCount}` : undefined },
     { id: 'products' as AdminTab, label: 'Product Catalog', icon: <Package className="w-4 h-4" /> },
     { id: 'orders' as AdminTab, label: 'Orders & Fulfillment', icon: <ShoppingBag className="w-4 h-4" />, badge: orders.filter((o) => o.status === 'Active').length },
+    { id: 'shipping' as AdminTab, label: 'Shipping & Logistics', icon: <Truck className="w-4 h-4" /> },
     { id: 'banners' as AdminTab, label: 'Banners & Header Text', icon: <ImageIcon className="w-4 h-4" /> },
     { id: 'bestsellers' as AdminTab, label: 'Featured & Festival', icon: <Star className="w-4 h-4" /> },
     { id: 'discounts' as AdminTab, label: 'Discounts & Offers', icon: <Percent className="w-4 h-4" /> },
@@ -67,9 +68,7 @@ export const AdminDashboardPage: React.FC = () => {
     { id: 'profile' as AdminTab, label: 'Profile & Security', icon: <UserCheck className="w-4 h-4" /> },
   ];
 
-  const visibleTabs = currentSubAdmin
-    ? allTabs.filter((t) => t.id === 'profile' || currentSubAdmin.allowedTabs.includes(t.id))
-    : allTabs;
+  const visibleTabs = allTabs.filter((t) => hasTabAccess(t.id));
 
   const [activeTab, setActiveTab] = useState<AdminTab>(() => {
     const param = searchParams.get('tab') as AdminTab | null;
@@ -98,13 +97,22 @@ export const AdminDashboardPage: React.FC = () => {
     setSearchParams(newParams, { replace: true });
   };
 
-  // Ensure sub-admins don't stay on an unauthorized tab
+  // Ensure staff don't stay on an unauthorized tab
   useEffect(() => {
-    if (currentSubAdmin && !visibleTabs.some((t) => t.id === activeTab)) {
+    if (isAdminAuthenticated && visibleTabs.length > 0 && !visibleTabs.some((t) => t.id === activeTab)) {
       const fallbackTab = visibleTabs[0]?.id || 'profile';
       setActiveTab(fallbackTab);
     }
-  }, [currentSubAdmin, visibleTabs, activeTab]);
+  }, [isAdminAuthenticated, visibleTabs, activeTab]);
+
+  if (adminAuthLoading) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex flex-col items-center justify-center p-4">
+        <div className="w-10 h-10 border-4 border-black border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest">Verifying Administrative Privileges...</p>
+      </div>
+    );
+  }
 
   if (!isAdminAuthenticated) {
     return (
@@ -218,7 +226,7 @@ export const AdminDashboardPage: React.FC = () => {
                 </span>
               ) : currentAdminRole === 'sub_admin' ? (
                 <span className="text-[10px] font-bold bg-neutral-800 text-white px-2.5 py-0.5 rounded-full uppercase">
-                  {currentSubAdmin?.roleTitle || 'Sub-Admin'}
+                  {currentAdminIdentity?.name || 'Sub-Admin'}
                 </span>
               ) : (
                 <span className="text-[10px] font-bold bg-black text-white px-2.5 py-0.5 rounded-full uppercase">
@@ -345,6 +353,7 @@ export const AdminDashboardPage: React.FC = () => {
           {activeTab === 'notifications' && <NotificationsManagementTab />}
           {activeTab === 'products' && <ProductsManagementTab />}
           {activeTab === 'orders' && <OrdersManagementTab />}
+          {activeTab === 'shipping' && <ShippingManagementTab />}
           {activeTab === 'banners' && <BannersManagementTab />}
           {activeTab === 'bestsellers' && <FeaturedManagementTab />}
           {activeTab === 'discounts' && <DiscountsManagementTab />}

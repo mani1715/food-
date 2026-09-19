@@ -102,7 +102,22 @@ export const ProductDetailsPage: React.FC = () => {
           
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold uppercase tracking-widest text-neutral-400">{product.category}</span>
+              <div className="flex items-center gap-2">
+      <span className="text-xs font-extrabold uppercase tracking-widest text-neutral-400">{product.category}</span>
+      {typeof product.isVeg === 'boolean' && (
+        product.isVeg ? (
+          <span className="bg-emerald-50 border border-emerald-600 text-emerald-800 text-[10px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 inline-block" />
+            Vegetarian
+          </span>
+        ) : (
+          <span className="bg-rose-50 border border-rose-600 text-rose-800 text-[10px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-600 inline-block" />
+            Non-Vegetarian
+          </span>
+        )
+      )}
+    </div>
               <div className="flex items-center gap-1.5 text-xs font-extrabold text-black">
                 <Star className="w-4 h-4 fill-black text-black" />
                 <span>{product.rating}</span>
@@ -143,7 +158,14 @@ export const ProductDetailsPage: React.FC = () => {
                         : 'bg-white text-black border-neutral-200 hover:border-black'
                     }`}
                   >
-                    <span>{opt.weight}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span>{opt.weight}</span>
+                      {opt.stock !== undefined && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-extrabold">
+                          {opt.stock} left
+                        </span>
+                      )}
+                    </div>
                     <span className="font-mono text-[11px] opacity-80">
                       ₹{optDiscounted} {hasDiscount ? `(was ₹${opt.price})` : ''}
                     </span>
@@ -166,6 +188,38 @@ export const ProductDetailsPage: React.FC = () => {
                     ✓ {ing}
                   </span>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Product-Specific Storage & Quality Details (Displayed ONLY if configured on product) */}
+          {(product.shelfLife || product.storageInstructions || product.allergenInfo || product.packagingInfo) && (
+            <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-4 space-y-2 text-xs text-neutral-700">
+              <div className="flex items-center gap-1.5 font-bold text-black uppercase tracking-wider text-[11px]">
+                <span>🌿</span>
+                <span>Product Information & Handling</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-neutral-600">
+                {product.shelfLife && (
+                  <div>
+                    <strong className="text-black">Shelf Life:</strong> {product.shelfLife}
+                  </div>
+                )}
+                {product.storageInstructions && (
+                  <div>
+                    <strong className="text-black">Storage:</strong> {product.storageInstructions}
+                  </div>
+                )}
+                {product.allergenInfo && (
+                  <div>
+                    <strong className="text-black">Allergens:</strong> {product.allergenInfo}
+                  </div>
+                )}
+                {product.packagingInfo && (
+                  <div>
+                    <strong className="text-black">Packaging:</strong> {product.packagingInfo}
+                  </div>
+                )}
               </div>
             </div>
           )}

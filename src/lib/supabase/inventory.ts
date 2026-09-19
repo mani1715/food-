@@ -54,7 +54,52 @@ export const logStockAdjustmentInDb = async (
     },
   ]);
 
-  if (logErr) console.warn('Could not insert stock log to Supabase:', logErr.message);
+  if (logErr) {
+    console.warn('Could not insert stock log to Supabase:', logErr.message);
+  }
 };
 
 export const logStockMovementInDb = logStockAdjustmentInDb;
+
+/**
+ * Executes an atomic stock decrement in PostgreSQL, preventing race conditions
+ * and negative inventory counts.
+ */
+export const decrementStockInDb = async (productId: string, quantity: number) => {
+  try {
+    const { data, error } = await supabase.rpc('decrement_product_stock', {
+      p_product_id: productId,
+      p_quantity: quantity,
+    });
+
+    if (error) {
+      console.warn('RPC decrement_product_stock unavailable or returned error:', error.message);
+      return null;
+    }
+    return data;
+  } catch (err) {
+    console.warn('Error executing decrementStockInDb RPC:', err);
+    return null;
+  }
+};
+
+/**
+ * Executes an atomic stock restock in PostgreSQL.
+ */
+export const restockInDb = async (productId: string, quantity: number) => {
+  try {
+    const { data, error } = await supabase.rpc('restock_product_stock', {
+      p_product_id: productId,
+      p_quantity: quantity,
+    });
+
+    if (error) {
+      console.warn('RPC restock_product_stock unavailable or returned error:', error.message);
+      return null;
+    }
+    return data;
+  } catch (err) {
+    console.warn('Error executing restockInDb RPC:', err);
+    return null;
+  }
+};

@@ -27,15 +27,15 @@ export const Footer: React.FC = () => {
           </p>
 
           <div className="flex items-center gap-3 text-neutral-400 pt-2">
-            <span className="p-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white cursor-pointer hover:border-white transition-all">
+            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="p-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white hover:border-white transition-all">
               <Instagram className="w-4 h-4" />
-            </span>
-            <span className="p-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white cursor-pointer hover:border-white transition-all">
+            </a>
+            <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="p-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white hover:border-white transition-all">
               <Facebook className="w-4 h-4" />
-            </span>
-            <span className="p-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white cursor-pointer hover:border-white transition-all">
+            </a>
+            <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="p-2 rounded-xl bg-neutral-900 border border-neutral-800 text-white hover:border-white transition-all">
               <Twitter className="w-4 h-4" />
-            </span>
+            </a>
           </div>
         </div>
 
@@ -53,23 +53,24 @@ export const Footer: React.FC = () => {
 
         {/* Support Column */}
         <div className="space-y-3">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400">Support</h4>
+          <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400">Support & Tracking</h4>
           <ul className="space-y-2 text-xs text-neutral-300 font-medium">
-            <li><button onClick={() => navigate('/help')} className="hover:text-white transition-colors cursor-pointer">Help Center</button></li>
-            <li><button onClick={() => navigate('/our-process')} className="hover:text-white transition-colors cursor-pointer">How We Do 📜</button></li>
-            <li><button onClick={() => navigate('/sourcing')} className="hover:text-white transition-colors cursor-pointer">Regional Sourcing 🗺️</button></li>
-            <li><button onClick={() => navigate('/quality-promise')} className="hover:text-white transition-colors cursor-pointer">Quality Guarantee 🛡️</button></li>
-            <li><button onClick={() => navigate('/track-order')} className="hover:text-white transition-colors cursor-pointer">Track Your Order 📦</button></li>
+            <li><button onClick={() => navigate('/track-order')} className="hover:text-white transition-colors cursor-pointer font-bold text-amber-300">Track Your Order 📦</button></li>
+            <li><button onClick={() => navigate('/help')} className="hover:text-white transition-colors cursor-pointer">Help Center & FAQ</button></li>
+            <li><button onClick={() => navigate('/shipping-policy')} className="hover:text-white transition-colors cursor-pointer">Shipping & Delivery Policy</button></li>
+            <li><button onClick={() => navigate('/refund-policy')} className="hover:text-white transition-colors cursor-pointer">Cancellation & Refunds</button></li>
+            <li><button onClick={() => navigate('/our-process')} className="hover:text-white transition-colors cursor-pointer">Kitchen Process 📜</button></li>
           </ul>
         </div>
 
         {/* Legal Column */}
         <div className="space-y-3">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400">Company & Admin</h4>
+          <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400">Company & Policies</h4>
           <ul className="space-y-2 text-xs text-neutral-300 font-medium">
             <li><button onClick={() => navigate('/our-process')} className="text-neutral-400 hover:text-white transition-colors cursor-pointer">About Aishu Foods</button></li>
-            <li><span className="text-neutral-500">Privacy & Terms</span></li>
-            <li><span className="text-neutral-500">100% Homemade Guarantee</span></li>
+            <li><button onClick={() => navigate('/privacy-policy')} className="text-neutral-400 hover:text-white transition-colors cursor-pointer">Privacy Policy</button></li>
+            <li><button onClick={() => navigate('/terms')} className="text-neutral-400 hover:text-white transition-colors cursor-pointer">Terms & Conditions</button></li>
+            <li><button onClick={() => navigate('/quality-promise')} className="text-neutral-400 hover:text-white transition-colors cursor-pointer">Quality Guarantee 🛡️</button></li>
             <li>
               <button
                 onClick={() => navigate('/admin')}

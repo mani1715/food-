@@ -22,6 +22,8 @@ import {
   StoreInfo,
   AdminRole,
   StoreAdminUser,
+  AdminPermission,
+  AdminSessionIdentity,
 } from '../types';
 import {
   MOCK_PRODUCTS,
@@ -46,7 +48,7 @@ import {
   validateIndianPhone,
   rateLimiter,
 } from '../utils/security';
-import { isSupabaseConfigured, supabase } from '../lib/supabase/client';
+import { isSupabaseConfigured, isProductionEnv, supabase } from '../lib/supabase/client';
 import {
   fetchAllProducts,
   fetchAllCategories,
@@ -64,7 +66,11 @@ import {
   updatePaymentStatusInDb,
   cancelOrderInDb,
 } from '../lib/supabase/orders';
-import { fetchStockHistoryLogs, logStockMovementInDb } from '../lib/supabase/inventory';
+import {
+  fetchStockHistoryLogs,
+  logStockMovementInDb,
+  decrementStockInDb,
+} from '../lib/supabase/inventory';
 import {
   fetchHomeSections,
   saveHomeSectionInDb,
@@ -76,12 +82,23 @@ import {
   fetchStoreSettings,
   saveStoreSettingsInDb,
 } from '../lib/supabase/home';
-import { fetchUserProfile, logoutSupabaseUser } from '../lib/supabase/auth';
+import {
+  fetchUserProfile,
+  logoutSupabaseUser,
+  getCurrentSession,
+  getCurrentAdminIdentityFromDb,
+  getAdminRoleFromDb,
+  manageStaffAccountInDb,
+} from '../lib/supabase/auth';
 
 interface AppContextType {
   // Supabase State
   isSupabaseConnected: boolean;
   supabaseUser: any;
+  adminAuthLoading: boolean;
+  currentAdminIdentity: AdminSessionIdentity | null;
+  hasPermission: (permission: AdminPermission | string) => boolean;
+  hasTabAccess: (tabName: string) => boolean;
 
   // Catalog & State
   products: Product[];
@@ -158,8 +175,16 @@ interface AppContextType {
   createOrder: (
     paymentMethod: string,
     deliveryAddress: UserLocation,
-    customerDetails?: { name?: string; phone?: string; email?: string; discount?: number; appliedOfferTitle?: string }
-  ) => Order;
+    customerDetails?: {
+      name?: string;
+      phone?: string;
+      email?: string;
+      discount?: number;
+      appliedOfferTitle?: string;
+      couponCode?: string;
+      idempotencyKey?: string;
+    }
+  ) => Promise<Order>;
   updateUserProfile: (profile: Partial<UserProfile>) => void;
   setCurrentLocation: (loc: UserLocation) => void;
   addLocation: (loc: Omit<UserLocation, 'id'>) => void;
@@ -266,6 +291,7 @@ export const DEFAULT_STORE_INFO: StoreInfo = {
   tagline: 'Authentic Andhra Pickles, Pure A2 Ghee Sweets & Crunchy Savories Made with Grandmother Recipes',
   supportEmail: 'care@aishufoods.com',
   supportPhone: '+91 98480 12345',
+  supportWhatsApp: '+91 98480 12345',
   kitchenAddress: 'Plot 42, Heritage Food Enclave, Near Benz Circle, Vijayawada, Andhra Pradesh - 520008',
   fssaiNumber: '10123999000142',
   gstin: '37AAAAA0000A1Z5',
@@ -285,7 +311,6 @@ export const DEFAULT_STORE_ADMIN_USERS: StoreAdminUser[] = [
     email: 'aishuhomefoods@gmail.com',
     role: 'admin',
     createdAt: '2026-01-01',
-    password: 'Rabbani@123',
   },
   {
     id: 'admin-demo',
@@ -293,7 +318,6 @@ export const DEFAULT_STORE_ADMIN_USERS: StoreAdminUser[] = [
     email: 'admin@aura.com',
     role: 'admin',
     createdAt: '2026-01-01',
-    password: 'admin123',
   },
 ];
 
@@ -656,7 +680,70 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     loadSupabaseData();
 
-    // Subscribe to Auth State Changes
+    // Subscribe to Auth State Changes & Verify Admin Session
+    const resolveAdminSession = async (user: any) => {
+      if (!user) {
+        setIsAdminAuthenticated(false);
+        setCurrentAdminRole(null);
+        setCurrentAdminEmail(null);
+        setCurrentAdminIdentity(null);
+        setAdminAuthLoading(false);
+        return;
+      }
+
+      try {
+        const identity = await getCurrentAdminIdentityFromDb();
+        if (identity && identity.isActive) {
+          setIsAdminAuthenticated(true);
+          setCurrentAdminRole(identity.role);
+          setCurrentAdminEmail(identity.email);
+          setCurrentAdminIdentity(identity);
+        } else {
+          const roleRow = await getAdminRoleFromDb(user.id);
+          if (roleRow && roleRow.status === 'active') {
+            const resolved: AdminSessionIdentity = {
+              userId: user.id,
+              email: user.email || '',
+              name: user.email?.split('@')[0] || 'Admin',
+              role: roleRow.role,
+              status: roleRow.status,
+              allowedTabs: roleRow.allowed_tabs || [],
+              permissions: roleRow.permissions || [],
+            };
+            setIsAdminAuthenticated(true);
+            setCurrentAdminRole(roleRow.role);
+            setCurrentAdminEmail(user.email || null);
+            setCurrentAdminIdentity(resolved);
+          } else {
+            setIsAdminAuthenticated(false);
+            setCurrentAdminRole(null);
+            setCurrentAdminEmail(null);
+            setCurrentAdminIdentity(null);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not resolve admin identity from database:', err);
+        setIsAdminAuthenticated(false);
+        setCurrentAdminRole(null);
+        setCurrentAdminEmail(null);
+        setCurrentAdminIdentity(null);
+      } finally {
+        setAdminAuthLoading(false);
+      }
+    };
+
+    // Initial check on mount
+    getCurrentSession().then((session) => {
+      if (isMounted) {
+        if (session?.user) {
+          setSupabaseUser(session.user);
+          resolveAdminSession(session.user);
+        } else {
+          setAdminAuthLoading(false);
+        }
+      }
+    });
+
     const { data: authSub } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
 
@@ -673,8 +760,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             role: profile.role,
           }));
         }
+        await resolveAdminSession(session.user);
       } else {
         setSupabaseUser(null);
+        setIsAdminAuthenticated(false);
+        setCurrentAdminRole(null);
+        setCurrentAdminEmail(null);
+        setCurrentAdminIdentity(null);
+        setAdminAuthLoading(false);
       }
     });
 
@@ -701,19 +794,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
 
   useEffect(() => {
-    localStorage.setItem('aura_categories', JSON.stringify(categories));
+    if (!isProductionEnv()) {
+      localStorage.setItem('aura_categories', JSON.stringify(categories));
+    }
   }, [categories]);
 
   useEffect(() => {
-    localStorage.setItem('aura_products', JSON.stringify(products));
+    if (!isProductionEnv()) {
+      localStorage.setItem('aura_products', JSON.stringify(products));
+    }
   }, [products]);
 
   useEffect(() => {
-    localStorage.setItem('aura_hero_banners', JSON.stringify(heroBanners));
+    if (!isProductionEnv()) {
+      localStorage.setItem('aura_hero_banners', JSON.stringify(heroBanners));
+    }
   }, [heroBanners]);
 
   useEffect(() => {
-    localStorage.setItem('aura_header_announcements', JSON.stringify(headerAnnouncements));
+    if (!isProductionEnv()) {
+      localStorage.setItem('aura_header_announcements', JSON.stringify(headerAnnouncements));
+    }
   }, [headerAnnouncements]);
 
   useEffect(() => {
@@ -721,11 +822,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [headerSettings]);
 
   useEffect(() => {
-    localStorage.setItem('aura_stock_history_logs', JSON.stringify(stockHistoryLogs));
+    if (!isProductionEnv()) {
+      localStorage.setItem('aura_stock_history_logs', JSON.stringify(stockHistoryLogs));
+    }
   }, [stockHistoryLogs]);
 
   useEffect(() => {
-    localStorage.setItem('aura_sub_admins', JSON.stringify(subAdmins));
+    if (!isProductionEnv()) {
+      localStorage.setItem('aura_sub_admins', JSON.stringify(subAdmins));
+    }
   }, [subAdmins]);
 
   const updateHeaderSettings = (settings: Partial<HeaderSettings>) => {
@@ -949,42 +1054,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast('Sub-Admin Deleted', 'Account removed.', 'info');
   };
 
-  // Admin Specific State (with 4-hour automatic session expiration)
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
-    const isAuth = localStorage.getItem('aura_admin_auth') === 'true';
-    const authTimeStr = localStorage.getItem('aura_admin_auth_time');
-    if (isAuth && authTimeStr) {
-      const authTime = parseInt(authTimeStr, 10);
-      const fourHoursMs = 4 * 60 * 60 * 1000;
-      if (Date.now() - authTime > fourHoursMs) {
-        localStorage.removeItem('aura_admin_auth');
-        localStorage.removeItem('aura_admin_role');
-        localStorage.removeItem('aura_admin_email');
-        localStorage.removeItem('aura_admin_auth_time');
-        return false;
-      }
-    }
-    return isAuth;
-  });
+  // Production RBAC & Admin Session State
+  const [adminAuthLoading, setAdminAuthLoading] = useState<boolean>(true);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(false);
+  const [currentAdminRole, setCurrentAdminRole] = useState<AdminRole | null>(null);
+  const [currentAdminEmail, setCurrentAdminEmail] = useState<string | null>(null);
+  const [currentAdminIdentity, setCurrentAdminIdentity] = useState<AdminSessionIdentity | null>(null);
 
-  const [currentAdminRole, setCurrentAdminRole] = useState<AdminRole | null>(() => {
-    const isAuth = localStorage.getItem('aura_admin_auth') === 'true';
-    if (!isAuth) return null;
-    return (localStorage.getItem('aura_admin_role') as AdminRole) || 'admin';
-  });
+  const hasPermission = (permission: AdminPermission | string): boolean => {
+    if (!isAdminAuthenticated || !currentAdminRole) return false;
+    if (currentAdminRole === 'super_admin' || currentAdminRole === 'admin') return true;
+    if (currentAdminIdentity?.permissions?.includes('*')) return true;
+    if (currentAdminIdentity?.permissions?.includes(permission)) return true;
+    const category = permission.split('.')[0];
+    if (currentAdminIdentity?.allowedTabs?.includes(category)) return true;
+    return false;
+  };
 
-  const [currentAdminEmail, setCurrentAdminEmail] = useState<string | null>(() => {
-    const isAuth = localStorage.getItem('aura_admin_auth') === 'true';
-    if (!isAuth) return null;
-    return localStorage.getItem('aura_admin_email') || null;
-  });
+  const hasTabAccess = (tabName: string): boolean => {
+    if (!isAdminAuthenticated || !currentAdminRole) return false;
+    if (currentAdminRole === 'super_admin' || currentAdminRole === 'admin') return true;
+    if (tabName === 'profile') return true;
+    return currentAdminIdentity?.allowedTabs?.includes(tabName) || false;
+  };
 
   const [storeAdminUsers, setStoreAdminUsers] = useState<StoreAdminUser[]>(() =>
     getInitialState('aura_store_admin_users', DEFAULT_STORE_ADMIN_USERS)
   );
 
   useEffect(() => {
-    localStorage.setItem('aura_store_admin_users', JSON.stringify(storeAdminUsers));
+    if (!isProductionEnv()) {
+      localStorage.setItem('aura_store_admin_users', JSON.stringify(storeAdminUsers));
+    }
   }, [storeAdminUsers]);
 
   const addStoreAdminUser = (admin: Omit<StoreAdminUser, 'id' | 'createdAt'>) => {
@@ -1027,21 +1128,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getInitialState('aura_orders', INITIAL_MOCK_ORDERS)
   );
 
-  // Persistent LocalStorage Effects
+  // Persistent LocalStorage Effects (Isolate business and order state to development mode)
   useEffect(() => {
-    localStorage.setItem('aura_products', JSON.stringify(products));
+    if (!isProductionEnv()) {
+      localStorage.setItem('aura_products', JSON.stringify(products));
+    }
   }, [products]);
 
   useEffect(() => {
-    localStorage.setItem('aura_categories', JSON.stringify(categories));
-  }, [categories]);
-
-  useEffect(() => {
-    localStorage.setItem('aura_products', JSON.stringify(products));
-  }, [products]);
-
-  useEffect(() => {
-    localStorage.setItem('aura_categories', JSON.stringify(categories));
+    if (!isProductionEnv()) {
+      localStorage.setItem('aura_categories', JSON.stringify(categories));
+    }
   }, [categories]);
 
   useEffect(() => {
@@ -1069,27 +1166,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [userProfile]);
 
   useEffect(() => {
-    localStorage.setItem('aura_weekly_highlights', JSON.stringify(weeklyHighlights));
+    if (!isProductionEnv()) {
+      localStorage.setItem('aura_weekly_highlights', JSON.stringify(weeklyHighlights));
+    }
   }, [weeklyHighlights]);
 
   useEffect(() => {
-    localStorage.setItem('aura_home_sections', JSON.stringify(homeSections));
+    if (!isProductionEnv()) {
+      localStorage.setItem('aura_home_sections', JSON.stringify(homeSections));
+    }
   }, [homeSections]);
 
   useEffect(() => {
-    localStorage.setItem('aura_hero_banners', JSON.stringify(heroBanners));
+    if (!isProductionEnv()) {
+      localStorage.setItem('aura_hero_banners', JSON.stringify(heroBanners));
+    }
   }, [heroBanners]);
 
   useEffect(() => {
-    localStorage.setItem('aura_header_announcements', JSON.stringify(headerAnnouncements));
+    if (!isProductionEnv()) {
+      localStorage.setItem('aura_header_announcements', JSON.stringify(headerAnnouncements));
+    }
   }, [headerAnnouncements]);
 
   useEffect(() => {
-    localStorage.setItem('aura_coupons', JSON.stringify(coupons));
+    if (!isProductionEnv()) {
+      localStorage.setItem('aura_coupons', JSON.stringify(coupons));
+    }
   }, [coupons]);
 
   useEffect(() => {
-    localStorage.setItem('aura_cart_offers', JSON.stringify(cartOffers));
+    if (!isProductionEnv()) {
+      localStorage.setItem('aura_cart_offers', JSON.stringify(cartOffers));
+    }
   }, [cartOffers]);
 
   useEffect(() => {
@@ -1113,11 +1222,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [paymentEnabled]);
 
   useEffect(() => {
-    localStorage.setItem('aura_store_info', JSON.stringify(storeInfo));
+    if (!isProductionEnv()) {
+      localStorage.setItem('aura_store_info', JSON.stringify(storeInfo));
+    }
   }, [storeInfo]);
 
   useEffect(() => {
-    localStorage.setItem('aura_orders', JSON.stringify(orders));
+    if (!isProductionEnv()) {
+      localStorage.setItem('aura_orders', JSON.stringify(orders));
+    }
   }, [orders]);
 
   // Toast Helper
@@ -1210,17 +1323,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setRecentlyViewedIds((prev) => [productId, ...prev.filter((id) => id !== productId)].slice(0, 8));
   };
 
-  // Order Placement
-  const createOrder = (
+  // Order Placement (Server-Authoritative)
+  const createOrder = async (
     paymentMethod: string,
     deliveryAddress: UserLocation,
-    customerDetails?: { name?: string; phone?: string; email?: string; discount?: number; appliedOfferTitle?: string }
-  ): Order => {
-    const subtotal = cartItems.reduce((acc, i) => acc + i.unitPrice * i.quantity, 0);
-    const appliedDiscount = customerDetails?.discount || 0;
-    const deliveryFee = subtotal > 499 || subtotal === 0 ? 0 : 49;
-    const total = Math.max(0, subtotal + deliveryFee - appliedDiscount);
-
+    customerDetails?: {
+      name?: string;
+      phone?: string;
+      email?: string;
+      discount?: number;
+      appliedOfferTitle?: string;
+      couponCode?: string;
+      idempotencyKey?: string;
+    }
+  ): Promise<Order> => {
     const finalName = sanitizeInput(customerDetails?.name || userProfile.name || 'Customer');
     const finalPhone = sanitizeInput(customerDetails?.phone || userProfile.phone || '');
     const finalEmail = sanitizeInput(customerDetails?.email || userProfile.email || '');
@@ -1235,28 +1351,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }));
     }
 
-    const newOrder: Order = {
-      id: `ord-${Date.now()}`,
-      orderNumber: `AURA-${Math.floor(10000 + Math.random() * 90000)}`,
-      trackingCode: `TRK-${Math.floor(100000 + Math.random() * 900000)}`,
-      date: new Date().toISOString().split('T')[0],
-      items: [...cartItems],
-      subtotal,
-      deliveryFee,
-      discount: appliedDiscount,
-      total,
-      status: 'Active',
-      orderStatus: 'placed',
-      paymentStatus: 'completed',
-      deliveryAddress,
-      paymentMethod,
-      customerName: finalName,
-      customerPhone: finalPhone,
-      customerEmail: finalEmail,
-      deliveryDays: 3,
-    };
+    let authoritativeOrder: Order;
 
-    // 1. Deduct Stock in real-time for all sold products
+    if (isSupabaseConfigured()) {
+      // 1. Invoke Server-Authoritative PostgreSQL Transactional RPC
+      authoritativeOrder = await createOrderInDb(
+        paymentMethod,
+        deliveryAddress,
+        cartItems,
+        0, // Ignored by server
+        0, // Ignored by server
+        0, // Ignored by server
+        0, // Ignored by server
+        {
+          name: finalName,
+          phone: finalPhone,
+          email: finalEmail,
+          userId: supabaseUser?.id,
+          appliedOfferTitle: customerDetails?.appliedOfferTitle,
+          couponCode: customerDetails?.couponCode,
+          idempotencyKey: customerDetails?.idempotencyKey,
+        }
+      );
+    } else {
+      // Local fallback for offline/development mode
+      const localSubtotal = cartItems.reduce((acc, i) => acc + i.unitPrice * i.quantity, 0);
+      const localDiscount = customerDetails?.discount || 0;
+      const localDeliveryFee = localSubtotal > 499 || localSubtotal === 0 ? 0 : 49;
+      const localTotal = Math.max(0, localSubtotal + localDeliveryFee - localDiscount);
+
+      authoritativeOrder = {
+        id: `ord-${Date.now()}`,
+        orderNumber: `AURA-${Math.floor(10000 + Math.random() * 90000)}`,
+        trackingCode: `TRK-${Math.floor(100000 + Math.random() * 900000)}`,
+        date: new Date().toISOString().split('T')[0],
+        items: [...cartItems],
+        subtotal: localSubtotal,
+        deliveryFee: localDeliveryFee,
+        discount: localDiscount,
+        total: localTotal,
+        status: 'Active',
+        orderStatus: 'placed',
+        paymentStatus: paymentMethod.toLowerCase().includes('cash') || paymentMethod.toLowerCase().includes('cod') ? 'cod' : 'completed',
+        deliveryAddress,
+        paymentMethod,
+        customerName: finalName,
+        customerPhone: finalPhone,
+        customerEmail: finalEmail,
+        deliveryDays: 3,
+      };
+    }
+
+    // Deduct stock in client state to reflect server deduction
     if (cartItems.length > 0) {
       const now = new Date();
       const dateStr = now.toISOString().split('T')[0];
@@ -1272,27 +1418,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const newStock = Math.max(0, currentStock - totalPurchasedQty);
           const isOut = newStock <= 0;
 
-          if (isSupabaseConfigured()) {
-            updateProductInDb(p.id, { inventoryCount: newStock, outOfStock: isOut }).catch(console.warn);
-            logStockMovementInDb(
-              p.id,
-              p.name,
-              'destock',
-              totalPurchasedQty,
-              `Live Order Sale #${newOrder.orderNumber} (${totalPurchasedQty} units)`
-            ).catch(console.warn);
-          }
-
-          if (newStock < 10 && newStock > 0) {
-            setTimeout(() => {
-              addToast('⚠️ Low Stock Alert', `"${p.name}" stock reduced to ${newStock} units left!`, 'info');
-            }, 500);
-          } else if (isOut) {
-            setTimeout(() => {
-              addToast('🚨 Out of Stock', `"${p.name}" has sold out and marked Out of Stock!`, 'error');
-            }, 500);
-          }
-
           return {
             ...p,
             inventoryCount: newStock,
@@ -1302,7 +1427,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         })
       );
 
-      // 2. Create Stock History Log entry for each purchased product
       const newStockLogs: StockHistoryLog[] = cartItems.map((ci, idx) => {
         const prod = products.find((p) => p.id === ci.product.id) || ci.product;
         const currentStock = prod.inventoryCount ?? 100;
@@ -1317,7 +1441,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           newStock: newStock,
           date: dateStr,
           time: timeStr,
-          note: `Live Order Sale #${newOrder.orderNumber} (${ci.quantity} × ${ci.selectedWeight || '500g'})`,
+          note: `Live Order Sale #${authoritativeOrder.orderNumber} (${ci.quantity} × ${ci.selectedWeight || '500g'})`,
           adminName: 'Live Order System',
         };
       });
@@ -1325,7 +1449,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setStockHistoryLogs((prev) => [...newStockLogs, ...prev]);
     }
 
-    setOrders((prev) => [newOrder, ...prev]);
+    setOrders((prev) => [authoritativeOrder, ...prev]);
 
     // Increment usage count for applied offer / coupon if applicable
     if (customerDetails?.appliedOfferTitle) {
@@ -1337,27 +1461,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             : o
         )
       );
+    }
+    if (customerDetails?.couponCode) {
+      const cleanCoupon = customerDetails.couponCode.trim().toLowerCase();
       setCoupons((prev) =>
         prev.map((c) =>
-          c.code.toLowerCase() === appliedTitle
+          c.code.toLowerCase() === cleanCoupon
             ? { ...c, usageCount: (c.usageCount || 0) + 1 }
             : c
         )
       );
     }
 
-    if (isSupabaseConfigured()) {
-      createOrderInDb(paymentMethod, deliveryAddress, cartItems, subtotal, deliveryFee, appliedDiscount, total, {
-        name: finalName,
-        phone: finalPhone,
-        email: finalEmail,
-        userId: supabaseUser?.id,
-      }).catch((err) => console.warn('Could not insert order to Supabase:', err));
-    }
-
-
     clearCart();
-    return newOrder;
+    return authoritativeOrder;
   };
 
   const updateUserProfile = (profile: Partial<UserProfile>) => {
@@ -1365,7 +1482,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast('Profile Updated', 'Your details have been saved.', 'success');
   };
 
-  // ADMIN ACTIONS (Security-hardened login with rate limiting, Super Admin master tier & Supabase Auth)
+  // ADMIN ACTIONS (Production Supabase Auth & PostgreSQL RBAC Authorization)
   const loginAdmin = async (email: string, pass: string): Promise<boolean> => {
     const cleanEmail = sanitizeInput(email).trim().toLowerCase();
     const cleanPass = pass.trim();
@@ -1381,140 +1498,101 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
 
-    // 1. MEGA SUPER ADMIN AUTHENTICATION (Owner Master Credentials)
-    const SUPER_ADMIN_EMAIL = 'ettelamaneesh@gmail.com';
-    const SUPER_ADMIN_PASS = 'Maneesh@14#56*8';
-
-    if (cleanEmail === SUPER_ADMIN_EMAIL && pass === SUPER_ADMIN_PASS) {
-      rateLimiter.reset('admin_login_rate');
-      setIsAdminAuthenticated(true);
-      setCurrentAdminRole('super_admin');
-      setCurrentAdminEmail(SUPER_ADMIN_EMAIL);
-      localStorage.setItem('aura_admin_auth', 'true');
-      localStorage.setItem('aura_admin_role', 'super_admin');
-      localStorage.setItem('aura_admin_email', SUPER_ADMIN_EMAIL);
-      localStorage.setItem('aura_admin_auth_time', Date.now().toString());
-      addToast('👑 Mega Super Admin Authenticated', 'Master privileges unlocked. Welcome Maneesh!', 'success');
-      return true;
+    if (!isSupabaseConfigured()) {
+      addToast(
+        'Backend Unavailable',
+        'Supabase backend is not configured. Please check your environment configuration.',
+        'error'
+      );
+      return false;
     }
 
-    // 2. SUPABASE AUTHENTICATION
-    if (isSupabaseConfigured()) {
-      try {
-        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-          email: cleanEmail,
-          password: pass,
-        });
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password: cleanPass,
+      });
 
-        if (!authError && authData.user) {
-          // Check public.admin_profiles table
-          const { data: adminProf } = await supabase
-            .from('admin_profiles')
-            .select('*')
-            .eq('id', authData.user.id)
-            .maybeSingle();
-
-          // Fallback check on public.profiles role
-          const { data: userProf } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', authData.user.id)
-            .maybeSingle();
-
-          const isAuthorizedAdmin = Boolean(adminProf) || ['admin', 'owner', 'super_admin'].includes(userProf?.role || '');
-
-          if (isAuthorizedAdmin) {
-            const assignedRole: AdminRole =
-              cleanEmail === SUPER_ADMIN_EMAIL || userProf?.role === 'super_admin'
-                ? 'super_admin'
-                : 'admin';
-
-            rateLimiter.reset('admin_login_rate');
-            setIsAdminAuthenticated(true);
-            setCurrentAdminRole(assignedRole);
-            setCurrentAdminEmail(cleanEmail);
-            setSupabaseUser(authData.user);
-            localStorage.setItem('aura_admin_auth', 'true');
-            localStorage.setItem('aura_admin_role', assignedRole);
-            localStorage.setItem('aura_admin_email', cleanEmail);
-            localStorage.setItem('aura_admin_auth_time', Date.now().toString());
-            addToast(
-              assignedRole === 'super_admin' ? '👑 Mega Super Admin Authenticated' : 'Admin Authenticated 🔒',
-              `Welcome back, ${adminProf?.name || authData.user.email}!`,
-              'success'
-            );
-            return true;
-          }
-        }
-      } catch (err: any) {
-        console.warn('Supabase auth attempt returned:', err);
+      if (authError || !authData.user) {
+        rateLimiter.recordAttempt('admin_login_rate');
+        addToast(
+          'Authentication Failed ❌',
+          'Invalid email or password. Please verify your administrative credentials.',
+          'error'
+        );
+        return false;
       }
-    }
 
-    // 3. STORE ADMIN ACCOUNTS (Client / Normal Store Admin e.g. aishuhomefoods@gmail.com)
-    const matchedStoreAdmin = storeAdminUsers.find(
-      (a) =>
-        a.email.toLowerCase() === cleanEmail &&
-        (!a.password || a.password === cleanPass || pass === 'Rabbani' || pass === 'Rabbani@123' || pass === 'admin123')
-    );
+      // Query verified admin role from PostgreSQL
+      const adminIdentity = await getCurrentAdminIdentityFromDb();
+      const adminRoleRow = adminIdentity ? null : await getAdminRoleFromDb(authData.user.id);
 
-    if (
-      matchedStoreAdmin ||
-      (cleanEmail === 'aishuhomefoods@gmail.com' &&
-        (cleanPass.toLowerCase().startsWith('rabbani') || cleanPass === 'admin123' || cleanPass === 'Rabbani@123')) ||
-      (cleanEmail === 'admin@aura.com' && cleanPass === 'admin123')
-    ) {
+      const resolvedRole: AdminRole | null =
+        adminIdentity?.role || adminRoleRow?.role || null;
+      const isActive: boolean =
+        adminIdentity?.isActive ?? (adminRoleRow?.status === 'active');
+
+      if (!resolvedRole || !isActive) {
+        // Not an authorized active staff member; sign out immediately
+        await supabase.auth.signOut();
+        setIsAdminAuthenticated(false);
+        setCurrentAdminRole(null);
+        setCurrentAdminEmail(null);
+        setCurrentAdminIdentity(null);
+        addToast(
+          'Access Denied 🚫',
+          'You do not have active administrative privileges. Contact the store owner for access.',
+          'error'
+        );
+        return false;
+      }
+
+      const activeIdentity: AdminSessionIdentity = adminIdentity || {
+        userId: authData.user.id,
+        email: cleanEmail,
+        name: authData.user.user_metadata?.full_name || cleanEmail.split('@')[0],
+        role: resolvedRole,
+        status: 'active',
+        allowedTabs: adminRoleRow?.allowed_tabs || ['products', 'orders', 'inventory'],
+        permissions: adminRoleRow?.permissions || ['products.read', 'orders.read', 'inventory.read'],
+      };
+
       rateLimiter.reset('admin_login_rate');
+      setSupabaseUser(authData.user);
       setIsAdminAuthenticated(true);
-      setCurrentAdminRole('admin');
+      setCurrentAdminRole(resolvedRole);
       setCurrentAdminEmail(cleanEmail);
-      localStorage.setItem('aura_admin_auth', 'true');
-      localStorage.setItem('aura_admin_role', 'admin');
-      localStorage.setItem('aura_admin_email', cleanEmail);
-      localStorage.setItem('aura_admin_auth_time', Date.now().toString());
-      addToast('Store Admin Authenticated 🔒', 'Welcome to Aishu Foods Admin Portal.', 'success');
+      setCurrentAdminIdentity(activeIdentity);
+
+      addToast(
+        resolvedRole === 'super_admin'
+          ? '👑 Super Admin Authenticated'
+          : resolvedRole === 'sub_admin'
+          ? 'Sub-Admin Authenticated 🔒'
+          : 'Store Admin Authenticated 🔒',
+        `Welcome back, ${activeIdentity.name}!`,
+        'success'
+      );
       return true;
+    } catch (err: any) {
+      console.error('Error during administrative authentication:', err);
+      addToast('Authentication Error', 'An unexpected error occurred. Please try again.', 'error');
+      return false;
     }
-
-    // 4. SUB-ADMIN ACCOUNTS (Role-Based Access Control)
-    const matchedSubAdmin = subAdmins.find(
-      (s) => s.email.toLowerCase() === cleanEmail && s.password === cleanPass
-    );
-
-    if (matchedSubAdmin) {
-      rateLimiter.reset('admin_login_rate');
-      setIsAdminAuthenticated(true);
-      setCurrentAdminRole('sub_admin');
-      setCurrentAdminEmail(cleanEmail);
-      localStorage.setItem('aura_admin_auth', 'true');
-      localStorage.setItem('aura_admin_role', 'sub_admin');
-      localStorage.setItem('aura_admin_email', cleanEmail);
-      localStorage.setItem('aura_admin_auth_time', Date.now().toString());
-      addToast('Sub-Admin Authenticated 🔒', `Welcome back, ${matchedSubAdmin.name}!`, 'success');
-      return true;
-    }
-
-    rateLimiter.recordAttempt('admin_login_rate');
-    const remaining = rateCheck.remaining - 1;
-    addToast(
-      'Authentication Failed ❌',
-      `Invalid credentials. ${remaining > 0 ? `${remaining} attempt(s) remaining.` : 'Account temporarily locked.'}`,
-      'error'
-    );
-    return false;
   };
 
   const logoutAdmin = async () => {
-    if (isSupabaseConfigured()) {
-      try {
+    try {
+      if (isSupabaseConfigured()) {
         await supabase.auth.signOut();
-      } catch (err) {
-        console.warn('Error signing out Supabase user:', err);
       }
+    } catch (err) {
+      console.warn('Error signing out Supabase user:', err);
     }
     setIsAdminAuthenticated(false);
     setCurrentAdminRole(null);
     setCurrentAdminEmail(null);
+    setCurrentAdminIdentity(null);
     setSupabaseUser(null);
     localStorage.removeItem('aura_admin_auth');
     localStorage.removeItem('aura_admin_role');
@@ -2432,9 +2510,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         exportStoreBackupJson,
         resetStoreToDefault,
         subAdmins,
+        adminAuthLoading,
         isAdminAuthenticated,
         currentAdminRole,
         currentAdminEmail,
+        currentAdminIdentity,
+        hasPermission,
+        hasTabAccess,
         storeAdminUsers,
         addStoreAdminUser,
         deleteStoreAdminUser,

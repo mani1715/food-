@@ -147,7 +147,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                   : opt.price;
                 return (
                   <option key={opt.weight} value={opt.weight}>
-                    {opt.weight} — ₹{optDiscounted} {hasDiscount ? `(was ₹${opt.price})` : ''}
+                    {opt.weight} — ₹{optDiscounted} {opt.stock !== undefined ? `(${opt.stock} left)` : ''} {hasDiscount ? `(was ₹${opt.price})` : ''}
                   </option>
                 );
               })}

@@ -96,7 +96,6 @@ export const LocationDetectorBar: React.FC = () => {
       async (pos) => {
         try {
           const { latitude, longitude } = pos.coords;
-          console.log('📍 High-precision GPS coordinates:', latitude, longitude);
 
           // High Precision reverse geocoding with zoom=18 & addressdetails=1
           const res = await fetch(
@@ -104,7 +103,6 @@ export const LocationDetectorBar: React.FC = () => {
           );
           const data = await res.json();
           const addr = data.address || {};
-          console.log('🗺️ Detailed location address:', addr);
 
           const rawCity =
             addr.city ||

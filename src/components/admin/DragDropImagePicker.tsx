@@ -84,8 +84,9 @@ export const DragDropImagePicker: React.FC<DragDropImagePickerProps> = ({
       if (validUrls.length > 0) {
         if (multiple && onMultipleChange) {
           onMultipleChange(validUrls);
+        } else {
+          onChange(validUrls[0]);
         }
-        onChange(validUrls[0]);
         setUrlInput(validUrls[0]);
       }
     } catch (err) {
@@ -116,9 +117,10 @@ export const DragDropImagePicker: React.FC<DragDropImagePickerProps> = ({
   const handleApplyUrl = () => {
     if (urlInput.trim()) {
       const cleanUrl = urlInput.trim();
-      onChange(cleanUrl);
       if (multiple && onMultipleChange) {
         onMultipleChange([cleanUrl]);
+      } else {
+        onChange(cleanUrl);
       }
       setUrlInput('');
     }

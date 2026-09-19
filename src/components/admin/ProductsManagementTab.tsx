@@ -302,7 +302,7 @@ export const ProductsManagementTab: React.FC = () => {
   const handleUpdateWeightRow = (
     setWeightOpts: React.Dispatch<React.SetStateAction<WeightOption[]>>,
     index: number,
-    field: 'weight' | 'price',
+    field: keyof WeightOption,
     value: any
   ) => {
     setWeightOpts((prev) =>
@@ -2012,33 +2012,57 @@ export const ProductsManagementTab: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
+                  <div className="grid grid-cols-12 gap-2 text-[10px] font-bold text-neutral-400 uppercase px-1">
+                    <span className="col-span-3">Selling Weight</span>
+                    <span className="col-span-3">Price (₹)</span>
+                    <span className="col-span-3">Stock Units</span>
+                    <span className="col-span-3">Courier Weight (g)</span>
+                  </div>
                   {newWeightOptions.map((opt, idx) => (
                     <div key={idx} className="flex items-center gap-2">
                       <input
                         type="text"
                         value={opt.weight}
                         onChange={(e) => handleUpdateWeightRow(setNewWeightOptions, idx, 'weight', e.target.value)}
-                        placeholder="e.g. 500g, 400g, 250g, 1kg"
-                        className="w-1/2 p-2.5 rounded-xl border border-neutral-300 bg-white text-xs font-bold"
+                        placeholder="e.g. 500g"
+                        className="w-1/4 p-2.5 rounded-xl border border-neutral-300 bg-white text-xs font-bold"
                       />
                       <input
                         type="number"
                         value={opt.price}
                         onChange={(e) => handleUpdateWeightRow(setNewWeightOptions, idx, 'price', Number(e.target.value))}
                         placeholder="Cost (₹)"
-                        className="w-1/2 p-2.5 rounded-xl border border-neutral-300 bg-white text-xs font-mono font-bold"
+                        className="w-1/4 p-2.5 rounded-xl border border-neutral-300 bg-white text-xs font-mono font-bold"
+                      />
+                      <input
+                        type="number"
+                        value={opt.stock ?? ''}
+                        onChange={(e) => handleUpdateWeightRow(setNewWeightOptions, idx, 'stock', e.target.value === '' ? undefined : Number(e.target.value))}
+                        placeholder="Stock (e.g. 50)"
+                        className="w-1/4 p-2.5 rounded-xl border border-neutral-300 bg-white text-xs font-mono font-bold text-emerald-700"
+                      />
+                      <input
+                        type="number"
+                        value={opt.shippingWeightGrams ?? ''}
+                        onChange={(e) => handleUpdateWeightRow(setNewWeightOptions, idx, 'shippingWeightGrams', e.target.value === '' ? undefined : Number(e.target.value))}
+                        placeholder="Packed (g) e.g. 680"
+                        className="w-1/4 p-2.5 rounded-xl border border-purple-200 bg-purple-50/40 text-xs font-mono font-bold text-purple-900"
+                        title="Packed shipping gross weight including container & box (grams)"
                       />
                       {newWeightOptions.length > 1 && (
                         <button
                           type="button"
                           onClick={() => handleDeleteWeightRow(setNewWeightOptions, idx)}
-                          className="p-2 text-neutral-400 hover:text-rose-600 cursor-pointer"
+                          className="p-1.5 text-neutral-400 hover:text-rose-600 cursor-pointer"
                         >
                           <X className="w-4 h-4" />
                         </button>
                       )}
                     </div>
                   ))}
+                  <p className="text-[10px] text-neutral-400 italic">
+                    💡 <strong>Courier Weight (g)</strong>: Actual gross weight of product + jar + packaging box used by logistics partners.
+                  </p>
                 </div>
               </div>
 
@@ -2554,6 +2578,12 @@ export const ProductsManagementTab: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
+                  <div className="grid grid-cols-12 gap-2 text-[10px] font-bold text-neutral-400 uppercase px-1">
+                    <span className="col-span-3">Selling Weight</span>
+                    <span className="col-span-3">Price (₹)</span>
+                    <span className="col-span-3">Stock Units</span>
+                    <span className="col-span-3">Courier Weight (g)</span>
+                  </div>
                   {editingProduct.weightOptions.map((opt, idx) => (
                     <div key={idx} className="flex items-center gap-2">
                       <input
@@ -2566,8 +2596,8 @@ export const ProductsManagementTab: React.FC = () => {
                             weightOptions: editingProduct.weightOptions.map((o, i) => (i === idx ? { ...o, weight: val } : o)),
                           });
                         }}
-                        placeholder="e.g. 500g, 400g, 250g, 1kg"
-                        className="w-1/2 p-2.5 rounded-xl border border-neutral-300 bg-white text-xs font-bold"
+                        placeholder="e.g. 500g"
+                        className="w-1/4 p-2.5 rounded-xl border border-neutral-300 bg-white text-xs font-bold"
                       />
                       <input
                         type="number"
@@ -2580,7 +2610,34 @@ export const ProductsManagementTab: React.FC = () => {
                           });
                         }}
                         placeholder="Cost (₹)"
-                        className="w-1/2 p-2.5 rounded-xl border border-neutral-300 bg-white text-xs font-mono font-bold"
+                        className="w-1/4 p-2.5 rounded-xl border border-neutral-300 bg-white text-xs font-mono font-bold"
+                      />
+                      <input
+                        type="number"
+                        value={opt.stock ?? ''}
+                        onChange={(e) => {
+                          const val = e.target.value === '' ? undefined : Number(e.target.value);
+                          setEditingProduct({
+                            ...editingProduct,
+                            weightOptions: editingProduct.weightOptions.map((o, i) => (i === idx ? { ...o, stock: val } : o)),
+                          });
+                        }}
+                        placeholder="Stock"
+                        className="w-1/4 p-2.5 rounded-xl border border-neutral-300 bg-white text-xs font-mono font-bold text-emerald-700"
+                      />
+                      <input
+                        type="number"
+                        value={opt.shippingWeightGrams ?? ''}
+                        onChange={(e) => {
+                          const val = e.target.value === '' ? undefined : Number(e.target.value);
+                          setEditingProduct({
+                            ...editingProduct,
+                            weightOptions: editingProduct.weightOptions.map((o, i) => (i === idx ? { ...o, shippingWeightGrams: val } : o)),
+                          });
+                        }}
+                        placeholder="Packed (g)"
+                        className="w-1/4 p-2.5 rounded-xl border border-purple-200 bg-purple-50/40 text-xs font-mono font-bold text-purple-900"
+                        title="Packed shipping gross weight including container & box (grams)"
                       />
                       {editingProduct.weightOptions.length > 1 && (
                         <button
@@ -2591,13 +2648,16 @@ export const ProductsManagementTab: React.FC = () => {
                               weightOptions: editingProduct.weightOptions.filter((_, i) => i !== idx),
                             });
                           }}
-                          className="p-2 text-neutral-400 hover:text-rose-600 cursor-pointer"
+                          className="p-1.5 text-neutral-400 hover:text-rose-600 cursor-pointer"
                         >
                           <X className="w-4 h-4" />
                         </button>
                       )}
                     </div>
                   ))}
+                  <p className="text-[10px] text-neutral-400 italic">
+                    💡 <strong>Courier Weight (g)</strong>: Explicit packed gross weight per variant used by logistics calculators.
+                  </p>
                 </div>
               </div>
 

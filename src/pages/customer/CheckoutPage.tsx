@@ -103,7 +103,11 @@ export const CheckoutPage: React.FC = () => {
     );
   };
 
-  const handlePlaceOrder = (e: React.FormEvent) => {
+  const [idempotencyKey] = useState<string>(
+    () => `idem-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+  );
+
+  const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (cartItems.length === 0) {
       addToast('Cart Empty', 'Add products before checking out.', 'error');
@@ -131,27 +135,111 @@ export const CheckoutPage: React.FC = () => {
     }
 
     setIsProcessing(true);
-    setTimeout(() => {
+    try {
       const orderLocation = {
         id: `loc-${Date.now()}`,
         label: 'Order Address',
-        address,
-        city,
-        pincode,
+        address: address.trim(),
+        city: city.trim(),
+        pincode: pincode.trim(),
       };
       const appliedTitle =
-        passedState?.couponCode || passedState?.appliedOfferTitle || bestOffer?.title;
+        passedState?.appliedOfferTitle || bestOffer?.title;
+      const couponCode = passedState?.couponCode;
 
-      const order = createOrder(paymentMethod, orderLocation, {
+      // 1. Create Authoritative Local Order in Database (Status: placed, Payment: pending/cod_pending)
+      const order = await createOrder(paymentMethod, orderLocation, {
         name: customerName.trim(),
         phone: customerPhone.trim(),
         email: customerEmail.trim(),
         discount: totalDiscount,
         appliedOfferTitle: appliedTitle,
+        couponCode: couponCode,
+        idempotencyKey: idempotencyKey,
       });
+
+      // 2. If COD, order is placed immediately
+      if (paymentMethod === 'COD') {
+        setIsProcessing(false);
+        navigate(`/order-success/${order.id}`);
+        return;
+      }
+
+      // 3. Online Payment (Razorpay Test Mode Integration)
+      try {
+        const { initiateRazorpayOrder, verifyRazorpayPaymentOnServer } = await import('../../lib/razorpay/api');
+        const { openRazorpayModal } = await import('../../lib/razorpay/checkout');
+
+        const rzpOrderData = await initiateRazorpayOrder(order.id, order.paymentSessionToken, deliveryNotes);
+
+        await openRazorpayModal({
+          key: rzpOrderData.keyId,
+          amount: rzpOrderData.amount,
+          currency: rzpOrderData.currency || 'INR',
+          name: 'Aishu Home Foods',
+          description: `Payment for Order #${order.orderNumber}`,
+          order_id: rzpOrderData.razorpayOrderId,
+          prefill: {
+            name: customerName.trim(),
+            contact: customerPhone.trim(),
+            email: customerEmail.trim(),
+          },
+          theme: {
+            color: '#000000',
+          },
+          handler: async (response) => {
+            try {
+              addToast('Verifying Payment ⏳', 'Verifying transaction signature with server...', 'info');
+              await verifyRazorpayPaymentOnServer(
+                order.id,
+                order.paymentSessionToken,
+                response.razorpay_order_id,
+                response.razorpay_payment_id,
+                response.razorpay_signature
+              );
+              setIsProcessing(false);
+              navigate(`/order-success/${order.id}`);
+            } catch (verifErr: any) {
+              setIsProcessing(false);
+              addToast(
+                'Payment Verification Notice',
+                verifErr.message || 'Payment received. Server is reconciling your order.',
+                'info'
+              );
+              navigate(`/order-success/${order.id}`);
+            }
+          },
+          modal: {
+            ondismiss: () => {
+              setIsProcessing(false);
+              addToast(
+                'Payment Incomplete',
+                'You closed the payment window. Your order is saved and can be paid from the Track Order page.',
+                'info'
+              );
+              navigate(`/track-order?id=${order.orderNumber}`);
+            },
+          },
+        });
+      } catch (rzpErr: any) {
+        setIsProcessing(false);
+        console.warn('Razorpay Gateway Notice:', rzpErr.message);
+        addToast(
+          'Order Recorded (Payment Gateway Notice)',
+          'Order recorded in system. If Razorpay Test Mode keys are pending configuration, please complete payment on delivery or retry.',
+          'info'
+        );
+        navigate(`/order-success/${order.id}`);
+      }
+    } catch (err: any) {
       setIsProcessing(false);
-      navigate(`/order-success/${order.id}`);
-    }, 1500);
+      console.error('Order placement failed:', err);
+      addToast(
+        'Order Placement Notice ⚠️',
+        err.message || 'Could not complete order. Please check item stock and details.',
+        'error'
+      );
+    }
   };
 
 
