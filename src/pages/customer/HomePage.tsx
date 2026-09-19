@@ -105,7 +105,7 @@ export const HomePage: React.FC = () => {
       {/* 1. HERO BANNER - SCENIC FULL-BLEED WITH DIRECT CLICK REDIRECTION & ADJUSTABLE ZOOM */}
       <section
         onClick={() => navigate(currentBanner.ctaLink || '/products')}
-        className="relative overflow-hidden bg-black text-white min-h-[460px] sm:min-h-[540px] lg:min-h-[600px] flex items-center justify-center border-b border-neutral-800 cursor-pointer group"
+        className="relative overflow-hidden bg-black text-white min-h-[380px] sm:min-h-[500px] lg:min-h-[600px] flex items-center justify-center border-b border-neutral-800 cursor-pointer group"
       >
         
         {/* Carousel Background Images with High Clarity & Adjustable Zoom */}
@@ -138,6 +138,8 @@ export const HomePage: React.FC = () => {
               <img
                 src={slide.image}
                 alt={slide.title}
+                loading={index === 0 ? "eager" : "lazy"}
+                decoding="async"
                 style={{
                   transform: `translate(${panX}px, ${panY}px) scale(${zoomScale})`,
                   transformOrigin: 'center center',
@@ -145,42 +147,42 @@ export const HomePage: React.FC = () => {
                 className={`w-full h-full ${fitClass} ${posClass} opacity-85 transition-transform duration-700`}
               />
               {/* Subtle dark gradient overlay for text readability while keeping photo rich & clear */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/20 pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/20 pointer-events-none" />
             </div>
           );
         })}
 
         {/* Hero Content Container (Centered Title, Subtitle, and Shop Now CTA) */}
-        <div className="relative z-10 max-w-4xl mx-auto w-full text-center px-4 sm:px-6 py-16 sm:py-24 space-y-6">
+        <div className="relative z-10 max-w-4xl mx-auto w-full text-center px-4 sm:px-6 py-12 sm:py-20 space-y-4 sm:space-y-6">
           
           {/* Badge */}
           {currentBanner.badge && (
-            <div className="inline-flex items-center gap-2 bg-black/40 backdrop-blur-md border border-white/20 text-white text-[11px] sm:text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full shadow-md">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-black/50 backdrop-blur-md border border-white/20 text-white text-[10px] sm:text-xs font-bold uppercase tracking-widest px-3 sm:px-4 py-1 sm:py-1.5 rounded-full shadow-md">
+              <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400" />
               <span>{currentBanner.badge}</span>
             </div>
           )}
 
           {/* Banner Main Headline (Clean, Large, Centered) */}
-          <div className="space-y-3">
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-medium tracking-tight text-white drop-shadow-lg leading-tight">
+          <div className="space-y-2 sm:space-y-3">
+            <h1 className="text-2xl sm:text-4xl lg:text-6xl font-extrabold tracking-tight text-white drop-shadow-lg leading-tight px-1">
               {currentBanner.title}
             </h1>
             {currentBanner.subtitle && (
-              <p className="text-sm sm:text-base lg:text-lg text-white/90 font-normal max-w-2xl mx-auto drop-shadow leading-relaxed">
+              <p className="text-xs sm:text-base lg:text-lg text-white/90 font-normal max-w-2xl mx-auto drop-shadow leading-relaxed line-clamp-2 sm:line-clamp-none">
                 {currentBanner.subtitle}
               </p>
             )}
           </div>
 
           {/* Centered Shop Now Pill Button */}
-          <div className="pt-2 flex items-center justify-center gap-4">
+          <div className="pt-1 sm:pt-2 flex items-center justify-center gap-4">
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 navigate(currentBanner.ctaLink || '/products');
               }}
-              className="px-8 sm:px-10 py-3 sm:py-3.5 bg-neutral-900/85 hover:bg-black backdrop-blur-md text-white font-bold text-sm sm:text-base rounded-full shadow-2xl hover:scale-105 transition-all duration-300 cursor-pointer border border-white/20"
+              className="px-6 sm:px-10 py-2.5 sm:py-3.5 bg-white text-black hover:bg-neutral-100 font-extrabold text-xs sm:text-base rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer border border-white/20"
             >
               <span>{currentBanner.ctaText || 'Shop Now'}</span>
             </button>
@@ -188,10 +190,10 @@ export const HomePage: React.FC = () => {
 
         </div>
 
-        {/* Bottom-Right Carousel Preview Widget (matching reference photo) */}
+        {/* Bottom-Right Carousel Preview Widget (Hidden on mobile < sm to prevent collision with center dots) */}
         <div
           onClick={(e) => e.stopPropagation()}
-          className="absolute bottom-4 right-4 sm:bottom-6 sm:right-8 z-20 flex items-center bg-black/80 backdrop-blur-md border border-white/15 rounded-xl overflow-hidden shadow-2xl"
+          className="hidden sm:flex absolute bottom-4 right-4 sm:bottom-6 sm:right-8 z-20 items-center bg-black/80 backdrop-blur-md border border-white/15 rounded-xl overflow-hidden shadow-2xl"
         >
           {/* Left / Prev Arrow */}
           <button
@@ -247,7 +249,7 @@ export const HomePage: React.FC = () => {
         {/* Bottom Center Slide Dots */}
         <div
           onClick={(e) => e.stopPropagation()}
-          className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5"
+          className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5"
         >
           {activeHeroSlides.map((_, idx) => (
             <button

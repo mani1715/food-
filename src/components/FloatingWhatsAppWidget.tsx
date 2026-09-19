@@ -1,11 +1,18 @@
 import React, { useState } from 'react';
 import { MessageCircle, X, Sparkles, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 
 export const FloatingWhatsAppWidget: React.FC = () => {
   const { storeInfo } = useApp();
+  const location = useLocation();
   const [isPopupDismissed, setIsPopupDismissed] = useState(false);
+
+  // Hide on checkout and admin pages to prevent collision with crucial conversion actions
+  if (location.pathname === '/checkout' || location.pathname.startsWith('/admin')) {
+    return null;
+  }
 
   const rawPhone = storeInfo?.supportWhatsApp || storeInfo?.supportPhone || '919876543210';
   const cleanPhone = rawPhone.replace(/\D/g, '');
@@ -18,7 +25,10 @@ export const FloatingWhatsAppWidget: React.FC = () => {
   const whatsappUrl = `https://wa.me/${formattedPhone}?text=${messageText}`;
 
   return (
-    <div className="fixed bottom-20 lg:bottom-8 right-4 sm:right-6 z-40 flex flex-col items-end gap-2 pointer-events-auto">
+    <div
+      style={{ bottom: 'calc(4.75rem + env(safe-area-inset-bottom, 0px))' }}
+      className="fixed lg:bottom-8 right-3 sm:right-6 z-40 flex flex-col items-end gap-2 pointer-events-auto"
+    >
       {/* Top Bubble Popup for Bulk & Abroad Orders */}
       <AnimatePresence>
         {!isPopupDismissed && (
@@ -26,7 +36,7 @@ export const FloatingWhatsAppWidget: React.FC = () => {
             initial={{ opacity: 0, y: 15, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.9 }}
-            className="bg-white border-2 border-emerald-500 rounded-2xl p-3 shadow-modal max-w-xs text-left relative space-y-1.5"
+            className="bg-white border-2 border-emerald-500 rounded-2xl p-3 shadow-modal max-w-[calc(100vw-2.5rem)] sm:max-w-xs text-left relative space-y-1.5"
           >
             <button
               onClick={(e) => {

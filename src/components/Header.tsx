@@ -168,30 +168,30 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
           })}
         </nav>
 
-        {/* Right Side: Action Icons (Large, Visible, Touch-Friendly, Auto Right-Aligned) */}
+        {/* Right Side: Action Icons (Touch-Friendly, Clean Mobile Layout) */}
         <div className="ml-auto flex items-center justify-end gap-1 sm:gap-2 lg:gap-3 shrink-0">
           
-          {/* Search Icon */}
+          {/* Search Icon (Always visible) */}
           {headerSettings?.showSearch !== false && (
             <button
               onClick={onOpenSearch}
-              className="p-2 sm:p-2.5 text-neutral-900 hover:text-black hover:bg-neutral-100 rounded-2xl transition-all cursor-pointer flex items-center justify-center"
+              className="p-2 sm:p-2.5 min-w-[44px] min-h-[44px] text-neutral-900 hover:text-black hover:bg-neutral-100 rounded-2xl transition-all cursor-pointer flex items-center justify-center"
               title="Search Store"
               aria-label="Search"
             >
-              <Search className="w-6 h-6 sm:w-6.5 sm:h-6.5 lg:w-7 lg:h-7 stroke-[2]" />
+              <Search className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 stroke-[2]" />
             </button>
           )}
 
-          {/* Wishlist Icon */}
+          {/* Wishlist Icon (Hidden on mobile < sm, available in bottom nav & drawer) */}
           {headerSettings?.showWishlist !== false && (
             <button
               onClick={() => navigate('/wishlist')}
-              className="relative p-2 sm:p-2.5 text-neutral-900 hover:text-black hover:bg-neutral-100 rounded-2xl transition-all cursor-pointer flex items-center justify-center"
+              className="hidden sm:flex relative p-2 sm:p-2.5 min-w-[44px] min-h-[44px] text-neutral-900 hover:text-black hover:bg-neutral-100 rounded-2xl transition-all cursor-pointer items-center justify-center"
               title="Wishlist"
               aria-label="Wishlist"
             >
-              <Heart className="w-6 h-6 sm:w-6.5 sm:h-6.5 lg:w-7 lg:h-7 stroke-[2]" />
+              <Heart className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 stroke-[2]" />
               {wishlistProductIds.length > 0 && (
                 <span className="absolute -top-1 -right-1 min-w-[19px] h-[19px] px-1 rounded-full bg-black text-white text-[10px] font-black flex items-center justify-center border-2 border-white shadow-md leading-none">
                   {wishlistProductIds.length}
@@ -200,39 +200,39 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
             </button>
           )}
 
-          {/* Profile / Account Icon */}
+          {/* Profile / Account Icon (Hidden on mobile < sm, available in bottom nav & drawer) */}
           {headerSettings?.showAccount !== false && (
             <button
               onClick={() => navigate('/profile')}
-              className="p-2 sm:p-2.5 text-neutral-900 hover:text-black hover:bg-neutral-100 rounded-2xl transition-all cursor-pointer flex items-center justify-center"
+              className="hidden sm:flex p-2 sm:p-2.5 min-w-[44px] min-h-[44px] text-neutral-900 hover:text-black hover:bg-neutral-100 rounded-2xl transition-all cursor-pointer items-center justify-center"
               title="Account Profile"
               aria-label="Account Profile"
             >
-              <User className="w-6 h-6 sm:w-6.5 sm:h-6.5 lg:w-7 lg:h-7 stroke-[2]" />
+              <User className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 stroke-[2]" />
             </button>
           )}
 
-          {/* Track Order Icon */}
+          {/* Track Order Icon (Hidden on mobile < sm, available in drawer) */}
           {headerSettings?.showTrackOrder !== false && (
             <button
               onClick={() => navigate('/track-order')}
-              className="p-2 sm:p-2.5 text-neutral-900 hover:text-black hover:bg-neutral-100 rounded-2xl transition-all cursor-pointer flex items-center justify-center"
+              className="hidden md:flex p-2 sm:p-2.5 min-w-[44px] min-h-[44px] text-neutral-900 hover:text-black hover:bg-neutral-100 rounded-2xl transition-all cursor-pointer items-center justify-center"
               title="Track Order"
               aria-label="Track Order"
             >
-              <Package className="w-6 h-6 sm:w-6.5 sm:h-6.5 lg:w-7 lg:h-7 stroke-[2]" />
+              <Package className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 stroke-[2]" />
             </button>
           )}
 
-          {/* Cart Icon */}
+          {/* Cart Icon (Always visible) */}
           {headerSettings?.showCart !== false && (
             <button
               onClick={() => navigate('/cart')}
-              className="relative p-2 sm:p-2.5 text-neutral-900 hover:text-black hover:bg-neutral-100 rounded-2xl transition-all cursor-pointer flex items-center justify-center"
+              className="relative p-2 sm:p-2.5 min-w-[44px] min-h-[44px] text-neutral-900 hover:text-black hover:bg-neutral-100 rounded-2xl transition-all cursor-pointer flex items-center justify-center"
               title="Shopping Cart"
               aria-label="Shopping Cart"
             >
-              <ShoppingBag className="w-6 h-6 sm:w-6.5 sm:h-6.5 lg:w-7 lg:h-7 stroke-[2]" />
+              <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 stroke-[2]" />
               {cartCount > 0 && (
                 <span className="absolute -top-1 -right-1 min-w-[19px] h-[19px] px-1 rounded-full bg-black text-white text-[10px] font-black flex items-center justify-center border-2 border-white shadow-md leading-none">
                   {cartCount}

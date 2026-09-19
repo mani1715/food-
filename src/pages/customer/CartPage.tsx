@@ -217,19 +217,21 @@ export const CartPage: React.FC = () => {
 
                     {/* Quantity & Subtotal */}
                     <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-                      <div className="flex items-center border border-neutral-300 rounded-xl p-0.5 sm:p-1 bg-neutral-50">
+                      <div className="flex items-center border border-neutral-300 rounded-xl p-0.5 bg-neutral-50">
                         <button
                           onClick={() => updateCartQuantity(item.product.id, item.selectedWeight, item.quantity - 1)}
-                          className="p-1 text-black hover:bg-neutral-200 rounded-lg cursor-pointer transition-colors"
+                          className="w-8 h-8 sm:w-9 sm:h-9 text-black hover:bg-neutral-200 rounded-lg cursor-pointer transition-colors flex items-center justify-center active:scale-95"
                           title="Decrease quantity"
+                          aria-label="Decrease quantity"
                         >
                           <Minus className="w-3.5 h-3.5" />
                         </button>
-                        <span className="w-6 sm:w-8 text-center text-xs font-mono font-bold">{item.quantity}</span>
+                        <span className="w-7 sm:w-8 text-center text-xs font-mono font-bold">{item.quantity}</span>
                         <button
                           onClick={() => updateCartQuantity(item.product.id, item.selectedWeight, item.quantity + 1)}
-                          className="p-1 text-black hover:bg-neutral-200 rounded-lg cursor-pointer transition-colors"
+                          className="w-8 h-8 sm:w-9 sm:h-9 text-black hover:bg-neutral-200 rounded-lg cursor-pointer transition-colors flex items-center justify-center active:scale-95"
                           title="Increase quantity"
+                          aria-label="Increase quantity"
                         >
                           <Plus className="w-3.5 h-3.5" />
                         </button>
@@ -241,8 +243,9 @@ export const CartPage: React.FC = () => {
 
                       <button
                         onClick={() => removeFromCart(item.product.id, item.selectedWeight)}
-                        className="p-1.5 text-neutral-400 hover:text-rose-600 transition-colors cursor-pointer shrink-0"
+                        className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center text-neutral-400 hover:text-rose-600 transition-colors cursor-pointer shrink-0"
                         title="Remove item"
+                        aria-label="Remove item"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -267,7 +270,7 @@ export const CartPage: React.FC = () => {
 
               {/* AVAILABLE STORE CART OFFERS SELECTOR */}
               {cartOffers.filter((o) => o.enabled).length > 0 && (
-                <div className="p-5 rounded-3xl border border-neutral-200 bg-neutral-50/70 space-y-3">
+                <div className="p-4 sm:p-5 rounded-3xl border border-neutral-200 bg-neutral-50/70 space-y-3">
                   <div className="flex items-center gap-2">
                     <Tag className="w-4 h-4 text-black" />
                     <h3 className="text-xs font-extrabold uppercase tracking-wider text-black">Available Cart Deals & Offers</h3>
@@ -326,19 +329,21 @@ export const CartPage: React.FC = () => {
 
             {/* Right Column: Order Summary */}
             <div className="lg:col-span-4 space-y-6">
-              <div className="p-6 rounded-3xl border border-neutral-200 bg-neutral-50 space-y-4 shadow-subtle">
+              <div className="p-4 sm:p-6 rounded-3xl border border-neutral-200 bg-neutral-50 space-y-4 shadow-subtle">
                 <h3 className="text-base font-extrabold text-black border-b border-neutral-200 pb-3">Order Summary</h3>
 
                 {/* Coupon Code Input */}
                 <form onSubmit={handleApplyCoupon} className="flex gap-2">
                   <input
                     type="text"
+                    inputMode="text"
+                    autoCapitalize="characters"
                     value={couponCode}
                     onChange={(e) => setCouponCode(e.target.value)}
-                    placeholder="Coupon (e.g. AF05, FESTIVE1500)"
-                    className="flex-1 px-3 py-2 bg-white border border-neutral-300 rounded-xl text-xs font-bold uppercase font-mono"
+                    placeholder="Coupon (e.g. AF05)"
+                    className="flex-1 px-3 py-2.5 bg-white border border-neutral-300 rounded-xl text-base sm:text-xs font-bold uppercase font-mono min-h-[42px]"
                   />
-                  <button type="submit" className="px-3.5 py-2 bg-black text-white text-xs font-bold rounded-xl cursor-pointer hover:bg-neutral-800 transition-all">
+                  <button type="submit" className="px-4 py-2.5 min-h-[42px] bg-black text-white text-xs font-extrabold rounded-xl cursor-pointer hover:bg-neutral-800 transition-all shrink-0 active:scale-95">
                     Apply
                   </button>
                 </form>

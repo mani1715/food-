@@ -296,17 +296,20 @@ export const AdminDashboardPage: React.FC = () => {
             <label className="block text-[10px] font-extrabold uppercase tracking-widest text-neutral-400 mb-1.5 text-left">
               Select Admin View
             </label>
-            <select
-              value={activeTab}
-              onChange={(e) => handleTabChange(e.target.value as AdminTab)}
-              className="w-full p-3 bg-white border border-neutral-300 rounded-2xl text-xs font-extrabold text-black focus:outline-none focus:border-black appearance-none cursor-pointer"
-            >
-              {visibleTabs.map((tab) => (
-                <option key={tab.id} value={tab.id}>
-                  {tab.label} {tab.badge ? `(${tab.badge})` : ''}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                value={activeTab}
+                onChange={(e) => handleTabChange(e.target.value as AdminTab)}
+                className="w-full p-3 pr-9 bg-white border-2 border-neutral-300 rounded-2xl text-base sm:text-xs font-black text-black focus:outline-none focus:border-black appearance-none cursor-pointer min-h-[44px]"
+              >
+                {visibleTabs.map((tab) => (
+                  <option key={tab.id} value={tab.id}>
+                    {tab.label} {tab.badge ? `(${tab.badge})` : ''}
+                  </option>
+                ))}
+              </select>
+              <ChevronRight className="w-4 h-4 text-neutral-500 absolute right-3 top-1/2 -translate-y-1/2 rotate-90 pointer-events-none" />
+            </div>
           </div>
 
           {/* Desktop Navigation List (lg+) */}

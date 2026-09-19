@@ -106,7 +106,7 @@ export const BuyAlsoSection: React.FC<BuyAlsoSectionProps> = ({ currentProduct }
                       This Item
                     </span>
                   )}
-                  <h4 className="text-xs font-bold text-black line-clamp-1">{prod.name}</h4>
+                  <h4 className="text-xs font-bold text-black line-clamp-2 min-h-[2rem] leading-snug break-words">{prod.name}</h4>
                   <p className="text-xs font-mono font-extrabold text-neutral-800">₹{prod.price}</p>
                 </div>
               </div>

@@ -47,16 +47,31 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
         >
           {/* Top Search Input */}
           <div className="relative border-b border-neutral-200 pb-4">
-            <Search className="w-5 h-5 text-neutral-400 absolute left-3 top-3" />
+            <Search className="w-5 h-5 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
+              inputMode="search"
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search pickles, sweets, snacks, bakery, gift boxes..."
-              className="w-full pl-11 pr-10 py-2.5 text-sm font-bold text-black focus:outline-none bg-transparent"
+              placeholder="Search pickles, sweets, snacks, gift boxes..."
+              className="w-full pl-11 pr-11 py-3 text-base sm:text-sm font-bold text-black focus:outline-none bg-transparent"
             />
-            <button onClick={onClose} className="absolute right-3 top-3 text-neutral-400 hover:text-black">
+            {query.trim() ? (
+              <button
+                type="button"
+                onClick={() => setQuery('')}
+                aria-label="Clear search"
+                className="absolute right-10 top-1/2 -translate-y-1/2 p-2 text-neutral-400 hover:text-black cursor-pointer"
+              >
+                <span className="text-xs font-bold bg-neutral-100 rounded-full px-1.5 py-0.5">✕</span>
+              </button>
+            ) : null}
+            <button
+              onClick={onClose}
+              aria-label="Close search modal"
+              className="absolute right-1 top-1/2 -translate-y-1/2 p-2 min-w-[40px] min-h-[40px] flex items-center justify-center text-neutral-400 hover:text-black cursor-pointer"
+            >
               <X className="w-5 h-5" />
             </button>
           </div>

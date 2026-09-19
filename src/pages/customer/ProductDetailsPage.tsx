@@ -148,26 +148,28 @@ export const ProductDetailsPage: React.FC = () => {
                 const optDiscounted = hasDiscount
                   ? Math.round(opt.price * (1 - (product.discountPercentage || 0) / 100))
                   : opt.price;
+                const isSelected = selectedWeight === opt.weight;
                 return (
                   <button
                     key={opt.weight}
                     onClick={() => setSelectedWeight(opt.weight)}
-                    className={`px-4 py-2.5 rounded-2xl border text-xs font-bold transition-all flex items-center justify-between gap-3 cursor-pointer ${
-                      selectedWeight === opt.weight
+                    aria-label={`Select ${opt.weight} variant`}
+                    className={`min-h-[44px] px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl border text-xs font-extrabold transition-all flex items-center justify-between gap-2.5 cursor-pointer active:scale-95 ${
+                      isSelected
                         ? 'bg-black text-white border-black shadow-subtle'
-                        : 'bg-white text-black border-neutral-200 hover:border-black'
+                        : 'bg-white text-black border-neutral-300 hover:border-black'
                     }`}
                   >
                     <div className="flex items-center gap-1.5">
                       <span>{opt.weight}</span>
                       {opt.stock !== undefined && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-extrabold">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-extrabold ${isSelected ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'}`}>
                           {opt.stock} left
                         </span>
                       )}
                     </div>
-                    <span className="font-mono text-[11px] opacity-80">
-                      ₹{optDiscounted} {hasDiscount ? `(was ₹${opt.price})` : ''}
+                    <span className="font-mono text-[11px] opacity-90">
+                      ₹{optDiscounted}
                     </span>
                   </button>
                 );
@@ -504,19 +506,45 @@ export const ProductDetailsPage: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Sticky Mobile Purchase Bar */}
-      <div className="fixed bottom-14 left-0 right-0 z-40 bg-white border-t border-neutral-200 p-3 lg:hidden flex items-center justify-between shadow-modal">
-        <div>
-          <p className="text-[10px] text-neutral-400 font-bold uppercase">{selectedWeight}</p>
-          <p className="text-base font-extrabold font-mono text-black">₹{currentPrice * quantity}</p>
+      {/* Sticky Mobile Purchase Bar (Positioned above bottom nav with safe-area support) */}
+      <div
+        style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom, 0px))' }}
+        className="fixed left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-neutral-200 px-4 py-2.5 lg:hidden flex items-center justify-between gap-3 shadow-modal"
+      >
+        <div className="shrink-0">
+          <p className="text-[10px] text-neutral-500 font-extrabold uppercase leading-none">{selectedWeight}</p>
+          <div className="flex items-baseline gap-1 mt-0.5">
+            <span className="text-base font-black font-mono text-black leading-tight">₹{discountedPrice * quantity}</span>
+            {hasDiscount && (
+              <span className="line-through text-[10px] text-neutral-400 font-mono">₹{currentPrice * quantity}</span>
+            )}
+          </div>
         </div>
-        <button
-          onClick={() => addToCart(product, selectedWeight, quantity)}
-          className="px-6 py-3 bg-black text-white text-xs font-bold rounded-xl shadow-subtle flex items-center gap-1.5 cursor-pointer"
-        >
-          <ShoppingBag className="w-4 h-4" />
-          <span>Add To Cart</span>
-        </button>
+
+        {isOutOfStock ? (
+          <span className="px-4 py-2.5 bg-rose-50 text-rose-700 border border-rose-200 text-xs font-black rounded-xl">
+            Out of Stock
+          </span>
+        ) : (
+          <div className="flex items-center gap-2 flex-1 justify-end">
+            <button
+              onClick={() => addToCart(product, selectedWeight, quantity)}
+              className="px-3.5 py-2.5 min-h-[42px] bg-neutral-100 border border-neutral-300 text-black text-xs font-black rounded-xl flex items-center justify-center gap-1 active:scale-95 cursor-pointer shadow-xs"
+              title="Add to Basket"
+            >
+              <ShoppingBag className="w-3.5 h-3.5" />
+              <span>Add</span>
+            </button>
+
+            <button
+              onClick={handleBuyNow}
+              className="px-4 py-2.5 min-h-[42px] bg-black text-white text-xs font-black rounded-xl flex items-center justify-center gap-1 active:scale-95 cursor-pointer shadow-sm"
+              title="Instant Checkout"
+            >
+              <span>⚡ Buy Now</span>
+            </button>
+          </div>
+        )}
       </div>
 
     </div>

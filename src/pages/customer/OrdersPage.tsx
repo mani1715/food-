@@ -81,18 +81,26 @@ export const OrdersPage: React.FC = () => {
                 ))}
               </div>
 
-              <div className="pt-3 border-t border-neutral-100 flex items-center justify-between">
+              <div className="pt-3 border-t border-neutral-100 flex items-center justify-between gap-2 flex-wrap">
                 <span className="text-xs text-neutral-500 font-medium">Payment: {ord.paymentMethod}</span>
-                <button
-                  onClick={() => {
-                    ord.items.forEach((i) => addToCart(i.product, i.selectedWeight, i.quantity));
-                    navigate('/cart');
-                  }}
-                  className="py-2.5 px-4 bg-white border border-neutral-300 hover:border-black text-black text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Reorder All</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => navigate(`/track-order?id=${ord.orderNumber}`)}
+                    className="py-2.5 px-3.5 min-h-[40px] bg-neutral-100 hover:bg-neutral-200 border border-neutral-300 text-black text-xs font-extrabold rounded-xl transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                  >
+                    <span>Track Order</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      ord.items.forEach((i) => addToCart(i.product, i.selectedWeight, i.quantity));
+                      navigate('/cart');
+                    }}
+                    className="py-2.5 px-3.5 min-h-[40px] bg-black text-white hover:bg-neutral-800 text-xs font-extrabold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Reorder</span>
+                  </button>
+                </div>
               </div>
 
             </div>

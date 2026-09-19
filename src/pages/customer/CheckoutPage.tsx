@@ -318,10 +318,13 @@ export const CheckoutPage: React.FC = () => {
                   <input
                     type="text"
                     required
+                    autoComplete="name"
+                    autoCapitalize="words"
+                    inputMode="text"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
                     placeholder="Enter your full name"
-                    className="w-full p-3 rounded-2xl border border-neutral-300 text-xs font-bold"
+                    className="w-full p-3 min-h-[44px] rounded-2xl border border-neutral-300 text-base sm:text-xs font-bold bg-white focus:outline-none focus:border-black"
                   />
                 </div>
 
@@ -331,12 +334,15 @@ export const CheckoutPage: React.FC = () => {
                     <span>Mobile / WhatsApp Number *</span>
                   </label>
                   <input
-                    type="text"
+                    type="tel"
                     required
+                    autoComplete="tel"
+                    inputMode="tel"
+                    maxLength={10}
                     value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                    placeholder="+91 98765 43210"
-                    className="w-full p-3 rounded-2xl border border-neutral-300 text-xs font-bold font-mono"
+                    onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    placeholder="9876543210"
+                    className="w-full p-3 min-h-[44px] rounded-2xl border border-neutral-300 text-base sm:text-xs font-bold font-mono bg-white focus:outline-none focus:border-black"
                   />
                 </div>
               </div>
@@ -349,11 +355,12 @@ export const CheckoutPage: React.FC = () => {
                 </label>
                 <input
                   type="email"
-                  required
+                  autoComplete="email"
+                  inputMode="email"
                   value={customerEmail}
                   onChange={(e) => setCustomerEmail(e.target.value)}
                   placeholder="your.email@example.com"
-                  className="w-full p-3 rounded-2xl border border-neutral-300 text-xs font-bold"
+                  className="w-full p-3 min-h-[44px] rounded-2xl border border-neutral-300 text-base sm:text-xs font-bold bg-white focus:outline-none focus:border-black"
                 />
               </div>
 
@@ -366,10 +373,12 @@ export const CheckoutPage: React.FC = () => {
                 <input
                   type="text"
                   required
+                  autoComplete="street-address"
+                  inputMode="text"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   placeholder="e.g. Flat 302, Royal Palms, Road No 12"
-                  className="w-full p-3 rounded-2xl border border-neutral-300 text-xs font-bold"
+                  className="w-full p-3 min-h-[44px] rounded-2xl border border-neutral-300 text-base sm:text-xs font-bold bg-white focus:outline-none focus:border-black"
                 />
               </div>
 
@@ -380,22 +389,27 @@ export const CheckoutPage: React.FC = () => {
                   <input
                     type="text"
                     required
+                    autoComplete="address-level2"
+                    inputMode="text"
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
                     placeholder="e.g. Hyderabad, Vijayawada"
-                    className="w-full p-3 rounded-2xl border border-neutral-300 text-xs font-bold"
+                    className="w-full p-3 min-h-[44px] rounded-2xl border border-neutral-300 text-base sm:text-xs font-bold bg-white focus:outline-none focus:border-black"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-neutral-500 mb-1">Pincode / Zip *</label>
+                  <label className="block text-neutral-500 mb-1">PIN Code (6 digits) *</label>
                   <input
                     type="text"
                     required
+                    autoComplete="postal-code"
+                    inputMode="numeric"
+                    maxLength={6}
                     value={pincode}
-                    onChange={(e) => setPincode(e.target.value)}
+                    onChange={(e) => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     placeholder="500033"
-                    className="w-full p-3 rounded-2xl border border-neutral-300 text-xs font-mono font-bold"
+                    className="w-full p-3 min-h-[44px] rounded-2xl border border-neutral-300 text-base sm:text-xs font-mono font-bold bg-white focus:outline-none focus:border-black"
                   />
                 </div>
               </div>
@@ -411,7 +425,7 @@ export const CheckoutPage: React.FC = () => {
                   value={deliveryNotes}
                   onChange={(e) => setDeliveryNotes(e.target.value)}
                   placeholder="e.g. Leave package with security guard / Call before delivery"
-                  className="w-full p-3 rounded-2xl border border-neutral-300 text-xs font-bold"
+                  className="w-full p-3 min-h-[44px] rounded-2xl border border-neutral-300 text-base sm:text-xs font-bold bg-white focus:outline-none focus:border-black"
                 />
               </div>
 
@@ -419,28 +433,28 @@ export const CheckoutPage: React.FC = () => {
           </div>
 
           {/* SECTION 2: PAYMENT METHOD OPTIONS */}
-          <div className="p-6 rounded-3xl border border-neutral-200 bg-white space-y-4 shadow-subtle">
+          <div className="p-4 sm:p-6 rounded-3xl border border-neutral-200 bg-white space-y-4 shadow-subtle">
             <h3 className="text-base font-extrabold text-black flex items-center gap-2">
               <CreditCard className="w-5 h-5 text-black" />
               <span>2. Payment Option</span>
             </h3>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
               {[
                 { id: 'UPI', label: 'UPI / GPay', icon: <Smartphone className="w-4 h-4" /> },
                 { id: 'Card', label: 'Card', icon: <CreditCard className="w-4 h-4" /> },
-                { id: 'COD', label: 'Cash on Delivery', icon: <DollarSign className="w-4 h-4" /> },
+                { id: 'COD', label: 'Cash on Del.', icon: <DollarSign className="w-4 h-4" /> },
               ].map((pm) => (
                 <button
                   key={pm.id}
                   type="button"
                   onClick={() => setPaymentMethod(pm.id as any)}
-                  className={`p-3.5 rounded-2xl border text-xs font-bold transition-all flex flex-col items-center gap-1.5 cursor-pointer ${
+                  className={`p-3 sm:p-3.5 min-h-[52px] rounded-2xl border text-xs font-extrabold transition-all flex flex-col items-center justify-center gap-1 cursor-pointer select-none active:scale-95 ${
                     paymentMethod === pm.id ? 'bg-black text-white border-black shadow-subtle' : 'bg-neutral-50 text-black border-neutral-200 hover:border-black'
                   }`}
                 >
                   {pm.icon}
-                  <span>{pm.label}</span>
+                  <span className="text-[11px] leading-none">{pm.label}</span>
                 </button>
               ))}
             </div>
@@ -450,10 +464,12 @@ export const CheckoutPage: React.FC = () => {
                 <label className="block uppercase text-neutral-500">Virtual Payment Address (VPA)</label>
                 <input
                   type="text"
+                  autoComplete="off"
+                  inputMode="email"
                   value={upiId}
                   onChange={(e) => setUpiId(e.target.value)}
-                  placeholder="e.g. user@okicici"
-                  className="w-full p-3 rounded-2xl border border-neutral-300 font-mono"
+                  placeholder="e.g. user@okaxis"
+                  className="w-full p-3 min-h-[44px] rounded-2xl border border-neutral-300 font-mono text-base sm:text-xs font-bold bg-white focus:outline-none focus:border-black"
                 />
               </div>
             )}
@@ -520,10 +536,13 @@ export const CheckoutPage: React.FC = () => {
             <button
               type="submit"
               disabled={isProcessing}
-              className="w-full py-4 bg-black text-white text-xs font-extrabold rounded-2xl hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 shadow-subtle cursor-pointer"
+              className="w-full py-3.5 sm:py-4 min-h-[48px] bg-black text-white text-sm sm:text-xs font-black rounded-2xl hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 shadow-modal cursor-pointer active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed select-none"
             >
               {isProcessing ? (
-                <span>Confirming Order...</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Authorizing Order...</span>
+                </div>
               ) : (
                 <>
                   <span>Place Order • ₹{grandTotal}</span>
