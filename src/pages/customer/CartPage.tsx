@@ -93,11 +93,11 @@ export const CartPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white text-black py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-left space-y-8">
+    <div className="min-h-screen bg-white text-black py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-left space-y-8 pb-24 sm:pb-8">
       <div className="flex items-center justify-between border-b border-neutral-200 pb-4">
         <div>
           <span className="text-xs font-bold uppercase tracking-widest text-neutral-400">Shopping Cart</span>
-          <h1 className="text-3xl font-extrabold text-black tracking-tight mt-1">Your Food Basket</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-black tracking-tight mt-1">Your Food Basket</h1>
         </div>
 
         {cartItems.length > 0 && (
@@ -127,7 +127,7 @@ export const CartPage: React.FC = () => {
                   <Sparkles className="w-5 h-5" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="px-2 py-0.5 bg-emerald-500 text-black text-[10px] font-black uppercase rounded-md">
                       {activeCartOffer.badgeText || 'CART OFFER UNLOCKED'}
                     </span>
@@ -184,40 +184,51 @@ export const CartPage: React.FC = () => {
                 {cartItems.map((item, index) => (
                   <div
                     key={`${item.product.id}-${item.selectedWeight}`}
-                    className="p-3 sm:p-4 rounded-2xl border border-neutral-200 bg-white shadow-subtle flex flex-row items-center justify-between gap-2 sm:gap-4 text-left"
+                    className="p-3.5 sm:p-4 rounded-2xl border border-neutral-200 bg-white shadow-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 text-left"
                   >
-                    {/* Item Number, Image & Details */}
-                    <div className="flex items-center gap-2.5 sm:gap-4 min-w-0 flex-1">
-                      <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-neutral-900 text-white text-[11px] sm:text-xs font-mono font-bold flex items-center justify-center shrink-0 shadow-sm">
+                    {/* Top Row (Mobile) / Left Side (Desktop): Index, Image, Title & Details */}
+                    <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                      <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-neutral-900 text-white text-[11px] sm:text-xs font-mono font-bold flex items-center justify-center shrink-0 shadow-sm mt-0.5 sm:mt-0">
                         #{index + 1}
                       </span>
 
                       <img
                         src={item.product.image}
                         alt={item.product.name}
-                        className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl object-cover border border-neutral-200 shrink-0"
+                        className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl object-cover border border-neutral-200 shrink-0"
                       />
-                      <div className="space-y-0.5 min-w-0 flex-1">
+
+                      <div className="space-y-1 min-w-0 flex-1">
                         <h4
                           onClick={() => navigate(`/product/${item.product.id}`)}
-                          className="text-xs sm:text-sm font-bold text-black cursor-pointer hover:underline truncate"
+                          className="text-xs sm:text-sm font-bold text-black cursor-pointer hover:underline line-clamp-2 sm:truncate leading-snug"
                         >
                           {item.product.name}
                         </h4>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="inline-block text-[10px] bg-neutral-100 font-bold text-black px-1.5 py-0.5 rounded border border-neutral-200 shrink-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="inline-block text-[10px] sm:text-xs bg-neutral-100 font-bold text-black px-2 py-0.5 rounded-md border border-neutral-200 shrink-0">
                             {item.selectedWeight}
                           </span>
-                          <span className="text-[11px] font-mono font-bold text-neutral-600 shrink-0">
+                          <span className="text-[11px] sm:text-xs font-mono font-bold text-neutral-600 shrink-0">
                             ₹{item.unitPrice} each
                           </span>
                         </div>
                       </div>
+
+                      {/* Mobile Remove Button (top-right corner) */}
+                      <button
+                        onClick={() => removeFromCart(item.product.id, item.selectedWeight)}
+                        className="sm:hidden p-1.5 -mr-1 -mt-1 text-neutral-400 hover:text-rose-600 transition-colors cursor-pointer shrink-0"
+                        title="Remove item"
+                        aria-label="Remove item"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
 
-                    {/* Quantity & Subtotal */}
-                    <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-                      <div className="flex items-center border border-neutral-300 rounded-xl p-0.5 bg-neutral-50">
+                    {/* Bottom Row (Mobile) / Right Side (Desktop): Quantity Stepper & Line Total */}
+                    <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 pt-2.5 sm:pt-0 border-t border-neutral-100 sm:border-t-0 shrink-0">
+                      <div className="flex items-center border border-neutral-300 rounded-xl p-0.5 bg-neutral-50 shadow-xs">
                         <button
                           onClick={() => updateCartQuantity(item.product.id, item.selectedWeight, item.quantity - 1)}
                           className="w-8 h-8 sm:w-9 sm:h-9 text-black hover:bg-neutral-200 rounded-lg cursor-pointer transition-colors flex items-center justify-center active:scale-95"
@@ -226,7 +237,7 @@ export const CartPage: React.FC = () => {
                         >
                           <Minus className="w-3.5 h-3.5" />
                         </button>
-                        <span className="w-7 sm:w-8 text-center text-xs font-mono font-bold">{item.quantity}</span>
+                        <span className="w-8 sm:w-8 text-center text-xs sm:text-sm font-mono font-bold">{item.quantity}</span>
                         <button
                           onClick={() => updateCartQuantity(item.product.id, item.selectedWeight, item.quantity + 1)}
                           className="w-8 h-8 sm:w-9 sm:h-9 text-black hover:bg-neutral-200 rounded-lg cursor-pointer transition-colors flex items-center justify-center active:scale-95"
@@ -237,18 +248,26 @@ export const CartPage: React.FC = () => {
                         </button>
                       </div>
 
-                      <span className="text-xs sm:text-sm font-extrabold font-mono text-black min-w-[50px] sm:min-w-[65px] text-right">
-                        ₹{item.unitPrice * item.quantity}
-                      </span>
+                      <div className="flex items-center gap-3 sm:gap-4">
+                        <div className="text-right">
+                          <span className="sm:hidden text-[9px] uppercase tracking-wider text-neutral-400 font-bold block">
+                            Subtotal
+                          </span>
+                          <span className="text-sm sm:text-base font-extrabold font-mono text-black min-w-[50px] sm:min-w-[65px] text-right">
+                            ₹{item.unitPrice * item.quantity}
+                          </span>
+                        </div>
 
-                      <button
-                        onClick={() => removeFromCart(item.product.id, item.selectedWeight)}
-                        className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center text-neutral-400 hover:text-rose-600 transition-colors cursor-pointer shrink-0"
-                        title="Remove item"
-                        aria-label="Remove item"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                        {/* Desktop Remove Button */}
+                        <button
+                          onClick={() => removeFromCart(item.product.id, item.selectedWeight)}
+                          className="hidden sm:flex p-2 min-w-[36px] min-h-[36px] items-center justify-center text-neutral-400 hover:text-rose-600 transition-colors cursor-pointer shrink-0"
+                          title="Remove item"
+                          aria-label="Remove item"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
