@@ -182,9 +182,7 @@ export const fetchAllOrders = async (): Promise<Order[]> => {
         product_name_snapshot,
         selected_weight,
         unit_price,
-        quantity,
-        line_total,
-        is_free_gift
+        quantity
       )
     `)
     .order('created_at', { ascending: false });
@@ -197,24 +195,27 @@ export const fetchAllOrders = async (): Promise<Order[]> => {
   if (!data) return [];
 
   return data.map((o: any) => {
-    const items: CartItem[] = (o.order_items || []).map((i: any) => ({
-      product: {
-        id: i.product_id || 'prod-custom',
-        name: i.product_name_snapshot,
-        category: 'General',
-        price: Number(i.unit_price),
-        rating: 5.0,
-        reviewsCount: 1,
-        image: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=800&auto=format&fit=crop',
-        description: 'Handcrafted food item',
-        weightOptions: [{ weight: i.selectedWeight, price: Number(i.unit_price) }],
-        defaultWeight: i.selectedWeight,
-        isVeg: true,
-      },
-      selectedWeight: i.selectedWeight,
-      unitPrice: Number(i.unit_price),
-      quantity: i.quantity,
-    }));
+    const items: CartItem[] = (o.order_items || []).map((i: any) => {
+      const weightStr = i.selected_weight || i.selectedWeight || 'Standard';
+      return {
+        product: {
+          id: i.product_id || 'prod-custom',
+          name: i.product_name_snapshot,
+          category: 'General',
+          price: Number(i.unit_price),
+          rating: 5.0,
+          reviewsCount: 1,
+          image: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=800&auto=format&fit=crop',
+          description: 'Handcrafted food item',
+          weightOptions: [{ weight: weightStr, price: Number(i.unit_price) }],
+          defaultWeight: weightStr,
+          isVeg: true,
+        },
+        selectedWeight: weightStr,
+        unitPrice: Number(i.unit_price),
+        quantity: i.quantity,
+      };
+    });
 
     const mainStatus =
       o.order_status === 'delivered'
