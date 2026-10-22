@@ -5,33 +5,73 @@
 # Ensure index.html is served as the default directory index
 DirectoryIndex index.html
 
-# Prevent directory browsing (returns 403 if no index file exists)
+# Prevent directory browsing
 Options -Indexes
 
-# Follow symbolic links (required for mod_rewrite on many Apache/LiteSpeed hosts)
+# Follow symbolic links (required for mod_rewrite on Apache/LiteSpeed)
 Options +FollowSymLinks
+
+# Security: Block direct public access to hidden files, environment files, and sensitive manifests
+<IfModule mod_authz_core.c>
+  <FilesMatch "(^\.|\.env|package(-lock)?\.json|tsconfig\.json|vite\.config\.ts|\.git.*|\.md)$">
+    Require all denied
+  </FilesMatch>
+</IfModule>
+<IfModule !mod_authz_core.c>
+  <FilesMatch "(^\.|\.env|package(-lock)?\.json|tsconfig\.json|vite\.config\.ts|\.git.*|\.md)$">
+    Order allow,deny
+    Deny from all
+  </FilesMatch>
+</IfModule>
+
+# Security Headers
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Correct MIME Types for Modern ES Modules & Web Assets
+<IfModule mod_mime.c>
+  AddType application/javascript .js .mjs
+  AddType text/css .css
+  AddType image/svg+xml .svg .svgz
+  AddType image/png .png
+  AddType image/jpeg .jpg .jpeg
+  AddType image/webp .webp
+  AddType application/wasm .wasm
+  AddType font/woff .woff
+  AddType font/woff2 .woff2
+</IfModule>
 
 # SPA Fallback Routing
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
 
-  # Don't rewrite if request is already index.html
+  # 1. Don't rewrite if request is already index.html
   RewriteRule ^index\.html$ - [L]
 
-  # Don't rewrite if requested file, directory, or symlink exists
+  # 2. Serve existing files, directories, or symlinks directly
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d [OR]
   RewriteCond %{REQUEST_FILENAME} -l
   RewriteRule ^ - [L]
 
-  # Route all other URLs to index.html for client-side routing
+  # 3. DO NOT rewrite missing assets / static files to index.html
+  # If a script, style, image, font, or audio is missing, return 404 instead of index.html.
+  # This prevents browsers from receiving HTML when requesting a JS/CSS file (which causes MIME type errors).
+  RewriteCond %{REQUEST_URI} ^/assets/ [NC,OR]
+  RewriteCond %{REQUEST_URI} \.(?:css|js|mjs|map|jpe?g|png|gif|ico|svg|webp|avif|woff2?|ttf|eot|otf|wasm|json|xml|txt|pdf)$ [NC]
+  RewriteRule ^ - [R=404,L]
+
+  # 4. Route all application client-side routes (e.g. /products, /categories, /checkout) to index.html
   RewriteRule . /index.html [L]
 </IfModule>
 
 # Enable GZIP compression for text, scripts, styles, and JSON
 <IfModule mod_deflate.c>
-  AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json application/xml image/svg+xml
+  AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/x-javascript application/json application/xml image/svg+xml application/wasm
 </IfModule>
 
 # Browser Caching Headers for static assets
@@ -43,8 +83,12 @@ Options +FollowSymLinks
   ExpiresByType image/png "access plus 1 year"
   ExpiresByType image/webp "access plus 1 year"
   ExpiresByType image/svg+xml "access plus 1 year"
-  ExpiresByType text/css "access plus 1 month"
-  ExpiresByType application/javascript "access plus 1 month"
-  ExpiresByType text/javascript "access plus 1 month"
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType text/javascript "access plus 1 year"
+  ExpiresByType font/woff "access plus 1 year"
+  ExpiresByType font/woff2 "access plus 1 year"
+  # HTML pages should not be cached indefinitely so new deployments update immediately
+  ExpiresByType text/html "access plus 0 seconds"
   ExpiresDefault "access plus 2 days"
 </IfModule>
