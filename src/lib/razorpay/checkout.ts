@@ -77,6 +77,12 @@ export const loadRazorpayScript = (): Promise<boolean> => {
 export const openRazorpayModal = async (
   options: RazorpayCheckoutOptions
 ): Promise<void> => {
+  if (!options.key || options.key.trim() === '') {
+    throw new Error(
+      'Payment gateway configuration notice: Razorpay Key ID is not configured. Please set VITE_RAZORPAY_KEY_ID or configure RAZORPAY_KEY_ID in Supabase Edge Function Secrets.'
+    );
+  }
+
   const isLoaded = await loadRazorpayScript();
   if (!isLoaded || !window.Razorpay) {
     throw new Error(

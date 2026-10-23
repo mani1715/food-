@@ -173,7 +173,7 @@ export const CheckoutPage: React.FC = () => {
         const rzpOrderData = await initiateRazorpayOrder(order.id, order.paymentSessionToken, deliveryNotes);
 
         await openRazorpayModal({
-          key: rzpOrderData.keyId || (import.meta.env.VITE_RAZORPAY_KEY_ID as string) || 'rzp_live_TrDR6q1ML16dKa',
+          key: rzpOrderData.keyId || (import.meta.env.VITE_RAZORPAY_KEY_ID as string) || '',
           amount: rzpOrderData.amount,
           currency: rzpOrderData.currency || 'INR',
           name: 'Aishu Home Foods',
