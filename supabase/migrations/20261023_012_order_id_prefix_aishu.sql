@@ -2,48 +2,64 @@
 -- Migration: 20261023_012_order_id_prefix_aishu.sql
 -- Description: Production-grade place_order_secure RPC for Aishu Foods.
 --              Fully verified against live schema on project akublyjmyrcoeemuxugr.
---              Includes collision-resistant sequences, strict item/email/PIN validation,
---              canonical payment methods, coupon sanity, and idempotent payload hashing.
+--              Features:
+--              - Non-regressive sequence synchronization for IDs, order numbers & tracking
+--              - Pre-cast regex verification for quantities (1..50)
+--              - Strict coupon scope enforcement ('all', 'category', 'product')
+--              - Canonical payment method validation ('COD', 'UPI', 'Card')
+--              - Calendar date expiry matching admin UI (<input type="date">)
+--              - Legacy idempotency compatibility & material payload hashing
+--              - Explicit stock depletion checks (no GREATEST masking)
+--              - Fully qualified schema references & hardened SECURITY DEFINER search_path
 -- ==============================================================================
 
 -- 1. Ensure required cryptographic extension
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- 2. Collision-Resistant Database Sequences for Identifiers
+-- 2. Collision-Resistant Sequences with Non-Regressive Synchronization
 CREATE SEQUENCE IF NOT EXISTS public.order_id_seq START WITH 10001;
 CREATE SEQUENCE IF NOT EXISTS public.order_number_seq START WITH 10001;
 CREATE SEQUENCE IF NOT EXISTS public.tracking_code_seq START WITH 100001;
 
--- Synchronize sequences with existing table data to prevent any primary key or unique collision
-SELECT setval(
-    'public.order_id_seq',
-    GREATEST(10001, COALESCE((
-        SELECT MAX(SUBSTRING(id FROM '[0-9]+$')::BIGINT) 
-        FROM public.orders 
-        WHERE id ~ '[0-9]+$'
-    ), 0) + 1),
-    false
-);
+DO $$
+DECLARE
+    v_max_id BIGINT;
+    v_curr_id BIGINT;
+    v_max_num BIGINT;
+    v_curr_num BIGINT;
+    v_max_trk BIGINT;
+    v_curr_trk BIGINT;
+BEGIN
+    -- Synchronize order_id_seq (never moves backwards)
+    SELECT COALESCE(MAX(SUBSTRING(id FROM '[0-9]+$')::BIGINT), 0) INTO v_max_id 
+    FROM public.orders WHERE id ~ '[0-9]+$';
+    
+    SELECT last_value INTO v_curr_id FROM public.order_id_seq;
+    
+    IF v_max_id >= v_curr_id THEN
+        PERFORM setval('public.order_id_seq', v_max_id + 1, false);
+    END IF;
 
-SELECT setval(
-    'public.order_number_seq',
-    GREATEST(10001, COALESCE((
-        SELECT MAX(SUBSTRING(order_number FROM '[0-9]+')::BIGINT) 
-        FROM public.orders 
-        WHERE order_number ~ '[0-9]+'
-    ), 0) + 1),
-    false
-);
+    -- Synchronize order_number_seq (never moves backwards)
+    SELECT COALESCE(MAX(SUBSTRING(order_number FROM '[0-9]+$')::BIGINT), 0) INTO v_max_num 
+    FROM public.orders WHERE order_number ~ '[0-9]+$';
+    
+    SELECT last_value INTO v_curr_num FROM public.order_number_seq;
+    
+    IF v_max_num >= v_curr_num THEN
+        PERFORM setval('public.order_number_seq', v_max_num + 1, false);
+    END IF;
 
-SELECT setval(
-    'public.tracking_code_seq',
-    GREATEST(100001, COALESCE((
-        SELECT MAX(SUBSTRING(tracking_code FROM '[0-9]+')::BIGINT) 
-        FROM public.orders 
-        WHERE tracking_code ~ '[0-9]+'
-    ), 0) + 1),
-    false
-);
+    -- Synchronize tracking_code_seq (never moves backwards)
+    SELECT COALESCE(MAX(SUBSTRING(tracking_code FROM '[0-9]+$')::BIGINT), 0) INTO v_max_trk 
+    FROM public.orders WHERE tracking_code ~ '[0-9]+$';
+    
+    SELECT last_value INTO v_curr_trk FROM public.tracking_code_seq;
+    
+    IF v_max_trk >= v_curr_trk THEN
+        PERFORM setval('public.tracking_code_seq', v_max_trk + 1, false);
+    END IF;
+END $$;
 
 -- 3. Safe, Justified Column Extensions
 ALTER TABLE public.orders 
@@ -75,7 +91,7 @@ CREATE OR REPLACE FUNCTION public.place_order_secure(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, auth, extensions
+SET search_path = public, auth, extensions, pg_temp
 AS $$
 DECLARE
     v_user_id UUID := auth.uid();
@@ -149,7 +165,7 @@ BEGIN
         RAISE EXCEPTION 'Invalid payment method "%". Permitted payment methods are COD, UPI, Card.', v_payment_method;
     END IF;
 
-    -- Canonicalize payment method and set payment status strictly adhering to table constraint:
+    -- Canonicalize payment method and assign payment status strictly adhering to table constraint:
     -- CHECK (payment_status IN ('pending', 'completed', 'authorized', 'paid', 'failed', 'refunded', 'cod'))
     IF UPPER(v_payment_method) = 'COD' THEN
         v_payment_method := 'COD';
@@ -244,22 +260,34 @@ BEGIN
     )::text);
 
     IF v_idempotency_key <> '' THEN
-        -- Advisory lock serializes concurrent retries for the exact same key
+        IF LENGTH(v_idempotency_key) > 120 THEN
+            RAISE EXCEPTION 'Idempotency key exceeds maximum allowed length of 120 characters.';
+        END IF;
+
+        -- Advisory lock serializes concurrent retries for this exact idempotency key
         PERFORM pg_advisory_xact_lock(hashtext('place_order_' || v_idempotency_key));
 
         SELECT id, order_number, tracking_code, subtotal, delivery_fee, 
                discount_amount, grand_total, order_status, payment_status, created_at,
                payment_session_token, delivery_address_json, idempotency_payload_hash,
-               payment_method, applied_coupon_code
+               payment_method, applied_coupon_code, customer_phone
         INTO v_existing_order
         FROM public.orders
         WHERE idempotency_key = v_idempotency_key;
 
         IF FOUND THEN
-            -- Reject reusing the same idempotency key for different payload contents
-            IF v_existing_order.idempotency_payload_hash IS NOT NULL 
-               AND v_existing_order.idempotency_payload_hash <> v_payload_hash THEN
-                RAISE EXCEPTION 'Idempotency key "%" was already used for a different order payload.', v_idempotency_key;
+            -- Policy for modern orders placed with payload hash
+            IF v_existing_order.idempotency_payload_hash IS NOT NULL THEN
+                IF v_existing_order.idempotency_payload_hash <> v_payload_hash THEN
+                    RAISE EXCEPTION 'Idempotency key "%" was already used for a different order payload.', v_idempotency_key;
+                END IF;
+            ELSE
+                -- Legacy compatibility policy: verify customer phone and payment method match
+                IF v_existing_order.customer_phone <> v_customer_phone 
+                   OR v_existing_order.payment_method <> v_payment_method THEN
+                    RAISE EXCEPTION 'Idempotency key "%" was previously used for an order with different customer or payment details.', 
+                        v_idempotency_key;
+                END IF;
             END IF;
 
             RETURN jsonb_build_object(
@@ -389,9 +417,9 @@ BEGIN
         FOR UPDATE;
 
         IF FOUND THEN
-            -- Expiry check
-            IF v_coupon_rec.expiry_date IS NOT NULL AND v_coupon_rec.expiry_date < CURRENT_DATE THEN
-                RAISE EXCEPTION 'Coupon "%" has expired.', v_coupon_code;
+            -- Calendar date expiry check: valid through entire expiry date, expires next day
+            IF v_coupon_rec.expiry_date IS NOT NULL AND (CURRENT_DATE > v_coupon_rec.expiry_date::DATE) THEN
+                RAISE EXCEPTION 'Coupon "%" expired on %.', v_coupon_code, v_coupon_rec.expiry_date;
             END IF;
 
             -- Minimum order subtotal check
@@ -400,10 +428,17 @@ BEGIN
                     v_coupon_code, v_coupon_rec.min_order_amount;
             END IF;
 
-            -- Scope restriction: applies_to ('all', 'category', 'product')
+            -- Scope restriction: strictly supports 'all', 'category', 'product'
             v_coupon_eligible_subtotal := 0;
 
-            IF v_coupon_rec.applies_to = 'category' AND v_coupon_rec.target_category IS NOT NULL THEN
+            IF LOWER(TRIM(COALESCE(v_coupon_rec.applies_to, 'all'))) = 'all' THEN
+                v_coupon_eligible_subtotal := v_subtotal;
+
+            ELSIF LOWER(TRIM(v_coupon_rec.applies_to)) = 'category' THEN
+                IF v_coupon_rec.target_category IS NULL OR TRIM(v_coupon_rec.target_category) = '' THEN
+                    RAISE EXCEPTION 'Coupon "%" is misconfigured: target category is missing.', v_coupon_code;
+                END IF;
+
                 FOR v_item_rec IN SELECT * FROM jsonb_to_recordset(v_validated_items) AS y(
                     category_id TEXT,
                     line_total NUMERIC
@@ -414,10 +449,15 @@ BEGIN
                 END LOOP;
 
                 IF v_coupon_eligible_subtotal <= 0 THEN
-                    RAISE EXCEPTION 'Coupon "%" is valid only for products in category "%".', 
+                    RAISE EXCEPTION 'Coupon "%" is valid only for items in category "%". No eligible items in cart.', 
                         v_coupon_code, v_coupon_rec.target_category;
                 END IF;
-            ELSIF v_coupon_rec.applies_to = 'product' AND v_coupon_rec.target_product_id IS NOT NULL THEN
+
+            ELSIF LOWER(TRIM(v_coupon_rec.applies_to)) = 'product' THEN
+                IF v_coupon_rec.target_product_id IS NULL OR TRIM(v_coupon_rec.target_product_id) = '' THEN
+                    RAISE EXCEPTION 'Coupon "%" is misconfigured: target product is missing.', v_coupon_code;
+                END IF;
+
                 FOR v_item_rec IN SELECT * FROM jsonb_to_recordset(v_validated_items) AS y(
                     product_id TEXT,
                     line_total NUMERIC
@@ -428,11 +468,13 @@ BEGIN
                 END LOOP;
 
                 IF v_coupon_eligible_subtotal <= 0 THEN
-                    RAISE EXCEPTION 'Coupon "%" is valid only for the designated target product.', v_coupon_code;
+                    RAISE EXCEPTION 'Coupon "%" is valid only for designated target product. Eligible product not in cart.', 
+                        v_coupon_code;
                 END IF;
+
             ELSE
-                -- Default applies_to = 'all' or NULL
-                v_coupon_eligible_subtotal := v_subtotal;
+                RAISE EXCEPTION 'Coupon "%" has invalid scope "%". Permitted scopes are all, category, product.', 
+                    v_coupon_code, v_coupon_rec.applies_to;
             END IF;
 
             -- Compute coupon discount value safely
@@ -597,7 +639,8 @@ BEGIN
         );
     END LOOP;
 
-    -- Decrement stock by aggregated demand per product to guarantee exact balance
+    -- Decrement stock by aggregated demand per product.
+    -- Strict decrement: fails explicitly if stock is unexpectedly insufficient rather than silently clamping with GREATEST.
     FOR v_agg_rec IN 
         SELECT 
             x.product_id,
@@ -609,10 +652,14 @@ BEGIN
         GROUP BY x.product_id
     LOOP
         UPDATE public.products
-        SET inventory_count = GREATEST(0, inventory_count - v_agg_rec.total_demanded_qty),
-            out_of_stock = ((inventory_count - v_agg_rec.total_demanded_qty) <= 0),
+        SET inventory_count = inventory_count - v_agg_rec.total_demanded_qty,
+            out_of_stock = ((inventory_count - v_agg_rec.total_demanded_qty) = 0),
             updated_at = NOW()
         WHERE id = v_agg_rec.product_id;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'Failed to decrement stock: product % was removed concurrently.', v_agg_rec.product_id;
+        END IF;
     END LOOP;
 
     -- -------------------------------------------------------------------------
@@ -641,7 +688,7 @@ END;
 $$;
 
 -- 5. Set Execution Permissions (Guest checkout via anon, logged in customers via authenticated)
-REVOKE EXECUTE ON FUNCTION public.place_order_secure(JSONB) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.place_order_secure(JSONB) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.place_order_secure(JSONB) TO anon, authenticated, service_role;
 
 -- 6. Force PostgREST to Immediately Reload Schema Cache
