@@ -204,11 +204,11 @@ export const TrackOrderPage: React.FC = () => {
               response.razorpay_signature
             );
 
-            updatePaymentStatus(selectedOrderForPayment.id, 'paid');
+            updatePaymentStatus(selectedOrderForPayment.id, 'completed');
             setMatchedOrders((prev) =>
               prev.map((o) =>
                 o.id === selectedOrderForPayment.id
-                  ? { ...o, paymentStatus: 'paid', orderStatus: 'confirmed' }
+                  ? { ...o, paymentStatus: 'completed', orderStatus: 'confirmed' }
                   : o
               )
             );
@@ -341,7 +341,7 @@ export const TrackOrderPage: React.FC = () => {
 
                           {/* Quick Action Buttons */}
                           <div className="flex flex-wrap items-center gap-2">
-                            {ord.paymentStatus === 'pending' && ord.status !== 'Cancelled' && (
+                            {ord.paymentStatus === 'pending' && ord.paymentMethod !== 'COD' && ord.status !== 'Cancelled' && (
                               <button
                                 onClick={() => {
                                   setSelectedOrderForPayment(ord);

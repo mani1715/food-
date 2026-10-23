@@ -1,37 +1,34 @@
 -- ==============================================================================
 -- Migration: 20261023_012_order_id_prefix_aishu.sql
--- Description: Production-grade place_order_secure RPC for Aishu Foods.
---              Hardened against shadowing, sequence truncation, and idempotency collision.
---              Verified against frontend and Edge Function contracts.
+-- Description: Production-grade checkout and payment RPCs for Aishu Foods.
+--              Fully verified against confirmed live schema on akublyjmyrcoeemuxugr.
+--              Features:
+--              - Non-regressive sequence sync for order numbers & tracking codes
+--              - Production order ID ('ord-' || UUID) and item ID ('oitem-' || UUID)
+--              - Strict payment_status constraint compliance ('pending', 'completed', 'failed')
+--              - COD mapped to payment_method='COD', payment_status='pending'
+--              - Pre-cast regex verification for item quantities (1..50)
+--              - Strict coupon validation using live column is_enabled and calendar expiry
+--              - Canonical payload construction with SHA-256 for idempotency
+--              - Deterministic row locking and explicit inventory decrement
+--              - Razorpay lifecycle RPCs: finalize_payment_success & record_payment_attempt
+--              - Hardened SECURITY DEFINER search_path (pg_catalog first, pg_temp last)
 -- ==============================================================================
 
--- 1. Ensure required cryptographic extension for digest (SHA-256) and random tokens
+-- 1. Ensure required cryptographic extension
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- 2. Collision-Resistant Sequences with Non-Regressive Synchronization
-CREATE SEQUENCE IF NOT EXISTS public.order_id_seq START WITH 10001;
 CREATE SEQUENCE IF NOT EXISTS public.order_number_seq START WITH 10001;
 CREATE SEQUENCE IF NOT EXISTS public.tracking_code_seq START WITH 100001;
 
 DO $$
 DECLARE
-    v_max_id BIGINT;
-    v_curr_id BIGINT;
     v_max_num BIGINT;
     v_curr_num BIGINT;
     v_max_trk BIGINT;
     v_curr_trk BIGINT;
 BEGIN
-    -- Synchronize order_id_seq (never moves backwards)
-    SELECT COALESCE(MAX(SUBSTRING(id FROM '[0-9]+$')::BIGINT), 0) INTO v_max_id 
-    FROM public.orders WHERE id ~ '[0-9]+$';
-    
-    SELECT last_value INTO v_curr_id FROM public.order_id_seq;
-    
-    IF v_max_id >= v_curr_id THEN
-        PERFORM setval('public.order_id_seq', v_max_id + 1, false);
-    END IF;
-
     -- Synchronize order_number_seq (never moves backwards)
     SELECT COALESCE(MAX(SUBSTRING(order_number FROM '[0-9]+$')::BIGINT), 0) INTO v_max_num 
     FROM public.orders WHERE order_number ~ '[0-9]+$';
@@ -53,7 +50,7 @@ BEGIN
     END IF;
 END $$;
 
--- 3. Safe, Justified Column Extensions
+-- 3. Safe, Additive Column Extensions on Orders Table
 ALTER TABLE public.orders 
     ADD COLUMN IF NOT EXISTS payment_session_token TEXT,
     ADD COLUMN IF NOT EXISTS payment_token_expires_at TIMESTAMPTZ,
@@ -69,36 +66,77 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idempotency_key
     ON public.orders (idempotency_key) 
     WHERE idempotency_key IS NOT NULL AND idempotency_key <> '';
 
--- Ensure coupon scope and enablement columns exist with safe defaults
-ALTER TABLE public.coupons
-    ADD COLUMN IF NOT EXISTS is_enabled BOOLEAN DEFAULT true,
-    ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true,
-    ADD COLUMN IF NOT EXISTS applies_to TEXT DEFAULT 'all',
-    ADD COLUMN IF NOT EXISTS target_category TEXT,
-    ADD COLUMN IF NOT EXISTS target_product_id TEXT,
-    ADD COLUMN IF NOT EXISTS max_discount NUMERIC;
+-- 4. Supporting Tables for Razorpay Edge Functions
+CREATE TABLE IF NOT EXISTS public.payments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    order_id TEXT NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
+    provider TEXT NOT NULL DEFAULT 'razorpay',
+    provider_order_id TEXT,
+    provider_payment_id TEXT,
+    provider_signature TEXT,
+    amount NUMERIC NOT NULL CHECK (amount >= 0),
+    currency TEXT NOT NULL DEFAULT 'INR',
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'authorized', 'captured', 'paid', 'failed', 'refunded', 'partially_refunded')),
+    payment_method TEXT,
+    failure_code TEXT,
+    failure_description TEXT,
+    refund_amount NUMERIC DEFAULT 0 CHECK (refund_amount >= 0),
+    refund_id TEXT,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    captured_at TIMESTAMPTZ,
+    failed_at TIMESTAMPTZ,
+    refunded_at TIMESTAMPTZ
+);
 
--- Ensure order_items.id has a safe default generator if currently NULL
-DO $$
-BEGIN
-    IF EXISTS (
-        SELECT 1 FROM information_schema.columns 
-        WHERE table_schema = 'public' AND table_name = 'order_items' 
-          AND column_name = 'id' AND column_default IS NULL
-    ) THEN
-        IF EXISTS (
-            SELECT 1 FROM information_schema.columns 
-            WHERE table_schema = 'public' AND table_name = 'order_items' 
-              AND column_name = 'id' AND data_type = 'uuid'
-        ) THEN
-            ALTER TABLE public.order_items ALTER COLUMN id SET DEFAULT gen_random_uuid();
-        ELSE
-            ALTER TABLE public.order_items ALTER COLUMN id SET DEFAULT ('item-' || gen_random_uuid()::text);
-        END IF;
-    END IF;
-END $$;
+CREATE INDEX IF NOT EXISTS idx_payments_order_id ON public.payments(order_id);
+CREATE INDEX IF NOT EXISTS idx_payments_provider_order_id ON public.payments(provider_order_id);
+CREATE INDEX IF NOT EXISTS idx_payments_status ON public.payments(status);
 
--- 4. Authoritative place_order_secure RPC
+ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Customers can view own payments" ON public.payments;
+CREATE POLICY "Customers can view own payments"
+    ON public.payments FOR SELECT
+    TO authenticated
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.orders o
+            WHERE o.id = payments.order_id
+              AND (o.customer_id = auth.uid())
+        )
+    );
+
+DROP POLICY IF EXISTS "Service role manages payments" ON public.payments;
+CREATE POLICY "Service role manages payments"
+    ON public.payments FOR ALL
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
+
+CREATE TABLE IF NOT EXISTS public.payment_webhook_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id TEXT NOT NULL UNIQUE,
+    event_type TEXT NOT NULL,
+    provider TEXT NOT NULL DEFAULT 'razorpay',
+    payload_hash TEXT,
+    status TEXT NOT NULL DEFAULT 'processed' CHECK (status IN ('processed', 'failed', 'ignored')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_payment_webhook_events_event_id ON public.payment_webhook_events(event_id);
+
+ALTER TABLE public.payment_webhook_events ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Service role manages webhook events" ON public.payment_webhook_events;
+CREATE POLICY "Service role manages webhook events"
+    ON public.payment_webhook_events FOR ALL
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
+
+-- 5. Authoritative place_order_secure RPC
 CREATE OR REPLACE FUNCTION public.place_order_secure(
     p_order_payload JSONB
 )
@@ -146,7 +184,6 @@ DECLARE
     v_grand_total NUMERIC := 0;
     
     -- Identifiers
-    v_seq_val BIGINT;
     v_order_id TEXT;
     v_order_number TEXT;
     v_tracking_code TEXT;
@@ -186,10 +223,11 @@ BEGIN
     END IF;
 
     -- Canonicalize payment method and assign payment status adhering to constraint:
-    -- CHECK (payment_status IN ('pending', 'completed', 'authorized', 'paid', 'failed', 'refunded', 'cod'))
+    -- CHECK (payment_status IN ('pending', 'completed', 'failed'))
+    -- For COD, payment is collected on delivery, so initial payment status is 'pending'
     IF UPPER(v_payment_method) = 'COD' THEN
         v_payment_method := 'COD';
-        v_payment_status := 'cod';
+        v_payment_status := 'pending';
     ELSIF UPPER(v_payment_method) = 'UPI' THEN
         v_payment_method := 'UPI';
         v_payment_status := 'pending';
@@ -454,7 +492,7 @@ BEGIN
         SELECT * INTO v_coupon_rec
         FROM public.coupons
         WHERE UPPER(TRIM(code)) = v_coupon_code
-          AND COALESCE(is_enabled, is_active, true) = true
+          AND is_enabled = true
         FOR UPDATE;
 
         IF FOUND THEN
@@ -566,12 +604,10 @@ BEGIN
     v_grand_total := GREATEST(0.00, ROUND(v_subtotal + v_delivery_fee - v_total_discount, 2));
 
     -- -------------------------------------------------------------------------
-    -- 8. Collision-Resistant Identifiers & Payment Session Token
+    -- 8. Unique Identifiers & Guest Payment Session Token
     -- -------------------------------------------------------------------------
-    -- Non-truncating order ID formatting: Pads to 6 digits if < 1,000,000 without truncating larger numbers
-    v_seq_val := nextval('public.order_id_seq');
-    v_order_id := 'ord-' || to_char(NOW(), 'YYYYMMDD') || '-' || 
-                  CASE WHEN v_seq_val < 1000000 THEN LPAD(v_seq_val::TEXT, 6, '0') ELSE v_seq_val::TEXT END;
+    -- Confirmed format: 'ord-' prefix followed by UUID
+    v_order_id := 'ord-' || gen_random_uuid()::TEXT;
     v_order_number := 'Aishu-00' || nextval('public.order_number_seq')::TEXT;
     v_tracking_code := 'TRK-' || nextval('public.tracking_code_seq')::TEXT;
     
@@ -603,6 +639,7 @@ BEGIN
         idempotency_key,
         idempotency_payload_hash,
         admin_notes,
+        delivery_days,
         created_at
     ) VALUES (
         v_order_id,
@@ -626,6 +663,7 @@ BEGIN
         CASE WHEN v_idempotency_key <> '' THEN v_idempotency_key ELSE NULL END,
         CASE WHEN v_idempotency_key <> '' THEN v_payload_hash ELSE NULL END,
         v_delivery_notes,
+        3,
         v_created_at
     );
 
@@ -642,8 +680,9 @@ BEGIN
     ) LOOP
         v_item_idx := v_item_idx + 1;
 
-        -- Insert line item (omits 'id' so table default handles UUID or TEXT automatically)
+        -- Confirmed columns: id ('oitem-' || UUID), order_id, product_id, product_name_snapshot, selected_weight, unit_price, quantity
         INSERT INTO public.order_items (
+            id,
             order_id,
             product_id,
             product_name_snapshot,
@@ -651,6 +690,7 @@ BEGIN
             unit_price,
             quantity
         ) VALUES (
+            'oitem-' || gen_random_uuid()::TEXT,
             v_order_id,
             v_item_rec.product_id,
             v_item_rec.product_name,
@@ -729,9 +769,204 @@ BEGIN
 END;
 $$;
 
--- 5. Set Execution Permissions (Guest checkout via anon, logged in customers via authenticated)
+-- 6. Record Payment Attempt RPC (Required by create-razorpay-order Edge Function)
+CREATE OR REPLACE FUNCTION public.record_payment_attempt(
+    p_order_id TEXT,
+    p_provider_order_id TEXT,
+    p_amount NUMERIC,
+    p_currency TEXT DEFAULT 'INR'
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, extensions, pg_temp
+AS $$
+DECLARE
+    v_order RECORD;
+BEGIN
+    SELECT id, grand_total, order_status, payment_status, customer_id
+    INTO v_order
+    FROM public.orders
+    WHERE id = p_order_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Order not found');
+    END IF;
+
+    IF v_order.payment_status = 'completed' THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Order is already marked as completed.');
+    END IF;
+
+    -- Insert payment attempt row
+    INSERT INTO public.payments (
+        order_id,
+        provider,
+        provider_order_id,
+        amount,
+        currency,
+        status,
+        created_at
+    ) VALUES (
+        p_order_id,
+        'razorpay',
+        p_provider_order_id,
+        p_amount,
+        COALESCE(p_currency, 'INR'),
+        'pending',
+        NOW()
+    );
+
+    RETURN jsonb_build_object('success', true, 'order_id', p_order_id, 'provider_order_id', p_provider_order_id);
+END;
+$$;
+
+-- 7. Finalize Payment Success RPC (Required by verify-razorpay-payment & razorpay-webhook)
+CREATE OR REPLACE FUNCTION public.finalize_payment_success(
+    p_order_id TEXT,
+    p_provider_payment_id TEXT,
+    p_provider_order_id TEXT,
+    p_method TEXT DEFAULT 'online',
+    p_signature_verified BOOLEAN DEFAULT true,
+    p_metadata JSONB DEFAULT '{}'::jsonb
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, extensions, pg_temp
+AS $$
+DECLARE
+    v_order RECORD;
+BEGIN
+    SELECT id, order_number, order_status, payment_status, grand_total, customer_id
+    INTO v_order
+    FROM public.orders
+    WHERE id = p_order_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Order not found');
+    END IF;
+
+    -- Idempotency Guard: if already completed, return clean duplicate confirmation
+    IF v_order.payment_status = 'completed' AND v_order.order_status IN ('confirmed', 'processing', 'ready_to_ship', 'shipped', 'delivered') THEN
+        RETURN jsonb_build_object(
+            'success', true,
+            'is_duplicate', true,
+            'message', 'Order already marked completed and confirmed.',
+            'order_id', p_order_id,
+            'order_number', v_order.order_number,
+            'payment_status', v_order.payment_status,
+            'order_status', v_order.order_status
+        );
+    END IF;
+
+    -- Update payments tracking table
+    UPDATE public.payments
+    SET status = 'captured',
+        provider_payment_id = p_provider_payment_id,
+        provider_signature = CASE WHEN p_signature_verified THEN 'verified' ELSE 'unverified' END,
+        payment_method = COALESCE(p_method, 'online'),
+        metadata = p_metadata,
+        captured_at = NOW(),
+        updated_at = NOW()
+    WHERE order_id = p_order_id
+      AND (provider_order_id = p_provider_order_id OR provider_order_id IS NULL);
+
+    -- Update primary order row strictly within allowed constraints ('completed', 'confirmed')
+    UPDATE public.orders
+    SET payment_status = 'completed',
+        order_status = CASE WHEN order_status = 'cancelled' THEN 'cancelled' ELSE 'confirmed' END,
+        admin_notes = CASE 
+            WHEN order_status = 'cancelled' THEN 
+                COALESCE(admin_notes, '') || ' [WARNING: Payment captured for previously cancelled order. Needs manual refund or restocking.]'
+            ELSE admin_notes 
+        END
+    WHERE id = p_order_id;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'order_id', p_order_id,
+        'order_number', v_order.order_number,
+        'payment_status', 'completed',
+        'order_status', CASE WHEN v_order.order_status = 'cancelled' THEN 'cancelled' ELSE 'confirmed' END
+    );
+END;
+$$;
+
+-- 8. Record Payment Failure RPC
+CREATE OR REPLACE FUNCTION public.record_payment_failure(
+    p_order_id TEXT,
+    p_provider_order_id TEXT,
+    p_failure_code TEXT,
+    p_failure_desc TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, extensions, pg_temp
+AS $$
+BEGIN
+    UPDATE public.orders
+    SET payment_status = 'failed'
+    WHERE id = p_order_id;
+
+    UPDATE public.payments
+    SET status = 'failed',
+        failure_code = p_failure_code,
+        failure_description = p_failure_desc,
+        updated_at = NOW()
+    WHERE order_id = p_order_id 
+      AND (provider_order_id = p_provider_order_id OR provider_order_id IS NULL);
+
+    RETURN jsonb_build_object('success', true);
+END;
+$$;
+
+-- 9. Record Refund Success RPC
+CREATE OR REPLACE FUNCTION public.record_refund_success(
+    p_order_id TEXT,
+    p_refund_id TEXT,
+    p_refund_amount NUMERIC,
+    p_reason TEXT DEFAULT 'Customer Refund'
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, extensions, pg_temp
+AS $$
+BEGIN
+    UPDATE public.payments
+    SET status = 'refunded',
+        refund_id = p_refund_id,
+        refund_amount = p_refund_amount,
+        refunded_at = NOW(),
+        updated_at = NOW()
+    WHERE order_id = p_order_id;
+
+    UPDATE public.orders
+    SET admin_notes = COALESCE(admin_notes, '') || ' [Refund processed: ₹' || p_refund_amount || ' - ' || p_reason || ']'
+    WHERE id = p_order_id;
+
+    RETURN jsonb_build_object('success', true);
+END;
+$$;
+
+-- 10. Execution Permissions (anon, authenticated, and service_role for guest and Edge Functions)
 REVOKE ALL ON FUNCTION public.place_order_secure(JSONB) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.place_order_secure(JSONB) TO anon, authenticated, service_role;
 
--- 6. Force PostgREST to Immediately Reload Schema Cache
+REVOKE ALL ON FUNCTION public.record_payment_attempt(TEXT, TEXT, NUMERIC, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.record_payment_attempt(TEXT, TEXT, NUMERIC, TEXT) TO anon, authenticated, service_role;
+
+REVOKE ALL ON FUNCTION public.finalize_payment_success(TEXT, TEXT, TEXT, TEXT, BOOLEAN, JSONB) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.finalize_payment_success(TEXT, TEXT, TEXT, TEXT, BOOLEAN, JSONB) TO anon, authenticated, service_role;
+
+REVOKE ALL ON FUNCTION public.record_payment_failure(TEXT, TEXT, TEXT, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.record_payment_failure(TEXT, TEXT, TEXT, TEXT) TO anon, authenticated, service_role;
+
+REVOKE ALL ON FUNCTION public.record_refund_success(TEXT, TEXT, NUMERIC, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.record_refund_success(TEXT, TEXT, NUMERIC, TEXT) TO anon, authenticated, service_role;
+
+-- 11. Force PostgREST to Immediately Reload Schema Cache
 NOTIFY pgrst, 'reload schema';

@@ -225,11 +225,11 @@ export const CheckoutPage: React.FC = () => {
         setIsProcessing(false);
         console.warn('Razorpay Gateway Notice:', rzpErr.message);
         addToast(
-          'Order Recorded (Payment Gateway Notice)',
-          'Order recorded in system. If Razorpay Test Mode keys are pending configuration, please complete payment on delivery or retry.',
-          'info'
+          'Payment Gateway Notice',
+          rzpErr.message || 'Could not initiate online payment window. Your order is saved and can be paid from the Track Order page.',
+          'error'
         );
-        navigate(`/order-success/${order.id}`);
+        navigate(`/track-order?id=${order.orderNumber}`);
       }
     } catch (err: any) {
       setIsProcessing(false);

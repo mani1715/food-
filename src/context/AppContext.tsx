@@ -1517,7 +1517,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         total: localTotal,
         status: 'Active',
         orderStatus: 'placed',
-        paymentStatus: paymentMethod.toLowerCase().includes('cash') || paymentMethod.toLowerCase().includes('cod') ? 'cod' : 'completed',
+        paymentStatus: paymentMethod.toLowerCase().includes('cash') || paymentMethod.toLowerCase().includes('cod') ? 'pending' : 'completed',
         deliveryAddress,
         paymentMethod,
         customerName: finalName,
