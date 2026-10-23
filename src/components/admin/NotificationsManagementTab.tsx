@@ -23,7 +23,7 @@ import {
 import { AdminTimeframe, getTodayDateStr, getYesterdayDateStr, formatDisplayDate, isDateMatch, getLocalDateStr } from '../../utils/dateFilters';
 
 export const NotificationsManagementTab: React.FC = () => {
-  const { products, updateProduct, orders } = useApp();
+  const { products, updateProduct, restockProduct, destockProduct, setProductStock, orders } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'low' | 'out'>('all');
 
@@ -45,12 +45,17 @@ export const NotificationsManagementTab: React.FC = () => {
   });
 
   const handleStockUpdate = (productId: string, newCount: number) => {
+    if (isNaN(newCount)) return;
     const validCount = Math.max(0, newCount);
-    updateProduct(productId, {
-      inventoryCount: validCount,
-      outOfStock: validCount <= 0,
-      inStock: validCount > 0,
-    });
+    setProductStock(productId, validCount, undefined, 'Stock Management Direct Adjustment');
+  };
+
+  const handleQuickAdd = (productId: string, addQty: number) => {
+    restockProduct(productId, addQty, 'Stock Panel Quick Restock');
+  };
+
+  const handleWeightRestock = (productId: string, weight: string, addQty: number) => {
+    restockProduct(productId, addQty, 'Stock Panel Variant Restock', weight);
   };
 
   // -------------------------------------------------------------
@@ -270,6 +275,29 @@ export const NotificationsManagementTab: React.FC = () => {
                         <div>
                           <p className="font-bold text-black">{p.name}</p>
                           <span className="text-[10px] text-neutral-400 font-mono">ID: {p.id}</span>
+                          {p.weightOptions && p.weightOptions.length > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {p.weightOptions.map((opt) => (
+                                <span
+                                  key={opt.weight}
+                                  className="inline-flex items-center gap-1 text-[10px] bg-neutral-100 border border-neutral-200 px-1.5 py-0.5 rounded text-neutral-700 font-mono"
+                                >
+                                  <span>{opt.weight}:</span>
+                                  <strong className={opt.stock !== undefined && opt.stock <= 0 ? 'text-rose-600' : 'text-neutral-900'}>
+                                    {opt.stock ?? stock}
+                                  </strong>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleWeightRestock(p.id, opt.weight, 10)}
+                                    className="ml-1 px-1 py-0.2 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded text-[9px] font-bold cursor-pointer"
+                                    title={`Add 10 units to ${opt.weight}`}
+                                  >
+                                    +10
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -303,7 +331,7 @@ export const NotificationsManagementTab: React.FC = () => {
 
                     {/* Stock Incrementor / Decrementor */}
                     <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end flex-wrap gap-1.5">
                         <div className="flex items-center border border-neutral-300 rounded-xl p-0.5 bg-neutral-50 shadow-subtle">
                           <button
                             onClick={() => handleStockUpdate(p.id, stock - 1)}
@@ -315,6 +343,7 @@ export const NotificationsManagementTab: React.FC = () => {
 
                           <input
                             type="number"
+                            min="0"
                             value={stock}
                             onChange={(e) => handleStockUpdate(p.id, Number(e.target.value))}
                             className="w-14 text-center font-mono font-bold text-xs bg-transparent focus:outline-none"
@@ -329,13 +358,36 @@ export const NotificationsManagementTab: React.FC = () => {
                           </button>
                         </div>
 
-                        <button
-                          onClick={() => handleStockUpdate(p.id, 50)}
-                          className="px-2.5 py-1.5 bg-neutral-100 hover:bg-black hover:text-white border border-neutral-200 rounded-xl text-[10px] font-bold transition-all cursor-pointer"
-                          title="Set Stock to 50"
-                        >
-                          Restock (+50)
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleQuickAdd(p.id, 10)}
+                            className="px-2 py-1.5 bg-neutral-100 hover:bg-emerald-600 hover:text-white border border-neutral-200 rounded-xl text-[10px] font-bold transition-all cursor-pointer"
+                            title="Add 10 Units"
+                          >
+                            +10
+                          </button>
+                          <button
+                            onClick={() => handleQuickAdd(p.id, 25)}
+                            className="px-2 py-1.5 bg-neutral-100 hover:bg-emerald-600 hover:text-white border border-neutral-200 rounded-xl text-[10px] font-bold transition-all cursor-pointer"
+                            title="Add 25 Units"
+                          >
+                            +25
+                          </button>
+                          <button
+                            onClick={() => handleQuickAdd(p.id, 50)}
+                            className="px-2.5 py-1.5 bg-neutral-100 hover:bg-emerald-600 hover:text-white border border-neutral-200 rounded-xl text-[10px] font-bold transition-all cursor-pointer"
+                            title="Add 50 Units"
+                          >
+                            +50
+                          </button>
+                          <button
+                            onClick={() => setProductStock(p.id, 0, undefined, 'Stock Panel: Set stock to 0 (Out of stock)')}
+                            className="px-2 py-1.5 bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-700 border border-rose-200 rounded-xl text-[10px] font-bold transition-all cursor-pointer"
+                            title="Set Stock to 0"
+                          >
+                            Set 0
+                          </button>
+                        </div>
                       </div>
                     </td>
                   </tr>

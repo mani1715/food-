@@ -26,6 +26,12 @@ export const CustomerProfilePage: React.FC = () => {
   const [email, setEmail] = useState(userProfile.email);
   const [phone, setPhone] = useState(userProfile.phone);
 
+  React.useEffect(() => {
+    setName(userProfile.name);
+    setEmail(userProfile.email);
+    setPhone(userProfile.phone);
+  }, [userProfile.name, userProfile.email, userProfile.phone]);
+
   // Address Add Modal State
   const [showAddAddressModal, setShowAddAddressModal] = useState(false);
   const [newLabel, setNewLabel] = useState<'Home' | 'Work' | 'Other'>('Home');
@@ -37,7 +43,18 @@ export const CustomerProfilePage: React.FC = () => {
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
     updateUserProfile({ name, email, phone });
+    addToast('Profile Updated ✅', 'Your account details have been saved.', 'success');
     setIsEditing(false);
+  };
+
+  const handleLogout = () => {
+    updateUserProfile({
+      name: 'Customer',
+      email: '',
+      phone: '',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop',
+    });
+    addToast('Signed Out', 'You have been signed out of your account.', 'info');
   };
 
   // Auto-Detect GPS Location for Add Address Form
@@ -137,13 +154,23 @@ export const CustomerProfilePage: React.FC = () => {
           </div>
         </div>
 
-        <button
-          onClick={() => setIsEditing(true)}
-          className="px-4 py-2.5 bg-white border border-neutral-300 hover:border-black text-black text-xs font-bold rounded-2xl flex items-center gap-2 shadow-subtle cursor-pointer"
-        >
-          <Edit2 className="w-3.5 h-3.5" />
-          <span>Edit Profile</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setIsEditing(true)}
+            className="px-4 py-2.5 bg-white border border-neutral-300 hover:border-black text-black text-xs font-bold rounded-2xl flex items-center gap-2 shadow-subtle cursor-pointer"
+          >
+            <Edit2 className="w-3.5 h-3.5" />
+            <span>Edit Profile</span>
+          </button>
+          <button
+            onClick={handleLogout}
+            className="px-3.5 py-2.5 bg-white border border-neutral-300 hover:bg-rose-50 hover:border-rose-300 text-rose-600 text-xs font-bold rounded-2xl flex items-center gap-1.5 shadow-subtle cursor-pointer transition-colors"
+            title="Sign Out"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Sign Out</span>
+          </button>
+        </div>
       </div>
 
       {/* Account Navigation Options */}

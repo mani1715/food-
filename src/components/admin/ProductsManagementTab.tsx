@@ -116,6 +116,7 @@ export const ProductsManagementTab: React.FC = () => {
     updateHomeSection,
     restockProduct,
     destockProduct,
+    setProductStock,
     stockHistoryLogs,
   } = useApp();
 
@@ -142,17 +143,19 @@ export const ProductsManagementTab: React.FC = () => {
     reason: '',
   });
 
-  // Restock / Destock Modal State
+  // Restock / Destock / Set Modal State
   const [stockModalState, setStockModalState] = useState<{
     isOpen: boolean;
-    type: 'restock' | 'destock';
+    type: 'restock' | 'destock' | 'set';
     product: Product | null;
+    targetWeight?: string;
     quantity: number;
     note: string;
   }>({
     isOpen: false,
     type: 'restock',
     product: null,
+    targetWeight: undefined,
     quantity: 10,
     note: '',
   });
@@ -317,25 +320,60 @@ export const ProductsManagementTab: React.FC = () => {
     setWeightOpts((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Stock Restock / Destock Action Handlers
-  const handleOpenStockModal = (product: Product, type: 'restock' | 'destock') => {
+  // Stock Restock / Destock / Set Action Handlers
+  const handleOpenStockModal = (
+    product: Product,
+    type: 'restock' | 'destock' | 'set' = 'restock',
+    targetWeight?: string
+  ) => {
+    const initialQty = type === 'set' ? 0 : 10;
     setStockModalState({
       isOpen: true,
       type,
       product,
-      quantity: 10,
-      note: type === 'restock' ? 'Manual Warehouse Restock' : 'Stock Adjustment / Defect',
+      targetWeight,
+      quantity: initialQty,
+      note:
+        type === 'restock'
+          ? targetWeight
+            ? `Manual Restock (${targetWeight})`
+            : 'Manual Warehouse Restock'
+          : type === 'set'
+          ? targetWeight
+            ? `Stock Level Set (${targetWeight})`
+            : 'Stock Level Set'
+          : targetWeight
+          ? `Stock Reduction (${targetWeight})`
+          : 'Stock Adjustment / Defect',
     });
   };
 
   const handleConfirmStockChange = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!stockModalState.product || stockModalState.quantity <= 0) return;
+    if (!stockModalState.product) return;
+    const qty = Math.max(0, Number(stockModalState.quantity) || 0);
 
-    if (stockModalState.type === 'restock') {
-      restockProduct(stockModalState.product.id, stockModalState.quantity, stockModalState.note);
+    if (stockModalState.type === 'set' || qty === 0) {
+      setProductStock(
+        stockModalState.product.id,
+        qty,
+        stockModalState.targetWeight,
+        stockModalState.note || 'Admin direct stock override'
+      );
+    } else if (stockModalState.type === 'restock') {
+      restockProduct(
+        stockModalState.product.id,
+        qty,
+        stockModalState.note || 'Manual Restock',
+        stockModalState.targetWeight
+      );
     } else {
-      destockProduct(stockModalState.product.id, stockModalState.quantity, stockModalState.note);
+      destockProduct(
+        stockModalState.product.id,
+        qty,
+        stockModalState.note || 'Manual Destock',
+        stockModalState.targetWeight
+      );
     }
 
     setStockModalState((prev) => ({ ...prev, isOpen: false }));
@@ -816,13 +854,43 @@ export const ProductsManagementTab: React.FC = () => {
                       </td>
 
                       {/* Weight Options */}
-                      <td className="py-3.5 px-4">
-                        <div className="flex flex-wrap gap-1 font-mono text-[11px]">
-                          {prod.weightOptions.map((w) => (
-                            <span key={w.weight} className="bg-neutral-100 border border-neutral-200 px-2 py-0.5 rounded-md font-bold text-neutral-800">
-                              {w.weight}: ₹{w.price}
-                            </span>
-                          ))}
+                      <td className="py-3.5 px-4 min-w-[200px]">
+                        <div className="flex flex-col gap-1.5 font-mono text-[11px]">
+                          {prod.weightOptions.map((w) => {
+                            const variantStock = w.stock ?? stockCount;
+                            const isVariantOut = variantStock <= 0;
+                            return (
+                              <div
+                                key={w.weight}
+                                className="flex items-center justify-between gap-1.5 bg-neutral-50 border border-neutral-200 px-2 py-1 rounded-lg"
+                              >
+                                <span className="font-bold text-neutral-800">
+                                  {w.weight}: <span className="text-neutral-500 font-normal">₹{w.price}</span>
+                                </span>
+                                <div className="flex items-center gap-1">
+                                  <span
+                                    className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                                      isVariantOut
+                                        ? 'bg-rose-100 text-rose-700'
+                                        : variantStock < 10
+                                        ? 'bg-amber-100 text-amber-800'
+                                        : 'bg-neutral-200 text-neutral-700'
+                                    }`}
+                                  >
+                                    {variantStock} left
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenStockModal(prod, 'restock', w.weight)}
+                                    className="px-1.5 py-0.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-[9px] font-black rounded cursor-pointer transition-colors"
+                                    title={`Restock ${w.weight}`}
+                                  >
+                                    + Add
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </td>
 
@@ -841,7 +909,7 @@ export const ProductsManagementTab: React.FC = () => {
                             )}
                           </div>
 
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center flex-wrap gap-1">
                             <button
                               onClick={() => handleOpenStockModal(prod, 'restock')}
                               className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 text-[10px] font-extrabold rounded-md flex items-center gap-0.5 cursor-pointer transition-all"
@@ -857,6 +925,13 @@ export const ProductsManagementTab: React.FC = () => {
                             >
                               <TrendingDown className="w-3 h-3 text-rose-600" />
                               <span>- Destock</span>
+                            </button>
+                            <button
+                              onClick={() => handleOpenStockModal(prod, 'set')}
+                              className="px-2 py-0.5 bg-neutral-100 hover:bg-neutral-200 border border-neutral-300 text-neutral-800 text-[10px] font-extrabold rounded-md cursor-pointer transition-all"
+                              title="Set exact stock (including 0)"
+                            >
+                              <span>Set</span>
                             </button>
                           </div>
                         </div>
@@ -1080,7 +1155,7 @@ export const ProductsManagementTab: React.FC = () => {
         </div>
       )}
 
-      {/* RESTOCK / DESTOCK MODAL */}
+      {/* RESTOCK / DESTOCK / SET MODAL */}
       {stockModalState.isOpen && stockModalState.product && (
         <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <motion.form
@@ -1093,11 +1168,17 @@ export const ProductsManagementTab: React.FC = () => {
               <div className="flex items-center gap-2">
                 {stockModalState.type === 'restock' ? (
                   <TrendingUp className="w-5 h-5 text-emerald-600" />
-                ) : (
+                ) : stockModalState.type === 'destock' ? (
                   <TrendingDown className="w-5 h-5 text-rose-600" />
+                ) : (
+                  <Sliders className="w-5 h-5 text-neutral-800" />
                 )}
                 <h3 className="text-base font-extrabold text-black">
-                  {stockModalState.type === 'restock' ? 'Restock Inventory Stock' : 'Destock Inventory Units'}
+                  {stockModalState.type === 'restock'
+                    ? 'Restock Inventory Stock'
+                    : stockModalState.type === 'destock'
+                    ? 'Destock Inventory Units'
+                    : 'Set Exact Stock Level'}
                 </h3>
               </div>
               <button
@@ -1109,27 +1190,167 @@ export const ProductsManagementTab: React.FC = () => {
               </button>
             </div>
 
+            {/* Action Type Toggle */}
+            <div className="grid grid-cols-3 gap-2 p-1 bg-neutral-100 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => setStockModalState((prev) => ({ ...prev, type: 'restock' }))}
+                className={`py-2 text-xs font-extrabold rounded-xl transition-all cursor-pointer ${
+                  stockModalState.type === 'restock'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'text-neutral-600 hover:text-black'
+                }`}
+              >
+                + Restock
+              </button>
+              <button
+                type="button"
+                onClick={() => setStockModalState((prev) => ({ ...prev, type: 'destock' }))}
+                className={`py-2 text-xs font-extrabold rounded-xl transition-all cursor-pointer ${
+                  stockModalState.type === 'destock'
+                    ? 'bg-rose-600 text-white shadow-sm'
+                    : 'text-neutral-600 hover:text-black'
+                }`}
+              >
+                - Destock
+              </button>
+              <button
+                type="button"
+                onClick={() => setStockModalState((prev) => ({ ...prev, type: 'set' }))}
+                className={`py-2 text-xs font-extrabold rounded-xl transition-all cursor-pointer ${
+                  stockModalState.type === 'set'
+                    ? 'bg-black text-white shadow-sm'
+                    : 'text-neutral-600 hover:text-black'
+                }`}
+              >
+                = Set Exact
+              </button>
+            </div>
+
             <div className="p-3 bg-neutral-50 rounded-2xl border border-neutral-200 flex items-center gap-3">
               <img src={stockModalState.product.image} alt="" className="w-10 h-10 rounded-xl object-cover border" />
               <div>
                 <h4 className="text-xs font-extrabold text-black">{stockModalState.product.name}</h4>
                 <p className="text-[11px] text-neutral-500">
-                  Current Stock: <strong className="text-black font-mono">{stockModalState.product.inventoryCount ?? 100} units</strong>
+                  Current Total Stock:{' '}
+                  <strong className="text-black font-mono">
+                    {stockModalState.product.inventoryCount ?? 100} units
+                  </strong>
                 </p>
+                {stockModalState.targetWeight && (
+                  <p className="text-[11px] text-emerald-700 font-bold">
+                    Target Variant: {stockModalState.targetWeight}
+                  </p>
+                )}
               </div>
             </div>
 
+            {/* Target Weight Variant Selector */}
+            {stockModalState.product.weightOptions && stockModalState.product.weightOptions.length > 0 && (
+              <div>
+                <label className="block text-neutral-500 text-xs font-bold mb-1">
+                  Target Weight Variant (Optional)
+                </label>
+                <select
+                  value={stockModalState.targetWeight || ''}
+                  onChange={(e) =>
+                    setStockModalState((prev) => ({
+                      ...prev,
+                      targetWeight: e.target.value ? e.target.value : undefined,
+                    }))
+                  }
+                  className="w-full p-2.5 rounded-2xl border border-neutral-300 text-xs font-bold bg-white"
+                >
+                  <option value="">Overall Product Stock (All Variants)</option>
+                  {stockModalState.product.weightOptions.map((w) => (
+                    <option key={w.weight} value={w.weight}>
+                      {w.weight} — ₹{w.price} (Stock: {w.stock ?? stockModalState.product?.inventoryCount ?? 100})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div className="space-y-3 text-xs font-bold">
               <div>
-                <label className="block text-neutral-500 mb-1">
-                  Quantity to {stockModalState.type === 'restock' ? 'Add (+)' : 'Remove (-)'} *
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-neutral-500">
+                    {stockModalState.type === 'restock'
+                      ? 'Units to Add (+)'
+                      : stockModalState.type === 'destock'
+                      ? 'Units to Remove (-)'
+                      : 'Exact Stock Count to Set'} *
+                  </label>
+                  {/* Quick Preset Buttons */}
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setStockModalState((prev) => ({
+                          ...prev,
+                          quantity: 10,
+                          type: prev.type === 'set' ? 'restock' : prev.type,
+                        }))
+                      }
+                      className="px-2 py-0.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded text-[10px] font-bold"
+                    >
+                      10
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setStockModalState((prev) => ({
+                          ...prev,
+                          quantity: 25,
+                          type: prev.type === 'set' ? 'restock' : prev.type,
+                        }))
+                      }
+                      className="px-2 py-0.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded text-[10px] font-bold"
+                    >
+                      25
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setStockModalState((prev) => ({
+                          ...prev,
+                          quantity: 50,
+                          type: prev.type === 'set' ? 'restock' : prev.type,
+                        }))
+                      }
+                      className="px-2 py-0.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded text-[10px] font-bold"
+                    >
+                      50
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setStockModalState((prev) => ({
+                          ...prev,
+                          quantity: 0,
+                          type: 'set',
+                          note: 'Set to 0 (Out of Stock)',
+                        }))
+                      }
+                      className="px-2 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded text-[10px] font-bold"
+                      title="Set stock to 0"
+                    >
+                      Set 0
+                    </button>
+                  </div>
+                </div>
+
                 <input
                   type="number"
                   required
-                  min="1"
+                  min="0"
                   value={stockModalState.quantity}
-                  onChange={(e) => setStockModalState({ ...stockModalState, quantity: Number(e.target.value) })}
+                  onChange={(e) =>
+                    setStockModalState({
+                      ...stockModalState,
+                      quantity: Math.max(0, parseInt(e.target.value) || 0),
+                    })
+                  }
                   className="w-full p-3 rounded-2xl border border-neutral-300 font-mono text-base font-black"
                 />
               </div>
@@ -1157,10 +1378,18 @@ export const ProductsManagementTab: React.FC = () => {
               <button
                 type="submit"
                 className={`flex-1 py-3 text-white rounded-2xl text-xs font-extrabold cursor-pointer shadow-subtle ${
-                  stockModalState.type === 'restock' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'
+                  stockModalState.type === 'restock'
+                    ? 'bg-emerald-600 hover:bg-emerald-700'
+                    : stockModalState.type === 'destock'
+                    ? 'bg-rose-600 hover:bg-rose-700'
+                    : 'bg-black hover:bg-neutral-800'
                 }`}
               >
-                Confirm {stockModalState.type === 'restock' ? 'Restock' : 'Destock'}
+                {stockModalState.type === 'restock'
+                  ? `Confirm Restock (+${stockModalState.quantity})`
+                  : stockModalState.type === 'destock'
+                  ? `Confirm Destock (-${stockModalState.quantity})`
+                  : `Confirm Stock = ${stockModalState.quantity}`}
               </button>
             </div>
           </motion.form>

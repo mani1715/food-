@@ -301,7 +301,7 @@ BEGIN
 
     -- 8. Generate Identifiers & Unguessable 256-bit Payment Session Token
     v_order_id := 'ord-' || EXTRACT(EPOCH FROM NOW())::BIGINT || '-' || FLOOR(1000 + RANDOM() * 9000)::TEXT;
-    v_order_number := 'AURA-' || FLOOR(10000 + RANDOM() * 90000)::TEXT;
+    v_order_number := 'Aishu-00' || FLOOR(1000 + RANDOM() * 9000)::TEXT;
     v_tracking_code := 'TRK-' || FLOOR(100000 + RANDOM() * 900000)::TEXT;
     
     -- Generate 256-bit unguessable random token for secure guest payment binding

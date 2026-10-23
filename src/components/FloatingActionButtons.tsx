@@ -26,11 +26,11 @@ export const FloatingActionButtons: React.FC<FloatingActionButtonsProps> = ({ on
   };
 
   const handleWhatsApp = () => {
-    onShowToast('WhatsApp Concierge', 'Opening direct chat with Aura Customer Support...');
+    onShowToast('WhatsApp Concierge', 'Opening direct chat with Aishu Home Foods Support...');
   };
 
   const handleCall = () => {
-    onShowToast('Call Support', 'Dialing Aura Home Kitchen Hotline: 1800-AURA-FOOD');
+    onShowToast('Call Support', 'Dialing Aishu Home Kitchen Hotline: +91 98480 12345');
   };
 
   return (

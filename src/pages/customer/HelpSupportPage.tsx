@@ -55,8 +55,8 @@ export const HelpSupportPage: React.FC = () => {
 
         <div className="p-5 rounded-3xl border border-neutral-200 bg-white space-y-2 shadow-subtle">
           <Phone className="w-6 h-6 text-black" />
-          <h4 className="text-sm font-bold text-black">Toll-Free Helpline</h4>
-          <p className="text-xs text-neutral-500">1800-AURA-FOOD (Mon-Sat 9AM - 8PM)</p>
+          <h4 className="text-sm font-bold text-black">Kitchen Helpline</h4>
+          <p className="text-xs text-neutral-500">+91 98480 12345 (Mon-Sat 9AM - 8PM)</p>
         </div>
       </div>
 

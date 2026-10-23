@@ -448,7 +448,7 @@ BEGIN
 
     -- 11. Generate Secure Identifiers & Determine Payment Status
     v_order_id := 'ord-' || EXTRACT(EPOCH FROM NOW())::BIGINT || '-' || FLOOR(1000 + RANDOM() * 9000)::TEXT;
-    v_order_number := 'AURA-' || FLOOR(10000 + RANDOM() * 90000)::TEXT;
+    v_order_number := 'Aishu-00' || FLOOR(1000 + RANDOM() * 9000)::TEXT;
     v_tracking_code := 'TRK-' || FLOOR(100000 + RANDOM() * 900000)::TEXT;
 
     IF LOWER(v_payment_method) LIKE '%cod%' OR LOWER(v_payment_method) LIKE '%cash%' THEN

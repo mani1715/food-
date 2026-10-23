@@ -144,9 +144,6 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
                   }`}
                 >
                   <span>{menu.label}</span>
-                  {hasSub && (
-                    <ChevronDown className="w-3.5 h-3.5 text-neutral-500 group-hover:text-black group-hover:rotate-180 transition-transform" />
-                  )}
                 </button>
 
                 {/* Hover Dropdown Sub-Menu */}
@@ -272,7 +269,6 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
                   className="w-full text-left font-extrabold text-sm text-neutral-900 py-1 flex items-center justify-between hover:text-black"
                 >
                   <span>{menu.label}</span>
-                  {menu.subCategories && <ChevronDown className="w-4 h-4 text-neutral-400" />}
                 </button>
                 {menu.subCategories && (
                   <div className="pl-4 space-y-1 border-l-2 border-neutral-100">

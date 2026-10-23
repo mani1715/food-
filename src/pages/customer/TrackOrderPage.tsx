@@ -197,7 +197,7 @@ export const TrackOrderPage: React.FC = () => {
         <span className="text-xs font-bold uppercase tracking-widest text-neutral-400">Real-time Order Status</span>
         <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-black">Track Your Order</h1>
         <p className="text-xs sm:text-sm text-neutral-500 font-medium">
-          Enter your <span className="font-bold text-black">Phone Number</span>, <span className="font-bold text-black">Order ID</span> (e.g. AURA-98214), <span className="font-bold text-black">Tracking Code</span>, or <span className="font-bold text-black">Email Address</span>.
+          Enter your <span className="font-bold text-black">Phone Number</span>, <span className="font-bold text-black">Order ID</span> (e.g. Aishu-00142), <span className="font-bold text-black">Tracking Code</span>, or <span className="font-bold text-black">Email Address</span>.
         </p>
       </div>
 

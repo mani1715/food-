@@ -250,8 +250,9 @@ interface AppContextType {
   updateHeaderSettings: (settings: Partial<HeaderSettings>) => void;
   exportStoreBackupJson: () => string;
   resetStoreToDefault: () => void;
-  restockProduct: (productId: string, quantity: number, note?: string) => void;
-  destockProduct: (productId: string, quantity: number, note?: string) => void;
+  restockProduct: (productId: string, quantity: number, note?: string, targetWeight?: string) => void;
+  destockProduct: (productId: string, quantity: number, note?: string, targetWeight?: string) => void;
+  setProductStock: (productId: string, newStock: number, targetWeight?: string, note?: string) => void;
   toggleProductOutOfStock: (productId: string, reason?: string) => void;
   toggleProductVisibility: (productId: string, reason?: string) => void;
   addSubAdmin: (subAdmin: Omit<SubAdmin, 'id' | 'createdAt'>) => void;
@@ -846,7 +847,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast('Header Display Updated ⚙️', 'Header layout updated.', 'success');
   };
 
-  const restockProduct = (productId: string, quantity: number, note = 'Inventory Restock') => {
+  const restockProduct = (productId: string, quantity: number, note = 'Inventory Restock', targetWeight?: string) => {
     let prodName = '';
     let oldQty = 0;
     let newQty = 0;
@@ -856,19 +857,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           prodName = p.name;
           oldQty = p.inventoryCount ?? 0;
           newQty = oldQty + quantity;
-          return { ...p, inventoryCount: newQty, outOfStock: false, inStock: true };
+
+          let updatedWeightOptions = p.weightOptions;
+          if (targetWeight) {
+            updatedWeightOptions = p.weightOptions.map((opt) => {
+              if (opt.weight === targetWeight) {
+                const currentOptStock = opt.stock !== undefined ? opt.stock : (p.inventoryCount ?? 0);
+                return { ...opt, stock: Math.max(0, currentOptStock + quantity) };
+              }
+              return opt;
+            });
+          }
+
+          return {
+            ...p,
+            inventoryCount: newQty,
+            outOfStock: newQty <= 0,
+            inStock: newQty > 0,
+            weightOptions: updatedWeightOptions,
+          };
         }
         return p;
       })
     );
 
     if (isSupabaseConfigured()) {
-      updateProductInDb(productId, { inventoryCount: newQty, outOfStock: false }).catch((err) =>
+      updateProductInDb(productId, { inventoryCount: newQty, outOfStock: newQty <= 0 }).catch((err) =>
         console.warn('Could not update inventory in Supabase:', err)
       );
-      logStockMovementInDb(productId, prodName || 'Product', 'restock', quantity, note).catch((err) =>
-        console.warn('Could not log restock in Supabase:', err)
-      );
+      logStockMovementInDb(
+        productId,
+        prodName || 'Product',
+        'restock',
+        quantity,
+        targetWeight ? `${note} [Variant: ${targetWeight}]` : note
+      ).catch((err) => console.warn('Could not log restock in Supabase:', err));
     }
 
     const now = new Date();
@@ -882,15 +905,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       newStock: newQty,
       date: now.toISOString().split('T')[0],
       time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      note,
+      note: targetWeight ? `${note} (${targetWeight})` : note,
       adminName: 'Store Admin',
     };
 
     setStockHistoryLogs((prev) => [newLog, ...prev]);
-    addToast('Stock Restocked ✅', `Added +${quantity} units to ${prodName || 'Product'} (Total: ${newQty}).`, 'success');
+    addToast(
+      'Stock Restocked ✅',
+      `Added +${quantity} units to ${prodName || 'Product'}${targetWeight ? ` (${targetWeight})` : ''} (Total: ${newQty}).`,
+      'success'
+    );
   };
 
-  const destockProduct = (productId: string, quantity: number, note = 'Inventory Destock') => {
+  const destockProduct = (productId: string, quantity: number, note = 'Inventory Destock', targetWeight?: string) => {
     let prodName = '';
     let oldQty = 0;
     let newQty = 0;
@@ -902,7 +929,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           oldQty = p.inventoryCount ?? 0;
           newQty = Math.max(0, oldQty - quantity);
           isOut = newQty <= 0;
-          return { ...p, inventoryCount: newQty, outOfStock: isOut, inStock: !isOut };
+
+          let updatedWeightOptions = p.weightOptions;
+          if (targetWeight) {
+            updatedWeightOptions = p.weightOptions.map((opt) => {
+              if (opt.weight === targetWeight) {
+                const currentOptStock = opt.stock !== undefined ? opt.stock : (p.inventoryCount ?? 0);
+                return { ...opt, stock: Math.max(0, currentOptStock - quantity) };
+              }
+              return opt;
+            });
+          }
+
+          return {
+            ...p,
+            inventoryCount: newQty,
+            outOfStock: isOut,
+            inStock: !isOut,
+            weightOptions: updatedWeightOptions,
+          };
         }
         return p;
       })
@@ -912,9 +957,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updateProductInDb(productId, { inventoryCount: newQty, outOfStock: isOut }).catch((err) =>
         console.warn('Could not update inventory in Supabase:', err)
       );
-      logStockMovementInDb(productId, prodName || 'Product', 'destock', quantity, note).catch((err) =>
-        console.warn('Could not log destock in Supabase:', err)
-      );
+      logStockMovementInDb(
+        productId,
+        prodName || 'Product',
+        'destock',
+        quantity,
+        targetWeight ? `${note} [Variant: ${targetWeight}]` : note
+      ).catch((err) => console.warn('Could not log destock in Supabase:', err));
     }
 
     const now = new Date();
@@ -928,12 +977,88 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       newStock: newQty,
       date: now.toISOString().split('T')[0],
       time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      note,
+      note: targetWeight ? `${note} (${targetWeight})` : note,
       adminName: 'Store Admin',
     };
 
     setStockHistoryLogs((prev) => [newLog, ...prev]);
-    addToast('Stock Destocked 🔻', `Removed -${quantity} units from ${prodName || 'Product'} (${newQty} left).`, 'info');
+    addToast(
+      isOut ? 'Product Sold Out ⚠️' : 'Stock Destocked',
+      `Deducted -${quantity} units from ${prodName || 'Product'}${targetWeight ? ` (${targetWeight})` : ''} (Remaining: ${newQty}).`,
+      isOut ? 'error' : 'info'
+    );
+  };
+
+  const setProductStock = (productId: string, newStock: number, targetWeight?: string, note = 'Manual Stock Level Set') => {
+    const validStock = Math.max(0, newStock);
+    let prodName = '';
+    let oldQty = 0;
+    const isOut = validStock <= 0;
+
+    setProducts((prev) =>
+      prev.map((p) => {
+        if (p.id === productId) {
+          prodName = p.name;
+          oldQty = p.inventoryCount ?? 0;
+
+          let updatedWeightOptions = p.weightOptions;
+          if (targetWeight) {
+            updatedWeightOptions = p.weightOptions.map((opt) => {
+              if (opt.weight === targetWeight) {
+                return { ...opt, stock: validStock };
+              }
+              return opt;
+            });
+          }
+
+          return {
+            ...p,
+            inventoryCount: validStock,
+            outOfStock: isOut,
+            inStock: !isOut,
+            weightOptions: updatedWeightOptions,
+          };
+        }
+        return p;
+      })
+    );
+
+    if (isSupabaseConfigured()) {
+      updateProductInDb(productId, { inventoryCount: validStock, outOfStock: isOut }).catch((err) =>
+        console.warn('Could not update inventory in Supabase:', err)
+      );
+      const stockDiff = validStock - oldQty;
+      const moveType = stockDiff >= 0 ? 'restock' : 'destock';
+      logStockMovementInDb(
+        productId,
+        prodName || 'Product',
+        moveType,
+        Math.abs(stockDiff),
+        `${note} (Set stock to ${validStock}${targetWeight ? ` for ${targetWeight}` : ''})`
+      ).catch((err) => console.warn('Could not log stock change in Supabase:', err));
+    }
+
+    const now = new Date();
+    const newLog: StockHistoryLog = {
+      id: `log-${Date.now()}`,
+      productId,
+      productName: prodName || 'Product',
+      type: validStock >= oldQty ? 'restock' : 'destock',
+      quantity: Math.abs(validStock - oldQty),
+      previousStock: oldQty,
+      newStock: validStock,
+      date: now.toISOString().split('T')[0],
+      time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      note: `${note}: Set stock to ${validStock}${targetWeight ? ` (${targetWeight})` : ''}`,
+      adminName: 'Store Admin',
+    };
+
+    setStockHistoryLogs((prev) => [newLog, ...prev]);
+    addToast(
+      isOut ? 'Marked Out of Stock ⚠️' : 'Stock Updated ✅',
+      `${prodName || 'Product'}${targetWeight ? ` (${targetWeight})` : ''} stock set to ${validStock} units.`,
+      isOut ? 'error' : 'success'
+    );
   };
 
   const toggleProductOutOfStock = (productId: string, reason?: string) => {
@@ -1382,7 +1507,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       authoritativeOrder = {
         id: `ord-${Date.now()}`,
-        orderNumber: `AURA-${Math.floor(10000 + Math.random() * 90000)}`,
+        orderNumber: `Aishu-00${Math.floor(1000 + Math.random() * 9000)}`,
         trackingCode: `TRK-${Math.floor(100000 + Math.random() * 900000)}`,
         date: new Date().toISOString().split('T')[0],
         items: [...cartItems],
@@ -2588,6 +2713,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateHeaderSettings,
         restockProduct,
         destockProduct,
+        setProductStock,
         toggleProductOutOfStock,
         toggleProductVisibility,
         addSubAdmin,
