@@ -1,18 +1,30 @@
 -- ==============================================================================
 -- Migration: 20261023_012_order_id_prefix_aishu.sql
--- Description: Production-grade, schema-compatible place_order_secure RPC.
---              Fully hardened with sequences, advisory locks, strict item validation,
---              coupon integrity, deterministic row locks, and exact schema alignment.
+-- Description: Production-grade place_order_secure RPC for Aishu Foods.
+--              Fully verified against live schema on project akublyjmyrcoeemuxugr.
+--              Includes collision-resistant sequences, strict item/email/PIN validation,
+--              canonical payment methods, coupon sanity, and idempotent payload hashing.
 -- ==============================================================================
 
--- 1. Ensure required cryptographic extensions
+-- 1. Ensure required cryptographic extension
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- 2. Database Sequences for Collision-Free Identifiers
+-- 2. Collision-Resistant Database Sequences for Identifiers
+CREATE SEQUENCE IF NOT EXISTS public.order_id_seq START WITH 10001;
 CREATE SEQUENCE IF NOT EXISTS public.order_number_seq START WITH 10001;
 CREATE SEQUENCE IF NOT EXISTS public.tracking_code_seq START WITH 100001;
 
--- Synchronize sequences with existing data to prevent any collision
+-- Synchronize sequences with existing table data to prevent any primary key or unique collision
+SELECT setval(
+    'public.order_id_seq',
+    GREATEST(10001, COALESCE((
+        SELECT MAX(SUBSTRING(id FROM '[0-9]+$')::BIGINT) 
+        FROM public.orders 
+        WHERE id ~ '[0-9]+$'
+    ), 0) + 1),
+    false
+);
+
 SELECT setval(
     'public.order_number_seq',
     GREATEST(10001, COALESCE((
@@ -33,7 +45,7 @@ SELECT setval(
     false
 );
 
--- 3. Justified Column Extensions (Safe & Idempotent)
+-- 3. Safe, Justified Column Extensions
 ALTER TABLE public.orders 
     ADD COLUMN IF NOT EXISTS payment_session_token TEXT,
     ADD COLUMN IF NOT EXISTS payment_token_expires_at TIMESTAMPTZ,
@@ -111,11 +123,11 @@ DECLARE
     v_created_at TIMESTAMPTZ := NOW();
     v_existing_order RECORD;
     
-    -- Internal array to store validated line items
+    -- Validated items buffer
     v_validated_items JSONB := '[]'::jsonb;
 BEGIN
     -- -------------------------------------------------------------------------
-    -- 1. Input Sanitization & Preliminary Payload Verification
+    -- 1. Input Sanitization & Preliminary Structure Verification
     -- -------------------------------------------------------------------------
     IF p_order_payload IS NULL OR jsonb_typeof(p_order_payload) <> 'object' THEN
         RAISE EXCEPTION 'Order payload must be a valid JSON object.';
@@ -124,7 +136,7 @@ BEGIN
     v_customer := p_order_payload->'customer';
     v_address := p_order_payload->'delivery_address';
     v_items := p_order_payload->'items';
-    v_payment_method := TRIM(COALESCE(p_order_payload->>'payment_method', 'COD'));
+    v_payment_method := TRIM(COALESCE(p_order_payload->>'payment_method', ''));
     v_coupon_code := TRIM(UPPER(COALESCE(p_order_payload->>'coupon_code', '')));
     v_delivery_notes := TRIM(COALESCE(p_order_payload->>'delivery_notes', ''));
 
@@ -132,6 +144,25 @@ BEGIN
         RAISE EXCEPTION 'Missing required order structure: customer, delivery_address, and items are required.';
     END IF;
 
+    -- Validate Payment Method strictly against supported frontend options
+    IF UPPER(v_payment_method) NOT IN ('COD', 'UPI', 'CARD') THEN
+        RAISE EXCEPTION 'Invalid payment method "%". Permitted payment methods are COD, UPI, Card.', v_payment_method;
+    END IF;
+
+    -- Canonicalize payment method and set payment status strictly adhering to table constraint:
+    -- CHECK (payment_status IN ('pending', 'completed', 'authorized', 'paid', 'failed', 'refunded', 'cod'))
+    IF UPPER(v_payment_method) = 'COD' THEN
+        v_payment_method := 'COD';
+        v_payment_status := 'cod';
+    ELSIF UPPER(v_payment_method) = 'UPI' THEN
+        v_payment_method := 'UPI';
+        v_payment_status := 'pending';
+    ELSE
+        v_payment_method := 'Card';
+        v_payment_status := 'pending';
+    END IF;
+
+    -- Customer contact validation
     v_customer_name := TRIM(COALESCE(v_customer->>'name', ''));
     v_customer_phone := REGEXP_REPLACE(COALESCE(v_customer->>'phone', ''), '[^0-9]', '', 'g');
     v_customer_email := TRIM(LOWER(COALESCE(v_customer->>'email', '')));
@@ -144,19 +175,27 @@ BEGIN
         RAISE EXCEPTION 'A valid 10-digit mobile number is required.';
     END IF;
 
-    IF v_customer_email = '' THEN
+    -- Customer email validation
+    IF v_customer_email <> '' THEN
+        IF NOT (v_customer_email ~* '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$') THEN
+            RAISE EXCEPTION 'Please provide a valid customer email address.';
+        END IF;
+    ELSE
         v_customer_email := 'guest_' || v_customer_phone || '@aishufoods.com';
     END IF;
 
+    -- Delivery address validation
     IF (v_address->>'address') IS NULL OR LENGTH(TRIM(v_address->>'address')) < 5 THEN
         RAISE EXCEPTION 'Please provide a complete street delivery address.';
     END IF;
 
-    IF (v_address->>'pincode') IS NULL OR LENGTH(TRIM(v_address->>'pincode')) < 5 THEN
-        RAISE EXCEPTION 'Please provide a valid 6-digit postal PIN code.';
+    -- Postal PIN code validation: Exactly 6 numeric digits starting with 1-9
+    IF (v_address->>'pincode') IS NULL 
+       OR NOT (TRIM(v_address->>'pincode') ~ '^[1-9][0-9]{5}$') THEN
+        RAISE EXCEPTION 'Please provide a valid 6-digit postal PIN code (e.g. 500001).';
     END IF;
 
-    -- Validate that items is a non-empty array
+    -- Array validation
     IF jsonb_typeof(v_items) <> 'array' THEN
         RAISE EXCEPTION 'Order items must be provided as a JSON array.';
     END IF;
@@ -170,7 +209,7 @@ BEGIN
     END IF;
 
     -- -------------------------------------------------------------------------
-    -- 2. Strict Line-by-Line Item Validation (Rejects invalid/non-positive quantities)
+    -- 2. Line-by-Line Item Quantity Validation (Strictly 1 to 50 Before Integer Cast)
     -- -------------------------------------------------------------------------
     FOR v_item_element IN SELECT * FROM jsonb_array_elements(v_items) LOOP
         IF jsonb_typeof(v_item_element) <> 'object' THEN
@@ -181,24 +220,24 @@ BEGIN
             RAISE EXCEPTION 'Each cart item must specify a valid, non-empty product_id.';
         END IF;
 
+        -- Strictly allow only positive integers from 1 to 50 via regex BEFORE any integer cast.
+        -- Rejects negative numbers, 0, decimals, non-digits, and integer-overflow strings.
         IF (v_item_element->>'quantity') IS NULL 
-           OR NOT (v_item_element->>'quantity' ~ '^[1-9][0-9]*$') THEN
-            RAISE EXCEPTION 'Invalid quantity for product %. Quantity must be a positive integer.', 
-                v_item_element->>'product_id';
-        END IF;
-
-        IF (v_item_element->>'quantity')::INT > 50 THEN
-            RAISE EXCEPTION 'Quantity for product % exceeds maximum permissible line limit of 50.', 
+           OR NOT (v_item_element->>'quantity' ~ '^([1-9]|[1-4][0-9]|50)$') THEN
+            RAISE EXCEPTION 'Invalid quantity for product %. Quantity must be an integer between 1 and 50.', 
                 v_item_element->>'product_id';
         END IF;
     END LOOP;
 
     -- -------------------------------------------------------------------------
-    -- 3. Concurrency-Safe Idempotency & Payload Hash Verification
+    -- 3. Concurrency-Safe Idempotency & Comprehensive Payload Hashing
     -- -------------------------------------------------------------------------
     v_idempotency_key := TRIM(COALESCE(p_order_payload->>'idempotency_key', ''));
     v_payload_hash := md5(jsonb_build_object(
+        'customer_name', v_customer_name,
         'customer_phone', v_customer_phone,
+        'customer_email', v_customer_email,
+        'delivery_address', v_address,
         'items', v_items,
         'payment_method', v_payment_method,
         'coupon_code', v_coupon_code
@@ -217,7 +256,7 @@ BEGIN
         WHERE idempotency_key = v_idempotency_key;
 
         IF FOUND THEN
-            -- Prevent reusing same idempotency key for different payload content
+            -- Reject reusing the same idempotency key for different payload contents
             IF v_existing_order.idempotency_payload_hash IS NOT NULL 
                AND v_existing_order.idempotency_payload_hash <> v_payload_hash THEN
                 RAISE EXCEPTION 'Idempotency key "%" was already used for a different order payload.', v_idempotency_key;
@@ -260,7 +299,7 @@ BEGIN
         GROUP BY x.product_id
         ORDER BY x.product_id ASC
     LOOP
-        -- Lock each product row in sorted ascending ID order to avoid deadlocks
+        -- Lock product row in ascending sorted order to eliminate deadlocks
         SELECT id, name, inventory_count, out_of_stock, price, category_id
         INTO v_db_product
         FROM public.products
@@ -304,7 +343,7 @@ BEGIN
         WHERE product_id = v_item_rec.product_id;
 
         IF v_weight_count > 0 THEN
-            -- Product HAS weight options: must match an exact weight label
+            -- Product HAS weight options: must match configured weight option
             SELECT price INTO v_db_price
             FROM public.product_weight_options
             WHERE product_id = v_item_rec.product_id
@@ -340,7 +379,7 @@ BEGIN
     END LOOP;
 
     -- -------------------------------------------------------------------------
-    -- 6. Authoritative Coupon Verification
+    -- 6. Authoritative Coupon Verification & Discount Calculation
     -- -------------------------------------------------------------------------
     IF v_coupon_code <> '' THEN
         SELECT * INTO v_coupon_rec
@@ -392,24 +431,40 @@ BEGIN
                     RAISE EXCEPTION 'Coupon "%" is valid only for the designated target product.', v_coupon_code;
                 END IF;
             ELSE
-                -- Default applies_to = 'all'
+                -- Default applies_to = 'all' or NULL
                 v_coupon_eligible_subtotal := v_subtotal;
             END IF;
 
-            -- Compute coupon discount value
+            -- Compute coupon discount value safely
             IF v_coupon_rec.discount_type = 'percentage' THEN
+                IF v_coupon_rec.discount_value <= 0 OR v_coupon_rec.discount_value > 100 THEN
+                    RAISE EXCEPTION 'Coupon "%" has invalid percentage discount value (%).', 
+                        v_coupon_code, v_coupon_rec.discount_value;
+                END IF;
                 v_coupon_discount := ROUND((v_coupon_eligible_subtotal * v_coupon_rec.discount_value) / 100.0, 2);
                 IF v_coupon_rec.max_discount IS NOT NULL AND v_coupon_rec.max_discount > 0 THEN
                     v_coupon_discount := LEAST(v_coupon_discount, v_coupon_rec.max_discount);
                 END IF;
-            ELSE
+            ELSIF v_coupon_rec.discount_type = 'flat' THEN
+                IF v_coupon_rec.discount_value <= 0 THEN
+                    RAISE EXCEPTION 'Coupon "%" has invalid flat discount value (%).', 
+                        v_coupon_code, v_coupon_rec.discount_value;
+                END IF;
                 v_coupon_discount := LEAST(v_coupon_eligible_subtotal, v_coupon_rec.discount_value);
+            ELSE
+                RAISE EXCEPTION 'Coupon "%" has unsupported discount type "%".', 
+                    v_coupon_code, v_coupon_rec.discount_type;
             END IF;
 
-            -- Increment usage_count ONLY when valid discount is calculated
-            UPDATE public.coupons
-            SET usage_count = COALESCE(usage_count, 0) + 1
-            WHERE id = v_coupon_rec.id;
+            -- Bound discount between 0 and subtotal
+            v_coupon_discount := GREATEST(0.00, LEAST(v_subtotal, v_coupon_discount));
+
+            -- Increment usage_count ONLY when a positive discount is actually applied
+            IF v_coupon_discount > 0 THEN
+                UPDATE public.coupons
+                SET usage_count = COALESCE(usage_count, 0) + 1
+                WHERE id = v_coupon_rec.id;
+            END IF;
         ELSE
             RAISE EXCEPTION 'Invalid or inactive coupon code "%".', v_coupon_code;
         END IF;
@@ -428,21 +483,14 @@ BEGIN
     v_grand_total := GREATEST(0.00, ROUND(v_subtotal + v_delivery_fee - v_total_discount, 2));
 
     -- -------------------------------------------------------------------------
-    -- 8. Identifiers & Payment Session Token Generation
+    -- 8. Collision-Resistant Identifiers & Payment Session Token
     -- -------------------------------------------------------------------------
-    v_order_id := 'ord-' || EXTRACT(EPOCH FROM NOW())::BIGINT || '-' || FLOOR(1000 + RANDOM() * 9000)::TEXT;
+    v_order_id := 'ord-' || to_char(NOW(), 'YYYYMMDD') || '-' || LPAD(nextval('public.order_id_seq')::TEXT, 6, '0');
     v_order_number := 'Aishu-00' || nextval('public.order_number_seq')::TEXT;
     v_tracking_code := 'TRK-' || nextval('public.tracking_code_seq')::TEXT;
     
     v_payment_session_token := encode(gen_random_bytes(32), 'hex');
     v_payment_token_expires_at := NOW() + INTERVAL '30 minutes';
-
-    -- Payment status must strictly match CHECK (payment_status IN ('pending', 'completed', 'authorized', 'paid', 'failed', 'refunded', 'cod'))
-    IF LOWER(v_payment_method) LIKE '%cod%' OR LOWER(v_payment_method) LIKE '%cash%' THEN
-        v_payment_status := 'cod';
-    ELSE
-        v_payment_status := 'pending';
-    END IF;
 
     -- -------------------------------------------------------------------------
     -- 9. Insert Primary Order Row
