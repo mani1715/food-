@@ -1,6 +1,6 @@
 -- ==============================================================================
 -- Migration: 20261023_012_order_id_prefix_aishu.sql
--- Description: Minimal, schema-compatible place_order_secure RPC for Aishu Foods.
+-- Description: Production-hardened, schema-compatible place_order_secure RPC.
 --              Matches confirmed live database schema on project akublyjmyrcoeemuxugr.
 -- ==============================================================================
 
@@ -24,16 +24,9 @@ CREATE INDEX IF NOT EXISTS idx_orders_payment_token
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idempotency_key 
     ON public.orders (idempotency_key) 
-    WHERE idempotency_key IS NOT NULL;
+    WHERE idempotency_key IS NOT NULL AND idempotency_key <> '';
 
--- 3. Server-Authoritative place_order_secure RPC
---    Compatible with:
---    - orders: confirmed columns + minimal payment/idempotency columns
---    - order_items: id, order_id, product_id, product_name_snapshot, selected_weight, unit_price, quantity
---    - products: id, name, inventory_count, out_of_stock, price
---    - product_weight_options: id, product_id, weight_label, price
---    - coupons: is_enabled (NOT is_active), discount_type, discount_value, min_order_amount, usage_count, code
---    - stock_history_logs: id, product_id, product_name, type, quantity, note, admin_name (NOT NULL), created_at
+-- 3. Production-Hardened place_order_secure RPC
 CREATE OR REPLACE FUNCTION public.place_order_secure(
     p_order_payload JSONB
 )
@@ -47,25 +40,33 @@ DECLARE
     v_customer JSONB;
     v_address JSONB;
     v_items JSONB;
-    v_item RECORD;
     v_payment_method TEXT;
     v_coupon_code TEXT;
     v_delivery_notes TEXT;
     v_idempotency_key TEXT;
     
+    -- Item aggregation and processing records
+    v_agg_rec RECORD;
+    v_item_rec RECORD;
+    v_item_idx INT := 0;
+    
     v_db_product RECORD;
     v_db_price NUMERIC;
-    v_quantity INT;
+    v_weight_count INT;
     v_item_subtotal NUMERIC;
     v_subtotal NUMERIC := 0;
     
+    -- Coupon verification variables
     v_coupon_rec RECORD;
     v_coupon_discount NUMERIC := 0;
+    v_coupon_eligible_subtotal NUMERIC := 0;
     
+    -- Delivery & Totals
     v_delivery_fee NUMERIC := 49.00;
     v_total_discount NUMERIC := 0;
     v_grand_total NUMERIC := 0;
     
+    -- Identifiers & session
     v_order_id TEXT;
     v_order_number TEXT;
     v_tracking_code TEXT;
@@ -77,10 +78,17 @@ DECLARE
     v_customer_email TEXT;
     v_created_at TIMESTAMPTZ := NOW();
     v_existing_order RECORD;
+    
+    -- Array to hold line items for insertion after validation
+    v_validated_items JSONB := '[]'::jsonb;
 BEGIN
-    -- 1. Idempotency Check (Returns existing order on duplicate submission)
+    -- 1. Concurrency-Safe Idempotency Check
     v_idempotency_key := TRIM(COALESCE(p_order_payload->>'idempotency_key', ''));
     IF v_idempotency_key <> '' THEN
+        -- Acquire transaction-level advisory lock on the hash of the idempotency key.
+        -- Serializes concurrent requests with the identical idempotency key to prevent race conditions.
+        PERFORM pg_advisory_xact_lock(hashtext('place_order_' || v_idempotency_key));
+
         SELECT id, order_number, tracking_code, subtotal, delivery_fee, 
                discount_amount, grand_total, order_status, payment_status, created_at,
                payment_session_token, delivery_address_json
@@ -126,7 +134,7 @@ BEGIN
     v_customer_email := TRIM(LOWER(COALESCE(v_customer->>'email', '')));
 
     IF LENGTH(v_customer_name) < 2 THEN
-        RAISE EXCEPTION 'Customer name is too short or missing.';
+        RAISE EXCEPTION 'Customer name must be at least 2 characters.';
     END IF;
 
     IF LENGTH(v_customer_phone) < 10 THEN
@@ -150,52 +158,82 @@ BEGIN
     END IF;
 
     IF jsonb_array_length(v_items) > 50 THEN
-        RAISE EXCEPTION 'Cart exceeds maximum permissible lines of 50 items.';
+        RAISE EXCEPTION 'Cart exceeds maximum permissible limit of 50 distinct items.';
     END IF;
 
-    -- 3. Row Locking, Stock Verification & Authoritative Price Computation
-    FOR v_item IN SELECT * FROM jsonb_to_recordset(v_items) AS x(
-        product_id TEXT,
-        selected_weight TEXT,
-        quantity INT
-    ) LOOP
-        v_quantity := COALESCE(v_item.quantity, 0);
-        IF v_quantity <= 0 OR v_quantity > 50 THEN
-            RAISE EXCEPTION 'Invalid line quantity % for item %. Must be between 1 and 50.', v_quantity, v_item.product_id;
+    -- 3A. Aggregate Demanded Quantities per Product ID & Lock Rows in Deterministic Order
+    FOR v_agg_rec IN 
+        SELECT 
+            x.product_id,
+            SUM(COALESCE(x.quantity, 0)) AS total_demanded_qty
+        FROM jsonb_to_recordset(v_items) AS x(
+            product_id TEXT,
+            selected_weight TEXT,
+            quantity INT
+        )
+        GROUP BY x.product_id
+        ORDER BY x.product_id ASC
+    LOOP
+        IF v_agg_rec.total_demanded_qty <= 0 OR v_agg_rec.total_demanded_qty > 100 THEN
+            RAISE EXCEPTION 'Invalid total quantity % for product %. Must be between 1 and 100.', 
+                v_agg_rec.total_demanded_qty, v_agg_rec.product_id;
         END IF;
 
-        -- Lock the product row FOR UPDATE to prevent race conditions and overselling
-        SELECT id, name, inventory_count, out_of_stock, price
+        -- Lock the product row FOR UPDATE to prevent deadlocks and overselling
+        SELECT id, name, inventory_count, out_of_stock, price, category_id
         INTO v_db_product
         FROM public.products
-        WHERE id = v_item.product_id
+        WHERE id = v_agg_rec.product_id
         FOR UPDATE;
 
         IF NOT FOUND THEN
-            RAISE EXCEPTION 'Product % is no longer available in store catalog.', v_item.product_id;
+            RAISE EXCEPTION 'Product % is no longer available in store catalog.', v_agg_rec.product_id;
         END IF;
 
-        IF v_db_product.out_of_stock = true OR COALESCE(v_db_product.inventory_count, 0) < v_quantity THEN
-            RAISE EXCEPTION 'Insufficient stock for "%". Requested %, available: %.', 
-                v_db_product.name, v_quantity, GREATEST(0, COALESCE(v_db_product.inventory_count, 0));
+        IF v_db_product.out_of_stock = true OR COALESCE(v_db_product.inventory_count, 0) < v_agg_rec.total_demanded_qty THEN
+            RAISE EXCEPTION 'Insufficient stock for "%". Total requested %, but only % available.', 
+                v_db_product.name, v_agg_rec.total_demanded_qty, GREATEST(0, COALESCE(v_db_product.inventory_count, 0));
         END IF;
+    END LOOP;
 
-        -- Resolve authoritative price from product_weight_options
-        SELECT price INTO v_db_price
+    -- 3B. Validate Individual Line Items & Strictly Reject Invalid Selected Weights
+    FOR v_item_rec IN 
+        SELECT 
+            x.product_id,
+            TRIM(COALESCE(x.selected_weight, '')) AS selected_weight,
+            COALESCE(x.quantity, 0) AS quantity
+        FROM jsonb_to_recordset(v_items) AS x(
+            product_id TEXT,
+            selected_weight TEXT,
+            quantity INT
+        )
+    LOOP
+        v_item_idx := v_item_idx + 1;
+
+        SELECT id, name, price, category_id
+        INTO v_db_product
+        FROM public.products
+        WHERE id = v_item_rec.product_id;
+
+        -- Count configured weight options for this product
+        SELECT COUNT(*) INTO v_weight_count
         FROM public.product_weight_options
-        WHERE product_id = v_item.product_id 
-          AND LOWER(TRIM(weight_label)) = LOWER(TRIM(COALESCE(v_item.selected_weight, '')))
-        LIMIT 1;
+        WHERE product_id = v_item_rec.product_id;
 
-        IF v_db_price IS NULL THEN
+        IF v_weight_count > 0 THEN
+            -- Product HAS weight options: must match configured weight option
             SELECT price INTO v_db_price
             FROM public.product_weight_options
-            WHERE product_id = v_item.product_id
-            ORDER BY price ASC
+            WHERE product_id = v_item_rec.product_id
+              AND LOWER(TRIM(weight_label)) = LOWER(v_item_rec.selected_weight)
             LIMIT 1;
-        END IF;
 
-        IF v_db_price IS NULL THEN
+            IF v_db_price IS NULL THEN
+                RAISE EXCEPTION 'Selected weight "%" is not valid or available for product "%".', 
+                    v_item_rec.selected_weight, v_db_product.name;
+            END IF;
+        ELSE
+            -- Product does NOT have weight options: use base price
             v_db_price := v_db_product.price;
         END IF;
 
@@ -203,11 +241,22 @@ BEGIN
             RAISE EXCEPTION 'Invalid calculated price for item %.', v_db_product.name;
         END IF;
 
-        v_item_subtotal := ROUND(v_db_price * v_quantity, 2);
+        v_item_subtotal := ROUND(v_db_price * v_item_rec.quantity, 2);
         v_subtotal := v_subtotal + v_item_subtotal;
+
+        -- Buffer validated item for insertion
+        v_validated_items := v_validated_items || jsonb_build_object(
+            'product_id', v_item_rec.product_id,
+            'product_name', v_db_product.name,
+            'category_id', v_db_product.category_id,
+            'selected_weight', COALESCE(NULLIF(v_item_rec.selected_weight, ''), 'Standard'),
+            'unit_price', v_db_price,
+            'quantity', v_item_rec.quantity,
+            'line_total', v_item_subtotal
+        );
     END LOOP;
 
-    -- 4. Authoritative Coupon Verification (uses is_enabled, min_order_amount, usage_count)
+    -- 4. Authoritative Coupon Verification
     IF v_coupon_code <> '' THEN
         SELECT * INTO v_coupon_rec
         FROM public.coupons
@@ -216,22 +265,73 @@ BEGIN
         FOR UPDATE;
 
         IF FOUND THEN
-            IF v_subtotal >= COALESCE(v_coupon_rec.min_order_amount, 0) THEN
-                IF v_coupon_rec.discount_type = 'percentage' THEN
-                    v_coupon_discount := ROUND((v_subtotal * v_coupon_rec.discount_value) / 100.0, 2);
-                ELSIF v_coupon_rec.discount_type = 'flat' THEN
-                    v_coupon_discount := LEAST(v_subtotal, v_coupon_rec.discount_value);
-                END IF;
-
-                UPDATE public.coupons
-                SET usage_count = COALESCE(usage_count, 0) + 1
-                WHERE id = v_coupon_rec.id;
+            -- Expiry check
+            IF v_coupon_rec.expiry_date IS NOT NULL AND v_coupon_rec.expiry_date < CURRENT_DATE THEN
+                RAISE EXCEPTION 'Coupon "%" has expired.', v_coupon_code;
             END IF;
+
+            -- Minimum order subtotal check
+            IF v_subtotal < COALESCE(v_coupon_rec.min_order_amount, 0) THEN
+                RAISE EXCEPTION 'Coupon "%" requires a minimum order amount of ₹%.', 
+                    v_coupon_code, v_coupon_rec.min_order_amount;
+            END IF;
+
+            -- Scope restriction: applies_to ('all', 'category', 'product')
+            v_coupon_eligible_subtotal := 0;
+
+            IF v_coupon_rec.applies_to = 'category' AND v_coupon_rec.target_category IS NOT NULL THEN
+                FOR v_item_rec IN SELECT * FROM jsonb_to_recordset(v_validated_items) AS y(
+                    category_id TEXT,
+                    line_total NUMERIC
+                ) LOOP
+                    IF LOWER(TRIM(COALESCE(v_item_rec.category_id, ''))) = LOWER(TRIM(v_coupon_rec.target_category)) THEN
+                        v_coupon_eligible_subtotal := v_coupon_eligible_subtotal + v_item_rec.line_total;
+                    END IF;
+                END LOOP;
+
+                IF v_coupon_eligible_subtotal <= 0 THEN
+                    RAISE EXCEPTION 'Coupon "%" is valid only for products in category "%".', 
+                        v_coupon_code, v_coupon_rec.target_category;
+                END IF;
+            ELSIF v_coupon_rec.applies_to = 'product' AND v_coupon_rec.target_product_id IS NOT NULL THEN
+                FOR v_item_rec IN SELECT * FROM jsonb_to_recordset(v_validated_items) AS y(
+                    product_id TEXT,
+                    line_total NUMERIC
+                ) LOOP
+                    IF v_item_rec.product_id = v_coupon_rec.target_product_id THEN
+                        v_coupon_eligible_subtotal := v_coupon_eligible_subtotal + v_item_rec.line_total;
+                    END IF;
+                END LOOP;
+
+                IF v_coupon_eligible_subtotal <= 0 THEN
+                    RAISE EXCEPTION 'Coupon "%" is valid only for specific target product.', v_coupon_code;
+                END IF;
+            ELSE
+                -- applies_to = 'all' or NULL
+                v_coupon_eligible_subtotal := v_subtotal;
+            END IF;
+
+            -- Calculate discount value
+            IF v_coupon_rec.discount_type = 'percentage' THEN
+                v_coupon_discount := ROUND((v_coupon_eligible_subtotal * v_coupon_rec.discount_value) / 100.0, 2);
+                IF v_coupon_rec.max_discount IS NOT NULL AND v_coupon_rec.max_discount > 0 THEN
+                    v_coupon_discount := LEAST(v_coupon_discount, v_coupon_rec.max_discount);
+                END IF;
+            ELSE
+                v_coupon_discount := LEAST(v_coupon_eligible_subtotal, v_coupon_rec.discount_value);
+            END IF;
+
+            -- Increment usage count
+            UPDATE public.coupons
+            SET usage_count = COALESCE(usage_count, 0) + 1
+            WHERE id = v_coupon_rec.id;
+        ELSE
+            RAISE EXCEPTION 'Invalid or inactive coupon code "%".', v_coupon_code;
         END IF;
     END IF;
 
     -- 5. Authoritative Delivery Fee (Free shipping threshold >= Rs 499, otherwise Rs 49)
-    IF v_subtotal >= 499.00 THEN
+    IF v_subtotal >= 499.00 OR v_subtotal = 0 THEN
         v_delivery_fee := 0.00;
     ELSE
         v_delivery_fee := 49.00;
@@ -249,8 +349,9 @@ BEGIN
     v_payment_session_token := encode(gen_random_bytes(32), 'hex');
     v_payment_token_expires_at := NOW() + INTERVAL '30 minutes';
 
+    -- Payment status MUST match CHECK (payment_status IN ('pending', 'completed', 'authorized', 'paid', 'failed', 'refunded', 'cod'))
     IF LOWER(v_payment_method) LIKE '%cod%' OR LOWER(v_payment_method) LIKE '%cash%' THEN
-        v_payment_status := 'cod_pending';
+        v_payment_status := 'cod';
     ELSE
         v_payment_status := 'pending';
     END IF;
@@ -302,39 +403,18 @@ BEGIN
         v_created_at
     );
 
-    -- 9. Insert Snapshotted Line Items, Atomically Decrement Inventory & Record Stock History Log
-    FOR v_item IN SELECT * FROM jsonb_to_recordset(v_items) AS x(
+    -- 9. Insert Snapshotted Line Items, Decrement Inventory & Record Stock History Log
+    v_item_idx := 0;
+    FOR v_item_rec IN SELECT * FROM jsonb_to_recordset(v_validated_items) AS z(
         product_id TEXT,
+        product_name TEXT,
         selected_weight TEXT,
+        unit_price NUMERIC,
         quantity INT
     ) LOOP
-        v_quantity := COALESCE(v_item.quantity, 0);
+        v_item_idx := v_item_idx + 1;
 
-        -- Resolve product price again for line item snapshot
-        SELECT id, name, inventory_count, out_of_stock, price
-        INTO v_db_product
-        FROM public.products
-        WHERE id = v_item.product_id;
-
-        SELECT price INTO v_db_price
-        FROM public.product_weight_options
-        WHERE product_id = v_item.product_id 
-          AND LOWER(TRIM(weight_label)) = LOWER(TRIM(COALESCE(v_item.selected_weight, '')))
-        LIMIT 1;
-
-        IF v_db_price IS NULL THEN
-            SELECT price INTO v_db_price
-            FROM public.product_weight_options
-            WHERE product_id = v_item.product_id
-            ORDER BY price ASC
-            LIMIT 1;
-        END IF;
-
-        IF v_db_price IS NULL THEN
-            v_db_price := v_db_product.price;
-        END IF;
-
-        -- Insert Line Item Snapshot (matches exact live order_items schema)
+        -- Compatible with TEXT type for order_items.id
         INSERT INTO public.order_items (
             id,
             order_id,
@@ -344,21 +424,21 @@ BEGIN
             unit_price,
             quantity
         ) VALUES (
-            gen_random_uuid(),
+            'item-' || v_order_id || '-' || v_item_idx,
             v_order_id,
-            v_item.product_id,
-            v_db_product.name,
-            COALESCE(v_item.selected_weight, 'Standard'),
-            v_db_price,
-            v_quantity
+            v_item_rec.product_id,
+            v_item_rec.product_name,
+            v_item_rec.selected_weight,
+            v_item_rec.unit_price,
+            v_item_rec.quantity
         );
 
-        -- Atomic Stock Decrement
+        -- Atomic stock decrement
         UPDATE public.products
-        SET inventory_count = GREATEST(0, inventory_count - v_quantity),
-            out_of_stock = ((inventory_count - v_quantity) <= 0),
+        SET inventory_count = GREATEST(0, inventory_count - v_item_rec.quantity),
+            out_of_stock = ((inventory_count - v_item_rec.quantity) <= 0),
             updated_at = NOW()
-        WHERE id = v_item.product_id;
+        WHERE id = v_item_rec.product_id;
 
         -- Stock History Log Entry (admin_name is NOT NULL, provided as 'Checkout System')
         INSERT INTO public.stock_history_logs (
@@ -371,12 +451,12 @@ BEGIN
             admin_name,
             created_at
         ) VALUES (
-            'log-destock-' || v_order_id || '-' || v_item.product_id,
-            v_item.product_id,
-            v_db_product.name,
+            'log-destock-' || v_order_id || '-' || v_item_rec.product_id || '-' || v_item_idx,
+            v_item_rec.product_id,
+            v_item_rec.product_name,
             'destock',
-            v_quantity,
-            'Live Order Sale #' || v_order_number || ' (' || v_quantity || ' × ' || COALESCE(v_item.selected_weight, 'Standard') || ')',
+            v_item_rec.quantity,
+            'Live Order Sale #' || v_order_number || ' (' || v_item_rec.quantity || ' × ' || v_item_rec.selected_weight || ')',
             'Checkout System',
             NOW()
         );
