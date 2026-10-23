@@ -163,30 +163,71 @@ export const TrackOrderPage: React.FC = () => {
     );
   };
 
-  const handleConfirmPayment = () => {
+  const handleConfirmPayment = async () => {
     if (!selectedOrderForPayment) return;
-    if (paymentMethod === 'upi' && !paymentSubMethod) {
-      addToast('Selection Required', 'Please select an online UPI app.', 'error');
-      return;
-    }
-    if (paymentMethod === 'card' && !paymentSubMethod) {
-      addToast('Selection Required', 'Please select Debit or Credit card option.', 'error');
-      return;
-    }
 
-    updatePaymentStatus(selectedOrderForPayment.id, 'completed');
-    setShowPaymentModal(false);
-    setSelectedOrderForPayment(null);
-    setPaymentSubMethod('');
+    try {
+      addToast('Opening Gateway ⏳', 'Initiating secure payment gateway...', 'info');
+      const { initiateRazorpayOrder, verifyRazorpayPaymentOnServer } = await import('../../lib/razorpay/api');
+      const { openRazorpayModal } = await import('../../lib/razorpay/checkout');
 
-    // Refresh matched state
-    setMatchedOrders((prev) =>
-      prev.map((o) =>
-        o.id === selectedOrderForPayment.id
-          ? { ...o, paymentStatus: 'completed' }
-          : o
-      )
-    );
+      const rzpOrderData = await initiateRazorpayOrder(
+        selectedOrderForPayment.id,
+        selectedOrderForPayment.paymentSessionToken
+      );
+
+      setShowPaymentModal(false);
+
+      await openRazorpayModal({
+        key: rzpOrderData.keyId || (import.meta.env.VITE_RAZORPAY_KEY_ID as string) || 'rzp_live_TrDR6q1ML16dKa',
+        amount: rzpOrderData.amount,
+        currency: rzpOrderData.currency || 'INR',
+        name: 'Aishu Home Foods',
+        description: `Payment for Order #${selectedOrderForPayment.orderNumber}`,
+        order_id: rzpOrderData.razorpayOrderId,
+        prefill: {
+          name: selectedOrderForPayment.customerName || '',
+          contact: selectedOrderForPayment.customerPhone || '',
+          email: selectedOrderForPayment.customerEmail || '',
+        },
+        theme: {
+          color: '#000000',
+        },
+        handler: async (response) => {
+          try {
+            addToast('Verifying Payment ⏳', 'Verifying signature with server...', 'info');
+            await verifyRazorpayPaymentOnServer(
+              selectedOrderForPayment.id,
+              selectedOrderForPayment.paymentSessionToken,
+              response.razorpay_order_id,
+              response.razorpay_payment_id,
+              response.razorpay_signature
+            );
+
+            updatePaymentStatus(selectedOrderForPayment.id, 'paid');
+            setMatchedOrders((prev) =>
+              prev.map((o) =>
+                o.id === selectedOrderForPayment.id
+                  ? { ...o, paymentStatus: 'paid', orderStatus: 'confirmed' }
+                  : o
+              )
+            );
+            addToast('Payment Successful! 🎉', 'Your payment was verified. Order is confirmed.', 'success');
+          } catch (verifErr: any) {
+            addToast('Payment Notice', verifErr.message || 'Payment received. Server is reconciling.', 'info');
+          } finally {
+            setSelectedOrderForPayment(null);
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            addToast('Payment Incomplete', 'Payment window was closed.', 'info');
+          },
+        },
+      });
+    } catch (err: any) {
+      addToast('Payment Notice', err.message || 'Could not initiate Razorpay checkout.', 'error');
+    }
   };
 
   return (
