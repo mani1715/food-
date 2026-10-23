@@ -1,19 +1,11 @@
 -- ==============================================================================
 -- Migration: 20261023_012_order_id_prefix_aishu.sql
 -- Description: Production-grade place_order_secure RPC for Aishu Foods.
---              Fully verified against live schema on project akublyjmyrcoeemuxugr.
---              Features:
---              - Non-regressive sequence synchronization for IDs, order numbers & tracking
---              - Pre-cast regex verification for quantities (1..50)
---              - Strict coupon scope enforcement ('all', 'category', 'product')
---              - Canonical payment method validation ('COD', 'UPI', 'Card')
---              - Calendar date expiry matching admin UI (<input type="date">)
---              - Legacy idempotency compatibility & material payload hashing
---              - Explicit stock depletion checks (no GREATEST masking)
---              - Fully qualified schema references & hardened SECURITY DEFINER search_path
+--              Hardened against shadowing, sequence truncation, and idempotency collision.
+--              Verified against frontend and Edge Function contracts.
 -- ==============================================================================
 
--- 1. Ensure required cryptographic extension
+-- 1. Ensure required cryptographic extension for digest (SHA-256) and random tokens
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- 2. Collision-Resistant Sequences with Non-Regressive Synchronization
@@ -77,12 +69,34 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idempotency_key
     ON public.orders (idempotency_key) 
     WHERE idempotency_key IS NOT NULL AND idempotency_key <> '';
 
--- Ensure coupon scope columns exist with safe defaults
+-- Ensure coupon scope and enablement columns exist with safe defaults
 ALTER TABLE public.coupons
+    ADD COLUMN IF NOT EXISTS is_enabled BOOLEAN DEFAULT true,
+    ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true,
     ADD COLUMN IF NOT EXISTS applies_to TEXT DEFAULT 'all',
     ADD COLUMN IF NOT EXISTS target_category TEXT,
     ADD COLUMN IF NOT EXISTS target_product_id TEXT,
     ADD COLUMN IF NOT EXISTS max_discount NUMERIC;
+
+-- Ensure order_items.id has a safe default generator if currently NULL
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'order_items' 
+          AND column_name = 'id' AND column_default IS NULL
+    ) THEN
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_schema = 'public' AND table_name = 'order_items' 
+              AND column_name = 'id' AND data_type = 'uuid'
+        ) THEN
+            ALTER TABLE public.order_items ALTER COLUMN id SET DEFAULT gen_random_uuid();
+        ELSE
+            ALTER TABLE public.order_items ALTER COLUMN id SET DEFAULT ('item-' || gen_random_uuid()::text);
+        END IF;
+    END IF;
+END $$;
 
 -- 4. Authoritative place_order_secure RPC
 CREATE OR REPLACE FUNCTION public.place_order_secure(
@@ -91,7 +105,7 @@ CREATE OR REPLACE FUNCTION public.place_order_secure(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, auth, extensions, pg_temp
+SET search_path = pg_catalog, public, extensions, pg_temp
 AS $$
 DECLARE
     v_user_id UUID := auth.uid();
@@ -103,6 +117,11 @@ DECLARE
     v_delivery_notes TEXT;
     v_idempotency_key TEXT;
     v_payload_hash TEXT;
+    
+    -- Canonical representation variables
+    v_canonical_items JSONB;
+    v_canonical_payload JSONB;
+    v_canonical_text TEXT;
     
     -- Processing variables
     v_item_element JSONB;
@@ -127,6 +146,7 @@ DECLARE
     v_grand_total NUMERIC := 0;
     
     -- Identifiers
+    v_seq_val BIGINT;
     v_order_id TEXT;
     v_order_number TEXT;
     v_tracking_code TEXT;
@@ -160,12 +180,12 @@ BEGIN
         RAISE EXCEPTION 'Missing required order structure: customer, delivery_address, and items are required.';
     END IF;
 
-    -- Validate Payment Method strictly against supported frontend options
+    -- Validate Payment Method strictly against supported frontend options ('COD', 'UPI', 'Card')
     IF UPPER(v_payment_method) NOT IN ('COD', 'UPI', 'CARD') THEN
         RAISE EXCEPTION 'Invalid payment method "%". Permitted payment methods are COD, UPI, Card.', v_payment_method;
     END IF;
 
-    -- Canonicalize payment method and assign payment status strictly adhering to table constraint:
+    -- Canonicalize payment method and assign payment status adhering to constraint:
     -- CHECK (payment_status IN ('pending', 'completed', 'authorized', 'paid', 'failed', 'refunded', 'cod'))
     IF UPPER(v_payment_method) = 'COD' THEN
         v_payment_method := 'COD';
@@ -246,18 +266,42 @@ BEGIN
     END LOOP;
 
     -- -------------------------------------------------------------------------
-    -- 3. Concurrency-Safe Idempotency & Comprehensive Payload Hashing
+    -- 3. Canonical Payload Construction & SHA-256 Idempotency Verification
     -- -------------------------------------------------------------------------
     v_idempotency_key := TRIM(COALESCE(p_order_payload->>'idempotency_key', ''));
-    v_payload_hash := md5(jsonb_build_object(
+
+    -- Construct canonical items JSON array sorted deterministically by product_id ASC, selected_weight ASC
+    SELECT COALESCE(jsonb_agg(
+        jsonb_build_object(
+            'product_id', c.product_id,
+            'selected_weight', TRIM(COALESCE(c.selected_weight, 'Standard')),
+            'quantity', (c.quantity)::INT
+        ) ORDER BY c.product_id ASC, TRIM(COALESCE(c.selected_weight, 'Standard')) ASC
+    ), '[]'::jsonb)
+    INTO v_canonical_items
+    FROM jsonb_to_recordset(v_items) AS c(
+        product_id TEXT,
+        selected_weight TEXT,
+        quantity TEXT
+    );
+
+    -- Build canonical payload object
+    v_canonical_payload := jsonb_build_object(
         'customer_name', v_customer_name,
         'customer_phone', v_customer_phone,
         'customer_email', v_customer_email,
-        'delivery_address', v_address,
-        'items', v_items,
+        'delivery_address', jsonb_build_object(
+            'address', TRIM(COALESCE(v_address->>'address', '')),
+            'city', TRIM(COALESCE(v_address->>'city', '')),
+            'pincode', TRIM(COALESCE(v_address->>'pincode', ''))
+        ),
+        'items', v_canonical_items,
         'payment_method', v_payment_method,
         'coupon_code', v_coupon_code
-    )::text);
+    );
+
+    v_canonical_text := v_canonical_payload::text;
+    v_payload_hash := encode(digest(convert_to(v_canonical_text, 'UTF8'), 'sha256'), 'hex');
 
     IF v_idempotency_key <> '' THEN
         IF LENGTH(v_idempotency_key) > 120 THEN
@@ -276,18 +320,15 @@ BEGIN
         WHERE idempotency_key = v_idempotency_key;
 
         IF FOUND THEN
-            -- Policy for modern orders placed with payload hash
+            -- Policy: Only allow idempotent replay if payload SHA-256 hash matches exactly.
+            -- Reject legacy orders missing a hash rather than loosely matching on phone/payment.
             IF v_existing_order.idempotency_payload_hash IS NOT NULL THEN
                 IF v_existing_order.idempotency_payload_hash <> v_payload_hash THEN
                     RAISE EXCEPTION 'Idempotency key "%" was already used for a different order payload.', v_idempotency_key;
                 END IF;
             ELSE
-                -- Legacy compatibility policy: verify customer phone and payment method match
-                IF v_existing_order.customer_phone <> v_customer_phone 
-                   OR v_existing_order.payment_method <> v_payment_method THEN
-                    RAISE EXCEPTION 'Idempotency key "%" was previously used for an order with different customer or payment details.', 
-                        v_idempotency_key;
-                END IF;
+                RAISE EXCEPTION 'Idempotency key "%" is already bound to existing order #% without cryptographic payload verification. Please submit with a new idempotency key.', 
+                    v_idempotency_key, v_existing_order.order_number;
             END IF;
 
             RETURN jsonb_build_object(
@@ -413,7 +454,7 @@ BEGIN
         SELECT * INTO v_coupon_rec
         FROM public.coupons
         WHERE UPPER(TRIM(code)) = v_coupon_code
-          AND is_enabled = true
+          AND COALESCE(is_enabled, is_active, true) = true
         FOR UPDATE;
 
         IF FOUND THEN
@@ -527,7 +568,10 @@ BEGIN
     -- -------------------------------------------------------------------------
     -- 8. Collision-Resistant Identifiers & Payment Session Token
     -- -------------------------------------------------------------------------
-    v_order_id := 'ord-' || to_char(NOW(), 'YYYYMMDD') || '-' || LPAD(nextval('public.order_id_seq')::TEXT, 6, '0');
+    -- Non-truncating order ID formatting: Pads to 6 digits if < 1,000,000 without truncating larger numbers
+    v_seq_val := nextval('public.order_id_seq');
+    v_order_id := 'ord-' || to_char(NOW(), 'YYYYMMDD') || '-' || 
+                  CASE WHEN v_seq_val < 1000000 THEN LPAD(v_seq_val::TEXT, 6, '0') ELSE v_seq_val::TEXT END;
     v_order_number := 'Aishu-00' || nextval('public.order_number_seq')::TEXT;
     v_tracking_code := 'TRK-' || nextval('public.tracking_code_seq')::TEXT;
     
@@ -586,7 +630,7 @@ BEGIN
     );
 
     -- -------------------------------------------------------------------------
-    -- 10. Insert Snapshotted Line Items, Decrement Inventory & Record Stock Logs
+    -- 10. Insert Line Items, Decrement Inventory & Record Stock Logs
     -- -------------------------------------------------------------------------
     v_item_idx := 0;
     FOR v_item_rec IN SELECT * FROM jsonb_to_recordset(v_validated_items) AS z(
@@ -598,9 +642,8 @@ BEGIN
     ) LOOP
         v_item_idx := v_item_idx + 1;
 
-        -- Guaranteed compatible with TEXT type for order_items.id
+        -- Insert line item (omits 'id' so table default handles UUID or TEXT automatically)
         INSERT INTO public.order_items (
-            id,
             order_id,
             product_id,
             product_name_snapshot,
@@ -608,7 +651,6 @@ BEGIN
             unit_price,
             quantity
         ) VALUES (
-            'item-' || v_order_id || '-' || v_item_idx,
             v_order_id,
             v_item_rec.product_id,
             v_item_rec.product_name,
