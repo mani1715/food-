@@ -23,9 +23,13 @@ export const CategoriesPage: React.FC = () => {
             className="group relative rounded-3xl overflow-hidden border border-neutral-200 bg-neutral-100 aspect-square cursor-pointer shadow-subtle hover:border-black transition-all"
           >
             <img
-              src={cat.image}
+              src={cat.image || 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=600&auto=format&fit=crop'}
               alt={cat.name}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src =
+                  'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=600&auto=format&fit=crop';
+              }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
 

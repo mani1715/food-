@@ -36,9 +36,13 @@ export const ShopByCategory: React.FC<ShopByCategoryProps> = ({ categories }) =>
             className="group relative rounded-3xl overflow-hidden border border-neutral-200 bg-neutral-100 min-w-[190px] sm:min-w-[240px] max-w-[260px] aspect-[4/5] shrink-0 snap-start cursor-pointer shadow-subtle hover:border-black transition-all"
           >
             <img
-              src={cat.image}
+              src={cat.image || 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=600&auto=format&fit=crop'}
               alt={cat.name}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src =
+                  'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=600&auto=format&fit=crop';
+              }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 

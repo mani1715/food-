@@ -11,6 +11,19 @@ Options -Indexes
 # Follow symbolic links (required for mod_rewrite on many Apache/LiteSpeed hosts)
 Options +FollowSymLinks
 
+# Strict MIME Types
+<IfModule mod_mime.c>
+  AddType application/javascript .js
+  AddType text/css .css
+  AddType image/jpeg .jpg .jpeg
+  AddType image/png .png
+  AddType image/webp .webp
+  AddType image/svg+xml .svg
+  AddType image/x-icon .ico
+  AddType font/woff2 .woff2
+  AddType font/woff .woff
+</IfModule>
+
 # SPA Fallback Routing
 <IfModule mod_rewrite.c>
   RewriteEngine On
@@ -24,6 +37,11 @@ Options +FollowSymLinks
   RewriteCond %{REQUEST_FILENAME} -d [OR]
   RewriteCond %{REQUEST_FILENAME} -l
   RewriteRule ^ - [L]
+
+  # Never rewrite missing static assets (images, fonts, scripts, styles) to index.html
+  # This prevents HTML fallback on broken image requests which causes Hostinger CDN 422 errors
+  RewriteCond %{REQUEST_URI} \.(?:css|js|jpe?g|png|gif|ico|webp|svg|woff2?|ttf|eot)$ [NC]
+  RewriteRule ^ - [R=404,L]
 
   # Route all other URLs to index.html for client-side routing
   RewriteRule . /index.html [L]
