@@ -1,0 +1,57 @@
+name: Build and Publish Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: production-build
+  cancel-in-progress: true
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: TypeScript Check & Vite Production Build
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://akublyjmyrcoeemuxugr.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'sb_publishable_KREZO8qrQFap24pBhrQuuw_q8nlcOrs' }}
+          VITE_APP_ENV: production
+
+      - name: Verify Build Output
+        run: |
+          test -f dist/index.html || { echo "dist/index.html is missing"; exit 1; }
+          test -f dist/.htaccess || { echo "dist/.htaccess is missing"; exit 1; }
+          test -f dist/aishu-logo.png || { echo "dist/aishu-logo.png is missing"; exit 1; }
+          test -d dist/assets || { echo "dist/assets is missing"; exit 1; }
+          echo "All production artifacts verified successfully."
+
+      # Publishes the CONTENTS of dist directly to the root of branch 'production-build'
+      # Hostinger Git is configured to deploy branch 'production-build' into public_html.
+      - name: Publish to production-build Branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          publish_branch: production-build
+          keep_files: false
+          force_orphan: true
