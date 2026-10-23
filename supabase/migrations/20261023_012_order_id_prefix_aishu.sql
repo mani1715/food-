@@ -1,21 +1,44 @@
 -- ==============================================================================
 -- Migration: 20261023_012_order_id_prefix_aishu.sql
--- Description: Production-hardened, schema-compatible place_order_secure RPC.
---              Matches confirmed live database schema on project akublyjmyrcoeemuxugr.
+-- Description: Production-grade, schema-compatible place_order_secure RPC.
+--              Fully hardened with sequences, advisory locks, strict item validation,
+--              coupon integrity, deterministic row locks, and exact schema alignment.
 -- ==============================================================================
 
--- 1. Ensure pgcrypto extension for gen_random_bytes
+-- 1. Ensure required cryptographic extensions
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- 2. Smallest Justified Column Extensions on orders table
---    - payment_session_token & payment_token_expires_at: Required by Razorpay Edge Functions
---      (create-razorpay-order & verify-razorpay-payment) for guest checkout payment authorization.
---    - idempotency_key: Required to prevent duplicate orders and double stock deduction on network retries.
---    - applied_coupon_code: Required to persist applied coupon snapshot.
+-- 2. Database Sequences for Collision-Free Identifiers
+CREATE SEQUENCE IF NOT EXISTS public.order_number_seq START WITH 10001;
+CREATE SEQUENCE IF NOT EXISTS public.tracking_code_seq START WITH 100001;
+
+-- Synchronize sequences with existing data to prevent any collision
+SELECT setval(
+    'public.order_number_seq',
+    GREATEST(10001, COALESCE((
+        SELECT MAX(SUBSTRING(order_number FROM '[0-9]+')::BIGINT) 
+        FROM public.orders 
+        WHERE order_number ~ '[0-9]+'
+    ), 0) + 1),
+    false
+);
+
+SELECT setval(
+    'public.tracking_code_seq',
+    GREATEST(100001, COALESCE((
+        SELECT MAX(SUBSTRING(tracking_code FROM '[0-9]+')::BIGINT) 
+        FROM public.orders 
+        WHERE tracking_code ~ '[0-9]+'
+    ), 0) + 1),
+    false
+);
+
+-- 3. Justified Column Extensions (Safe & Idempotent)
 ALTER TABLE public.orders 
     ADD COLUMN IF NOT EXISTS payment_session_token TEXT,
     ADD COLUMN IF NOT EXISTS payment_token_expires_at TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS idempotency_key TEXT,
+    ADD COLUMN IF NOT EXISTS idempotency_payload_hash TEXT,
     ADD COLUMN IF NOT EXISTS applied_coupon_code TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_orders_payment_token 
@@ -26,7 +49,14 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idempotency_key
     ON public.orders (idempotency_key) 
     WHERE idempotency_key IS NOT NULL AND idempotency_key <> '';
 
--- 3. Production-Hardened place_order_secure RPC
+-- Ensure coupon scope columns exist with safe defaults
+ALTER TABLE public.coupons
+    ADD COLUMN IF NOT EXISTS applies_to TEXT DEFAULT 'all',
+    ADD COLUMN IF NOT EXISTS target_category TEXT,
+    ADD COLUMN IF NOT EXISTS target_product_id TEXT,
+    ADD COLUMN IF NOT EXISTS max_discount NUMERIC;
+
+-- 4. Authoritative place_order_secure RPC
 CREATE OR REPLACE FUNCTION public.place_order_secure(
     p_order_payload JSONB
 )
@@ -44,8 +74,10 @@ DECLARE
     v_coupon_code TEXT;
     v_delivery_notes TEXT;
     v_idempotency_key TEXT;
+    v_payload_hash TEXT;
     
-    -- Item aggregation and processing records
+    -- Processing variables
+    v_item_element JSONB;
     v_agg_rec RECORD;
     v_item_rec RECORD;
     v_item_idx INT := 0;
@@ -66,7 +98,7 @@ DECLARE
     v_total_discount NUMERIC := 0;
     v_grand_total NUMERIC := 0;
     
-    -- Identifiers & session
+    -- Identifiers
     v_order_id TEXT;
     v_order_number TEXT;
     v_tracking_code TEXT;
@@ -79,45 +111,16 @@ DECLARE
     v_created_at TIMESTAMPTZ := NOW();
     v_existing_order RECORD;
     
-    -- Array to hold line items for insertion after validation
+    -- Internal array to store validated line items
     v_validated_items JSONB := '[]'::jsonb;
 BEGIN
-    -- 1. Concurrency-Safe Idempotency Check
-    v_idempotency_key := TRIM(COALESCE(p_order_payload->>'idempotency_key', ''));
-    IF v_idempotency_key <> '' THEN
-        -- Acquire transaction-level advisory lock on the hash of the idempotency key.
-        -- Serializes concurrent requests with the identical idempotency key to prevent race conditions.
-        PERFORM pg_advisory_xact_lock(hashtext('place_order_' || v_idempotency_key));
-
-        SELECT id, order_number, tracking_code, subtotal, delivery_fee, 
-               discount_amount, grand_total, order_status, payment_status, created_at,
-               payment_session_token, delivery_address_json
-        INTO v_existing_order
-        FROM public.orders
-        WHERE idempotency_key = v_idempotency_key;
-
-        IF FOUND THEN
-            RETURN jsonb_build_object(
-                'success', true,
-                'is_duplicate', true,
-                'message', 'Order already placed previously for this request session.',
-                'order_id', v_existing_order.id,
-                'order_number', v_existing_order.order_number,
-                'tracking_code', v_existing_order.tracking_code,
-                'payment_session_token', v_existing_order.payment_session_token,
-                'subtotal', v_existing_order.subtotal,
-                'delivery_fee', v_existing_order.delivery_fee,
-                'discount_amount', v_existing_order.discount_amount,
-                'grand_total', v_existing_order.grand_total,
-                'order_status', v_existing_order.order_status,
-                'payment_status', v_existing_order.payment_status,
-                'delivery_address', v_existing_order.delivery_address_json,
-                'created_at', v_existing_order.created_at
-            );
-        END IF;
+    -- -------------------------------------------------------------------------
+    -- 1. Input Sanitization & Preliminary Payload Verification
+    -- -------------------------------------------------------------------------
+    IF p_order_payload IS NULL OR jsonb_typeof(p_order_payload) <> 'object' THEN
+        RAISE EXCEPTION 'Order payload must be a valid JSON object.';
     END IF;
 
-    -- 2. Input Sanitization & Payload Validation
     v_customer := p_order_payload->'customer';
     v_address := p_order_payload->'delivery_address';
     v_items := p_order_payload->'items';
@@ -153,6 +156,11 @@ BEGIN
         RAISE EXCEPTION 'Please provide a valid 6-digit postal PIN code.';
     END IF;
 
+    -- Validate that items is a non-empty array
+    IF jsonb_typeof(v_items) <> 'array' THEN
+        RAISE EXCEPTION 'Order items must be provided as a JSON array.';
+    END IF;
+
     IF jsonb_array_length(v_items) = 0 THEN
         RAISE EXCEPTION 'Cannot place order: Cart is empty.';
     END IF;
@@ -161,25 +169,98 @@ BEGIN
         RAISE EXCEPTION 'Cart exceeds maximum permissible limit of 50 distinct items.';
     END IF;
 
-    -- 3A. Aggregate Demanded Quantities per Product ID & Lock Rows in Deterministic Order
+    -- -------------------------------------------------------------------------
+    -- 2. Strict Line-by-Line Item Validation (Rejects invalid/non-positive quantities)
+    -- -------------------------------------------------------------------------
+    FOR v_item_element IN SELECT * FROM jsonb_array_elements(v_items) LOOP
+        IF jsonb_typeof(v_item_element) <> 'object' THEN
+            RAISE EXCEPTION 'Each cart item entry must be a valid JSON object.';
+        END IF;
+
+        IF TRIM(COALESCE(v_item_element->>'product_id', '')) = '' THEN
+            RAISE EXCEPTION 'Each cart item must specify a valid, non-empty product_id.';
+        END IF;
+
+        IF (v_item_element->>'quantity') IS NULL 
+           OR NOT (v_item_element->>'quantity' ~ '^[1-9][0-9]*$') THEN
+            RAISE EXCEPTION 'Invalid quantity for product %. Quantity must be a positive integer.', 
+                v_item_element->>'product_id';
+        END IF;
+
+        IF (v_item_element->>'quantity')::INT > 50 THEN
+            RAISE EXCEPTION 'Quantity for product % exceeds maximum permissible line limit of 50.', 
+                v_item_element->>'product_id';
+        END IF;
+    END LOOP;
+
+    -- -------------------------------------------------------------------------
+    -- 3. Concurrency-Safe Idempotency & Payload Hash Verification
+    -- -------------------------------------------------------------------------
+    v_idempotency_key := TRIM(COALESCE(p_order_payload->>'idempotency_key', ''));
+    v_payload_hash := md5(jsonb_build_object(
+        'customer_phone', v_customer_phone,
+        'items', v_items,
+        'payment_method', v_payment_method,
+        'coupon_code', v_coupon_code
+    )::text);
+
+    IF v_idempotency_key <> '' THEN
+        -- Advisory lock serializes concurrent retries for the exact same key
+        PERFORM pg_advisory_xact_lock(hashtext('place_order_' || v_idempotency_key));
+
+        SELECT id, order_number, tracking_code, subtotal, delivery_fee, 
+               discount_amount, grand_total, order_status, payment_status, created_at,
+               payment_session_token, delivery_address_json, idempotency_payload_hash,
+               payment_method, applied_coupon_code
+        INTO v_existing_order
+        FROM public.orders
+        WHERE idempotency_key = v_idempotency_key;
+
+        IF FOUND THEN
+            -- Prevent reusing same idempotency key for different payload content
+            IF v_existing_order.idempotency_payload_hash IS NOT NULL 
+               AND v_existing_order.idempotency_payload_hash <> v_payload_hash THEN
+                RAISE EXCEPTION 'Idempotency key "%" was already used for a different order payload.', v_idempotency_key;
+            END IF;
+
+            RETURN jsonb_build_object(
+                'success', true,
+                'is_duplicate', true,
+                'message', 'Order already placed previously for this request session.',
+                'order_id', v_existing_order.id,
+                'order_number', v_existing_order.order_number,
+                'tracking_code', v_existing_order.tracking_code,
+                'payment_session_token', v_existing_order.payment_session_token,
+                'subtotal', v_existing_order.subtotal,
+                'delivery_fee', v_existing_order.delivery_fee,
+                'discount_amount', v_existing_order.discount_amount,
+                'grand_total', v_existing_order.grand_total,
+                'payment_method', COALESCE(v_existing_order.payment_method, v_payment_method),
+                'payment_status', v_existing_order.payment_status,
+                'order_status', v_existing_order.order_status,
+                'applied_coupon_code', v_existing_order.applied_coupon_code,
+                'delivery_address', v_existing_order.delivery_address_json,
+                'items_count', jsonb_array_length(v_items),
+                'created_at', v_existing_order.created_at
+            );
+        END IF;
+    END IF;
+
+    -- -------------------------------------------------------------------------
+    -- 4. Aggregate Demanded Quantities & Lock Rows in Deterministic Order
+    -- -------------------------------------------------------------------------
     FOR v_agg_rec IN 
         SELECT 
             x.product_id,
-            SUM(COALESCE(x.quantity, 0)) AS total_demanded_qty
+            SUM((x.quantity)::INT) AS total_demanded_qty
         FROM jsonb_to_recordset(v_items) AS x(
             product_id TEXT,
-            selected_weight TEXT,
-            quantity INT
+            quantity TEXT
         )
         GROUP BY x.product_id
         ORDER BY x.product_id ASC
     LOOP
-        IF v_agg_rec.total_demanded_qty <= 0 OR v_agg_rec.total_demanded_qty > 100 THEN
-            RAISE EXCEPTION 'Invalid total quantity % for product %. Must be between 1 and 100.', 
-                v_agg_rec.total_demanded_qty, v_agg_rec.product_id;
-        END IF;
-
-        -- Lock the product row FOR UPDATE to prevent deadlocks and overselling
+        -- Lock each product row in sorted ascending ID order to avoid deadlocks
         SELECT id, name, inventory_count, out_of_stock, price, category_id
         INTO v_db_product
         FROM public.products
@@ -187,7 +268,7 @@ BEGIN
         FOR UPDATE;
 
         IF NOT FOUND THEN
-            RAISE EXCEPTION 'Product % is no longer available in store catalog.', v_agg_rec.product_id;
+            RAISE EXCEPTION 'Product % does not exist in store catalog.', v_agg_rec.product_id;
         END IF;
 
         IF v_db_product.out_of_stock = true OR COALESCE(v_db_product.inventory_count, 0) < v_agg_rec.total_demanded_qty THEN
@@ -196,16 +277,18 @@ BEGIN
         END IF;
     END LOOP;
 
-    -- 3B. Validate Individual Line Items & Strictly Reject Invalid Selected Weights
+    -- -------------------------------------------------------------------------
+    -- 5. Strict Weight Option Validation & Price Accumulation
+    -- -------------------------------------------------------------------------
     FOR v_item_rec IN 
         SELECT 
             x.product_id,
             TRIM(COALESCE(x.selected_weight, '')) AS selected_weight,
-            COALESCE(x.quantity, 0) AS quantity
+            (x.quantity)::INT AS quantity
         FROM jsonb_to_recordset(v_items) AS x(
             product_id TEXT,
             selected_weight TEXT,
-            quantity INT
+            quantity TEXT
         )
     LOOP
         v_item_idx := v_item_idx + 1;
@@ -221,7 +304,7 @@ BEGIN
         WHERE product_id = v_item_rec.product_id;
 
         IF v_weight_count > 0 THEN
-            -- Product HAS weight options: must match configured weight option
+            -- Product HAS weight options: must match an exact weight label
             SELECT price INTO v_db_price
             FROM public.product_weight_options
             WHERE product_id = v_item_rec.product_id
@@ -233,7 +316,7 @@ BEGIN
                     v_item_rec.selected_weight, v_db_product.name;
             END IF;
         ELSE
-            -- Product does NOT have weight options: use base price
+            -- Product does NOT have weight options: use base product price
             v_db_price := v_db_product.price;
         END IF;
 
@@ -256,7 +339,9 @@ BEGIN
         );
     END LOOP;
 
-    -- 4. Authoritative Coupon Verification
+    -- -------------------------------------------------------------------------
+    -- 6. Authoritative Coupon Verification
+    -- -------------------------------------------------------------------------
     IF v_coupon_code <> '' THEN
         SELECT * INTO v_coupon_rec
         FROM public.coupons
@@ -304,14 +389,14 @@ BEGIN
                 END LOOP;
 
                 IF v_coupon_eligible_subtotal <= 0 THEN
-                    RAISE EXCEPTION 'Coupon "%" is valid only for specific target product.', v_coupon_code;
+                    RAISE EXCEPTION 'Coupon "%" is valid only for the designated target product.', v_coupon_code;
                 END IF;
             ELSE
-                -- applies_to = 'all' or NULL
+                -- Default applies_to = 'all'
                 v_coupon_eligible_subtotal := v_subtotal;
             END IF;
 
-            -- Calculate discount value
+            -- Compute coupon discount value
             IF v_coupon_rec.discount_type = 'percentage' THEN
                 v_coupon_discount := ROUND((v_coupon_eligible_subtotal * v_coupon_rec.discount_value) / 100.0, 2);
                 IF v_coupon_rec.max_discount IS NOT NULL AND v_coupon_rec.max_discount > 0 THEN
@@ -321,7 +406,7 @@ BEGIN
                 v_coupon_discount := LEAST(v_coupon_eligible_subtotal, v_coupon_rec.discount_value);
             END IF;
 
-            -- Increment usage count
+            -- Increment usage_count ONLY when valid discount is calculated
             UPDATE public.coupons
             SET usage_count = COALESCE(usage_count, 0) + 1
             WHERE id = v_coupon_rec.id;
@@ -330,33 +415,38 @@ BEGIN
         END IF;
     END IF;
 
-    -- 5. Authoritative Delivery Fee (Free shipping threshold >= Rs 499, otherwise Rs 49)
+    -- -------------------------------------------------------------------------
+    -- 7. Authoritative Delivery Fee & Totals
+    -- -------------------------------------------------------------------------
     IF v_subtotal >= 499.00 OR v_subtotal = 0 THEN
         v_delivery_fee := 0.00;
     ELSE
         v_delivery_fee := 49.00;
     END IF;
 
-    -- 6. Authoritative Totals
     v_total_discount := LEAST(v_subtotal, v_coupon_discount);
     v_grand_total := GREATEST(0.00, ROUND(v_subtotal + v_delivery_fee - v_total_discount, 2));
 
-    -- 7. Generate Identifiers: "Aishu-00" prefix, "TRK-" tracking, and 256-bit session token
+    -- -------------------------------------------------------------------------
+    -- 8. Identifiers & Payment Session Token Generation
+    -- -------------------------------------------------------------------------
     v_order_id := 'ord-' || EXTRACT(EPOCH FROM NOW())::BIGINT || '-' || FLOOR(1000 + RANDOM() * 9000)::TEXT;
-    v_order_number := 'Aishu-00' || FLOOR(1000 + RANDOM() * 9000)::TEXT;
-    v_tracking_code := 'TRK-' || FLOOR(100000 + RANDOM() * 900000)::TEXT;
+    v_order_number := 'Aishu-00' || nextval('public.order_number_seq')::TEXT;
+    v_tracking_code := 'TRK-' || nextval('public.tracking_code_seq')::TEXT;
     
     v_payment_session_token := encode(gen_random_bytes(32), 'hex');
     v_payment_token_expires_at := NOW() + INTERVAL '30 minutes';
 
-    -- Payment status MUST match CHECK (payment_status IN ('pending', 'completed', 'authorized', 'paid', 'failed', 'refunded', 'cod'))
+    -- Payment status must strictly match CHECK (payment_status IN ('pending', 'completed', 'authorized', 'paid', 'failed', 'refunded', 'cod'))
     IF LOWER(v_payment_method) LIKE '%cod%' OR LOWER(v_payment_method) LIKE '%cash%' THEN
         v_payment_status := 'cod';
     ELSE
         v_payment_status := 'pending';
     END IF;
 
-    -- 8. Insert Primary Order Row
+    -- -------------------------------------------------------------------------
+    -- 9. Insert Primary Order Row
+    -- -------------------------------------------------------------------------
     INSERT INTO public.orders (
         id,
         order_number,
@@ -377,6 +467,7 @@ BEGIN
         order_status,
         applied_coupon_code,
         idempotency_key,
+        idempotency_payload_hash,
         admin_notes,
         created_at
     ) VALUES (
@@ -399,11 +490,14 @@ BEGIN
         'placed',
         CASE WHEN v_coupon_discount > 0 THEN v_coupon_code ELSE NULL END,
         CASE WHEN v_idempotency_key <> '' THEN v_idempotency_key ELSE NULL END,
+        CASE WHEN v_idempotency_key <> '' THEN v_payload_hash ELSE NULL END,
         v_delivery_notes,
         v_created_at
     );
 
-    -- 9. Insert Snapshotted Line Items, Decrement Inventory & Record Stock History Log
+    -- -------------------------------------------------------------------------
+    -- 10. Insert Snapshotted Line Items, Decrement Inventory & Record Stock Logs
+    -- -------------------------------------------------------------------------
     v_item_idx := 0;
     FOR v_item_rec IN SELECT * FROM jsonb_to_recordset(v_validated_items) AS z(
         product_id TEXT,
@@ -414,7 +508,7 @@ BEGIN
     ) LOOP
         v_item_idx := v_item_idx + 1;
 
-        -- Compatible with TEXT type for order_items.id
+        -- Guaranteed compatible with TEXT type for order_items.id
         INSERT INTO public.order_items (
             id,
             order_id,
@@ -432,13 +526,6 @@ BEGIN
             v_item_rec.unit_price,
             v_item_rec.quantity
         );
-
-        -- Atomic stock decrement
-        UPDATE public.products
-        SET inventory_count = GREATEST(0, inventory_count - v_item_rec.quantity),
-            out_of_stock = ((inventory_count - v_item_rec.quantity) <= 0),
-            updated_at = NOW()
-        WHERE id = v_item_rec.product_id;
 
         -- Stock History Log Entry (admin_name is NOT NULL, provided as 'Checkout System')
         INSERT INTO public.stock_history_logs (
@@ -462,7 +549,27 @@ BEGIN
         );
     END LOOP;
 
-    -- 10. Return Authoritative Order Output (matches frontend contract in src/lib/supabase/orders.ts)
+    -- Decrement stock by aggregated demand per product to guarantee exact balance
+    FOR v_agg_rec IN 
+        SELECT 
+            x.product_id,
+            SUM((x.quantity)::INT) AS total_demanded_qty
+        FROM jsonb_to_recordset(v_items) AS x(
+            product_id TEXT,
+            quantity TEXT
+        )
+        GROUP BY x.product_id
+    LOOP
+        UPDATE public.products
+        SET inventory_count = GREATEST(0, inventory_count - v_agg_rec.total_demanded_qty),
+            out_of_stock = ((inventory_count - v_agg_rec.total_demanded_qty) <= 0),
+            updated_at = NOW()
+        WHERE id = v_agg_rec.product_id;
+    END LOOP;
+
+    -- -------------------------------------------------------------------------
+    -- 11. Authoritative Frontend Response Contract
+    -- -------------------------------------------------------------------------
     RETURN jsonb_build_object(
         'success', true,
         'is_duplicate', false,
@@ -485,9 +592,9 @@ BEGIN
 END;
 $$;
 
--- 4. Set Execution Permissions (Guest checkout via anon, logged in customers via authenticated)
+-- 5. Set Execution Permissions (Guest checkout via anon, logged in customers via authenticated)
 REVOKE EXECUTE ON FUNCTION public.place_order_secure(JSONB) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.place_order_secure(JSONB) TO anon, authenticated, service_role;
 
--- 5. Force PostgREST to Immediately Reload Schema Cache
+-- 6. Force PostgREST to Immediately Reload Schema Cache
 NOTIFY pgrst, 'reload schema';
