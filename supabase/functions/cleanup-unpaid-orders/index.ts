@@ -9,6 +9,31 @@ serve(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Verify caller authorization: Service-role or authenticated Admin required
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return errorResponse('Missing Authorization header.', 401);
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    if (token !== supabaseServiceKey) {
+      const { data: userData, error: userErr } = await supabase.auth.getUser(token);
+      if (userErr || !userData.user) {
+        return errorResponse('Unauthorized: Valid admin session or service-role token required.', 401);
+      }
+
+      const { data: staffData } = await supabase
+        .from('admin_roles')
+        .select('role, status')
+        .eq('user_id', userData.user.id)
+        .eq('status', 'active')
+        .single();
+
+      if (!staffData) {
+        return errorResponse('Forbidden: Administrative privileges required.', 403);
+      }
+    }
+
     // Run cleanup of unpaid orders older than 30 minutes
     const { data, error } = await supabase.rpc('cleanup_expired_unpaid_orders', {
       p_timeout_minutes: 30,

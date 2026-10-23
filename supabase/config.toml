@@ -413,20 +413,26 @@ enabled = true
 # and column/key alignment. Set to "null" to emit raw, unformatted SQL.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":180,\"commaStyle\":\"trailing\"}"
 
-[functions.create-razorpay-order]
-verify_jwt = false
-
-[functions.verify-razorpay-payment]
-verify_jwt = false
+# Edge Functions JWT Verification Configuration
+# - razorpay-webhook: verify_jwt = false because Razorpay calls from external servers without Supabase JWTs.
+#   It verifies authenticity using its own HMAC-SHA256 signature (RAZORPAY_WEBHOOK_SECRET).
+# - Client & Admin functions: verify_jwt = true because they are called via supabase.functions.invoke,
+#   which supplies Supabase anon/user JWTs. Internal authorization further validates permissions.
 
 [functions.razorpay-webhook]
 verify_jwt = false
 
+[functions.create-razorpay-order]
+verify_jwt = true
+
+[functions.verify-razorpay-payment]
+verify_jwt = true
+
 [functions.reconcile-razorpay-payment]
-verify_jwt = false
+verify_jwt = true
 
 [functions.refund-razorpay-payment]
-verify_jwt = false
+verify_jwt = true
 
 [functions.cleanup-unpaid-orders]
-verify_jwt = false
+verify_jwt = true

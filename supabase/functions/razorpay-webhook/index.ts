@@ -97,8 +97,22 @@ serve(async (req: Request) => {
 
     const razorpayOrderId = paymentEntity?.order_id || orderEntity?.id;
     const razorpayPaymentId = paymentEntity?.id;
-    const storeOrderId =
+    let storeOrderId =
       paymentEntity?.notes?.store_order_id || orderEntity?.notes?.store_order_id;
+
+    // Resilient fallback: lookup by provider_order_id in payments table if notes are absent
+    if (!storeOrderId && razorpayOrderId) {
+      const { data: payRow } = await supabase
+        .from('payments')
+        .select('order_id')
+        .eq('provider_order_id', razorpayOrderId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      if (payRow?.order_id) {
+        storeOrderId = payRow.order_id;
+      }
+    }
 
     if (eventType === 'payment.captured' || eventType === 'order.paid') {
       if (storeOrderId) {
