@@ -69,27 +69,30 @@ serve(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // 4. Webhook Idempotency Check
-    const { data: existingEvent } = await supabase
+    // 4. Webhook Idempotency Check with Atomic Insert
+    const { error: insertErr } = await supabase
       .from('payment_webhook_events')
-      .select('id, status')
-      .eq('event_id', eventId)
-      .single();
-
-    if (existingEvent) {
-      return new Response(JSON.stringify({ status: 'already_processed' }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
+      .insert({
+        event_id: eventId,
+        event_type: eventType,
+        provider: 'razorpay',
+        status: 'processed',
+        payload_hash: await hmacSha256Hex(webhookSecret, eventId),
       });
-    }
 
-    // Record webhook event (Data minimization: store only event type and id)
-    await supabase.from('payment_webhook_events').insert({
-      event_id: eventId,
-      event_type: eventType,
-      provider: 'razorpay',
-      status: 'processed',
-    });
+    if (insertErr) {
+      if (
+        insertErr.code === '23505' ||
+        insertErr.message?.includes('duplicate key') ||
+        insertErr.message?.includes('unique constraint')
+      ) {
+        return new Response(JSON.stringify({ status: 'already_processed', event_id: eventId }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      console.warn('Webhook event record notice:', insertErr.message);
+    }
 
     // 5. Process Webhook Event Types
     const paymentEntity = event.payload?.payment?.entity;
@@ -115,18 +118,48 @@ serve(async (req: Request) => {
     }
 
     if (eventType === 'payment.captured' || eventType === 'order.paid') {
-      if (storeOrderId) {
+      if (storeOrderId && razorpayOrderId) {
+        // Fetch store order to validate amount and currency
+        const { data: storeOrder } = await supabase
+          .from('orders')
+          .select('id, grand_total, payment_status')
+          .eq('id', storeOrderId)
+          .single();
+
+        if (!storeOrder) {
+          console.error(`Webhook received for unknown store order: ${storeOrderId}`);
+          return new Response(JSON.stringify({ error: 'Order not found' }), { status: 404 });
+        }
+
+        // Validate amount (Razorpay payment entity amount is in integer paise)
+        if (paymentEntity?.amount !== undefined) {
+          const webhookAmountRupees = Number(paymentEntity.amount) / 100;
+          if (Math.abs(webhookAmountRupees - Number(storeOrder.grand_total)) > 0.01) {
+            console.error(
+              `Webhook amount mismatch: received ₹${webhookAmountRupees}, expected ₹${storeOrder.grand_total}`
+            );
+            return new Response(JSON.stringify({ error: 'Payment amount mismatch' }), { status: 400 });
+          }
+        }
+
+        if (paymentEntity?.currency && paymentEntity.currency.toUpperCase() !== 'INR') {
+          console.error(`Webhook currency mismatch: received ${paymentEntity.currency}`);
+          return new Response(JSON.stringify({ error: 'Invalid payment currency' }), { status: 400 });
+        }
+
         await supabase.rpc('finalize_payment_success', {
           p_order_id: storeOrderId,
           p_provider_payment_id: razorpayPaymentId || 'pay_webhook_captured',
-          p_provider_order_id: razorpayOrderId || 'order_webhook',
+          p_provider_order_id: razorpayOrderId,
+          p_amount: Number(storeOrder.grand_total),
+          p_currency: 'INR',
           p_method: paymentEntity?.method || 'online',
           p_signature_verified: true,
           p_metadata: { source: 'razorpay_webhook', webhook_event: eventType },
         });
       }
     } else if (eventType === 'payment.failed') {
-      if (storeOrderId) {
+      if (storeOrderId && razorpayOrderId) {
         await supabase.rpc('record_payment_failure', {
           p_order_id: storeOrderId,
           p_provider_order_id: razorpayOrderId,

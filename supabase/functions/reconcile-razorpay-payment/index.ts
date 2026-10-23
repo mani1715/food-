@@ -75,11 +75,15 @@ serve(async (req: Request) => {
 
     let reconcileResult;
     if (capturedPayment) {
-      const { data, error } = await supabase.rpc('reconcile_order_payment', {
+      const { data, error } = await supabase.rpc('finalize_payment_success', {
         p_order_id: orderId,
-        p_gateway_status: 'captured',
-        p_gateway_payment_id: capturedPayment.id,
-        p_gateway_amount_paise: capturedPayment.amount,
+        p_provider_payment_id: capturedPayment.id,
+        p_provider_order_id: payment.provider_order_id,
+        p_amount: Number(capturedPayment.amount) / 100,
+        p_currency: capturedPayment.currency || 'INR',
+        p_method: capturedPayment.method || 'online',
+        p_signature_verified: true,
+        p_metadata: { source: 'admin_reconciliation' },
       });
       reconcileResult = { status: 'captured', synced: !error, data };
     } else {

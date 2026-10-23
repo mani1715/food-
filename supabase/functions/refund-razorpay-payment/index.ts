@@ -58,7 +58,7 @@ serve(async (req: Request) => {
       .from('payments')
       .select('*')
       .eq('order_id', orderId)
-      .in('status', ['paid', 'partially_refunded'])
+      .in('status', ['captured', 'paid', 'partially_refunded'])
       .order('created_at', { ascending: false })
       .limit(1)
       .single();

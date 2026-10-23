@@ -129,7 +129,7 @@ CREATE TABLE IF NOT EXISTS public.payment_webhook_events (
     event_type TEXT NOT NULL,
     provider TEXT NOT NULL DEFAULT 'razorpay',
     payload_hash TEXT,
-    status TEXT NOT NULL DEFAULT 'processed' CHECK (status IN ('processed', 'failed', 'ignored')),
+    status TEXT NOT NULL DEFAULT 'processed' CHECK (status IN ('processing', 'processed', 'failed', 'ignored')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -151,7 +151,7 @@ CREATE OR REPLACE FUNCTION public.place_order_secure(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public, extensions, pg_temp
+SET search_path = pg_catalog, extensions, public, pg_temp
 AS $$
 DECLARE
     v_user_id UUID := auth.uid();
@@ -785,7 +785,7 @@ CREATE OR REPLACE FUNCTION public.record_payment_attempt(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public, extensions, pg_temp
+SET search_path = pg_catalog, extensions, public, pg_temp
 AS $$
 DECLARE
     v_order RECORD;
@@ -833,10 +833,14 @@ END;
 $$;
 
 -- 7. Finalize Payment Success RPC (Restricted strictly to trusted service_role)
+DROP FUNCTION IF EXISTS public.finalize_payment_success(TEXT, TEXT, TEXT, TEXT, BOOLEAN, JSONB);
+
 CREATE OR REPLACE FUNCTION public.finalize_payment_success(
     p_order_id TEXT,
     p_provider_payment_id TEXT,
     p_provider_order_id TEXT,
+    p_amount NUMERIC DEFAULT NULL,
+    p_currency TEXT DEFAULT 'INR',
     p_method TEXT DEFAULT 'online',
     p_signature_verified BOOLEAN DEFAULT true,
     p_metadata JSONB DEFAULT '{}'::jsonb
@@ -844,7 +848,7 @@ CREATE OR REPLACE FUNCTION public.finalize_payment_success(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public, extensions, pg_temp
+SET search_path = pg_catalog, extensions, public, pg_temp
 AS $$
 DECLARE
     v_order RECORD;
@@ -883,56 +887,45 @@ BEGIN
         );
     END IF;
 
-    -- Verify that the recorded payment attempt matches the provider order ID if attempt was logged
-    SELECT id, amount, status INTO v_pay_record
+    -- Require a matching recorded provider order attempt in payments table
+    SELECT id, amount, currency, status INTO v_pay_record
     FROM public.payments
     WHERE order_id = p_order_id
       AND provider_order_id = p_provider_order_id
     ORDER BY created_at DESC
-    LIMIT 1;
+    LIMIT 1
+    FOR UPDATE;
 
-    -- Update payments tracking table
-    IF FOUND THEN
-        UPDATE public.payments
-        SET status = 'captured',
-            provider_payment_id = p_provider_payment_id,
-            provider_signature = 'verified',
-            payment_method = COALESCE(p_method, 'online'),
-            metadata = p_metadata,
-            captured_at = NOW(),
-            updated_at = NOW()
-        WHERE id = v_pay_record.id;
-    ELSE
-        INSERT INTO public.payments (
-            order_id,
-            provider,
-            provider_order_id,
-            provider_payment_id,
-            provider_signature,
-            amount,
-            currency,
-            status,
-            payment_method,
-            metadata,
-            captured_at,
-            created_at,
-            updated_at
-        ) VALUES (
-            p_order_id,
-            'razorpay',
-            p_provider_order_id,
-            p_provider_payment_id,
-            'verified',
-            v_order.grand_total,
-            'INR',
-            'captured',
-            COALESCE(p_method, 'online'),
-            p_metadata,
-            NOW(),
-            NOW(),
-            NOW()
-        );
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No matching recorded payment attempt found for provider order "%" on order "%".',
+            p_provider_order_id, p_order_id;
     END IF;
+
+    -- Validate payment amount and currency
+    IF p_amount IS NOT NULL AND p_amount <> v_order.grand_total THEN
+        RAISE EXCEPTION 'Payment amount mismatch: passed amount % does not match order grand total %.',
+            p_amount, v_order.grand_total;
+    END IF;
+
+    IF v_pay_record.amount <> v_order.grand_total THEN
+        RAISE EXCEPTION 'Recorded payment attempt amount % does not match order grand total %.',
+            v_pay_record.amount, v_order.grand_total;
+    END IF;
+
+    IF UPPER(COALESCE(p_currency, v_pay_record.currency, 'INR')) <> 'INR' THEN
+        RAISE EXCEPTION 'Invalid payment currency %. Only INR is supported.', p_currency;
+    END IF;
+
+    -- Update payments tracking table to captured
+    UPDATE public.payments
+    SET status = 'captured',
+        provider_payment_id = p_provider_payment_id,
+        provider_signature = 'verified',
+        payment_method = COALESCE(p_method, 'online'),
+        metadata = p_metadata,
+        captured_at = NOW(),
+        updated_at = NOW()
+    WHERE id = v_pay_record.id;
 
     -- Update primary order row strictly within allowed constraints ('completed', 'confirmed')
     UPDATE public.orders
@@ -965,21 +958,52 @@ CREATE OR REPLACE FUNCTION public.record_payment_failure(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public, extensions, pg_temp
+SET search_path = pg_catalog, extensions, public, pg_temp
 AS $$
+DECLARE
+    v_order RECORD;
 BEGIN
     IF current_user <> 'service_role' AND auth.role() <> 'service_role' THEN
         RAISE EXCEPTION 'Access Denied: record_payment_failure can only be executed by trusted server-side payment functions.';
     END IF;
 
+    SELECT id, payment_status, order_status INTO v_order
+    FROM public.orders
+    WHERE id = p_order_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Order not found');
+    END IF;
+
+    -- Prevent delayed failure events from overwriting successful payments!
+    IF v_order.payment_status = 'completed' THEN
+        UPDATE public.payments
+        SET status = 'failed',
+            failure_code = p_failure_code,
+            failure_description = p_failure_desc,
+            failed_at = NOW(),
+            updated_at = NOW()
+        WHERE order_id = p_order_id 
+          AND (provider_order_id = p_provider_order_id OR provider_order_id IS NULL);
+
+        RETURN jsonb_build_object(
+            'success', true,
+            'ignored_for_order', true,
+            'reason', 'Order is already marked completed. Payment status was not overwritten.'
+        );
+    END IF;
+
     UPDATE public.orders
     SET payment_status = 'failed'
-    WHERE id = p_order_id;
+    WHERE id = p_order_id
+      AND payment_status <> 'completed';
 
     UPDATE public.payments
     SET status = 'failed',
         failure_code = p_failure_code,
         failure_description = p_failure_desc,
+        failed_at = NOW(),
         updated_at = NOW()
     WHERE order_id = p_order_id 
       AND (provider_order_id = p_provider_order_id OR provider_order_id IS NULL);
@@ -998,45 +1022,74 @@ CREATE OR REPLACE FUNCTION public.record_refund_success(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public, extensions, pg_temp
+SET search_path = pg_catalog, extensions, public, pg_temp
 AS $$
+DECLARE
+    v_pay RECORD;
+    v_new_refund_amount NUMERIC;
+    v_new_status TEXT;
 BEGIN
     IF current_user <> 'service_role' AND auth.role() <> 'service_role' THEN
         RAISE EXCEPTION 'Access Denied: record_refund_success can only be executed by trusted server-side payment functions.';
     END IF;
 
+    SELECT id, amount, COALESCE(refund_amount, 0) AS refund_amount INTO v_pay
+    FROM public.payments
+    WHERE order_id = p_order_id
+    ORDER BY created_at DESC
+    LIMIT 1
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Payment record not found for refund');
+    END IF;
+
+    v_new_refund_amount := v_pay.refund_amount + p_refund_amount;
+    IF v_new_refund_amount >= v_pay.amount THEN
+        v_new_status := 'refunded';
+    ELSE
+        v_new_status := 'partially_refunded';
+    END IF;
+
     UPDATE public.payments
-    SET status = 'refunded',
+    SET status = v_new_status,
         refund_id = p_refund_id,
-        refund_amount = p_refund_amount,
+        refund_amount = v_new_refund_amount,
         refunded_at = NOW(),
         updated_at = NOW()
-    WHERE order_id = p_order_id;
+    WHERE id = v_pay.id;
 
     UPDATE public.orders
     SET admin_notes = COALESCE(admin_notes, '') || ' [Refund processed: ₹' || p_refund_amount || ' - ' || p_reason || ']'
     WHERE id = p_order_id;
 
-    RETURN jsonb_build_object('success', true);
+    RETURN jsonb_build_object(
+        'success', true,
+        'cumulative_refund', v_new_refund_amount,
+        'payment_status', v_new_status
+    );
 END;
 $$;
 
 -- 10. Order Cancellation and Inventory Auto-Release Engine
+DROP FUNCTION IF EXISTS public.cancel_order_secure(TEXT, TEXT);
+
 CREATE OR REPLACE FUNCTION public.cancel_order_secure(
     p_order_id TEXT,
-    p_reason TEXT DEFAULT 'Cancelled by customer'
+    p_reason TEXT DEFAULT 'Cancelled by customer',
+    p_refund_id TEXT DEFAULT NULL
 )
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public, extensions, pg_temp
+SET search_path = pg_catalog, extensions, public, pg_temp
 AS $$
 DECLARE
     v_order RECORD;
     v_item RECORD;
     v_is_authorized BOOLEAN := false;
 BEGIN
-    SELECT id, order_number, customer_id, order_status, payment_status, payment_method, applied_coupon_code
+    SELECT id, order_number, customer_id, order_status, payment_status, payment_method, applied_coupon_code, grand_total
     INTO v_order
     FROM public.orders
     WHERE id = p_order_id
@@ -1066,6 +1119,31 @@ BEGIN
         );
     END IF;
 
+    -- Prevent cancellation of paid orders unless refund workflow is handled by staff/service_role
+    IF v_order.payment_status = 'completed' THEN
+        IF current_user <> 'service_role' AND auth.role() <> 'service_role' THEN
+            RETURN jsonb_build_object(
+                'success', false,
+                'error', 'Paid orders cannot be self-cancelled. Please contact customer support for cancellations and refunds.'
+            );
+        END IF;
+
+        -- Staff or service_role cancellation of paid order:
+        IF p_refund_id IS NOT NULL AND p_refund_id <> '' THEN
+            UPDATE public.payments
+            SET status = 'refunded',
+                refund_id = p_refund_id,
+                refund_amount = v_order.grand_total,
+                refunded_at = NOW(),
+                updated_at = NOW()
+            WHERE order_id = p_order_id;
+        ELSE
+            UPDATE public.orders
+            SET admin_notes = COALESCE(admin_notes, '') || ' [CANCELLED: Refund processing required for amount ₹' || v_order.grand_total || ']'
+            WHERE id = p_order_id;
+        END IF;
+    END IF;
+
     -- Only allow cancellation of unfulfilled orders
     IF v_order.order_status IN ('shipped', 'out for delivery', 'delivered') THEN
         RETURN jsonb_build_object(
@@ -1074,12 +1152,14 @@ BEGIN
         );
     END IF;
 
-    -- Release inventory back to products table
+    -- Release inventory back to products table exactly once, aggregated per product in ASC order
     FOR v_item IN
-        SELECT product_id, quantity, product_name_snapshot
+        SELECT product_id, SUM(quantity) AS quantity, MAX(product_name_snapshot) AS product_name_snapshot
         FROM public.order_items
         WHERE order_id = p_order_id
           AND product_id IS NOT NULL
+        GROUP BY product_id
+        ORDER BY product_id ASC
     LOOP
         UPDATE public.products
         SET inventory_count = inventory_count + v_item.quantity,
@@ -1087,7 +1167,7 @@ BEGIN
             updated_at = NOW()
         WHERE id = v_item.product_id;
 
-        -- Record Restock Log in stock_history_logs
+        -- Record Restock Log in stock_history_logs (idempotent ON CONFLICT)
         INSERT INTO public.stock_history_logs (
             id,
             product_id,
@@ -1106,14 +1186,18 @@ BEGIN
             'Restock from cancelled order #' || v_order.order_number,
             'Cancellation Engine (Server)',
             NOW()
-        );
+        ) ON CONFLICT (id) DO NOTHING;
     END LOOP;
 
-    -- If a coupon was applied, restore 1 usage count
+    -- If a coupon was applied, restore 1 usage count exactly once
     IF v_order.applied_coupon_code IS NOT NULL AND v_order.applied_coupon_code <> '' THEN
         UPDATE public.coupons
         SET usage_count = GREATEST(0, usage_count - 1)
         WHERE UPPER(TRIM(code)) = UPPER(TRIM(v_order.applied_coupon_code));
+
+        UPDATE public.orders
+        SET applied_coupon_code = NULL
+        WHERE id = p_order_id;
     END IF;
 
     -- Update Order Status
@@ -1138,7 +1222,7 @@ CREATE OR REPLACE FUNCTION public.cleanup_expired_unpaid_orders(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public, extensions, pg_temp
+SET search_path = pg_catalog, extensions, public, pg_temp
 AS $$
 DECLARE
     v_order RECORD;
@@ -1156,6 +1240,7 @@ BEGIN
           AND payment_method NOT ILIKE '%cash%'
           AND order_status = 'placed'
           AND created_at < NOW() - (p_timeout_minutes || ' minutes')::INTERVAL
+        FOR UPDATE SKIP LOCKED
     LOOP
         PERFORM public.cancel_order_secure(v_order.id, 'Auto-cancelled due to payment timeout (' || p_timeout_minutes || 'm)');
         v_cancelled_count := v_cancelled_count + 1;
@@ -1174,15 +1259,15 @@ REVOKE ALL ON FUNCTION public.place_order_secure(JSONB) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.place_order_secure(JSONB) TO anon, authenticated, service_role;
 
 -- B. cancel_order_secure: callable by authenticated users (own orders) and service_role
-REVOKE ALL ON FUNCTION public.cancel_order_secure(TEXT, TEXT) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.cancel_order_secure(TEXT, TEXT) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.cancel_order_secure(TEXT, TEXT, TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.cancel_order_secure(TEXT, TEXT, TEXT) TO authenticated, service_role;
 
 -- C. Privileged Payment Lifecycle RPCs: STRICTLY service_role only!
 REVOKE ALL ON FUNCTION public.record_payment_attempt(TEXT, TEXT, NUMERIC, TEXT) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.record_payment_attempt(TEXT, TEXT, NUMERIC, TEXT) TO service_role;
 
-REVOKE ALL ON FUNCTION public.finalize_payment_success(TEXT, TEXT, TEXT, TEXT, BOOLEAN, JSONB) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.finalize_payment_success(TEXT, TEXT, TEXT, TEXT, BOOLEAN, JSONB) TO service_role;
+REVOKE ALL ON FUNCTION public.finalize_payment_success(TEXT, TEXT, TEXT, NUMERIC, TEXT, TEXT, BOOLEAN, JSONB) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.finalize_payment_success(TEXT, TEXT, TEXT, NUMERIC, TEXT, TEXT, BOOLEAN, JSONB) TO service_role;
 
 REVOKE ALL ON FUNCTION public.record_payment_failure(TEXT, TEXT, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.record_payment_failure(TEXT, TEXT, TEXT, TEXT) TO service_role;

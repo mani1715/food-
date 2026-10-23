@@ -62,12 +62,22 @@ serve(async (req: Request) => {
     // 1. Fetch Order Record and Verify Authorization
     const { data: order, error: orderErr } = await supabase
       .from('orders')
-      .select('id, customer_id, payment_session_token, payment_token_expires_at')
+      .select('id, customer_id, payment_session_token, payment_token_expires_at, grand_total, payment_status, order_status')
       .eq('id', orderId)
       .single();
 
     if (orderErr || !order) {
       return errorResponse('Order not found.', 404);
+    }
+
+    if (order.payment_status === 'completed') {
+      return jsonResponse({
+        success: true,
+        message: 'Payment has already been verified and marked completed.',
+        orderId,
+        paymentStatus: 'completed',
+        orderStatus: order.order_status || 'confirmed',
+      });
     }
 
     let isAuthorized = false;
@@ -107,13 +117,22 @@ serve(async (req: Request) => {
     // 2. Verify Payment Attempt Belongs to Order in Database
     const { data: paymentAttempt, error: payErr } = await supabase
       .from('payments')
-      .select('id, order_id, amount, status')
+      .select('id, order_id, amount, currency, status')
       .eq('order_id', orderId)
       .eq('provider_order_id', razorpayOrderId)
       .single();
 
     if (payErr || !paymentAttempt) {
       return errorResponse('Invalid payment attempt reference for this order.', 400);
+    }
+
+    // Authoritative Amount and Currency Matching Validation
+    if (Number(paymentAttempt.amount) !== Number(order.grand_total)) {
+      return errorResponse('Payment attempt amount does not match order grand total.', 400);
+    }
+
+    if (paymentAttempt.currency && paymentAttempt.currency.toUpperCase() !== 'INR') {
+      return errorResponse('Invalid payment attempt currency. Expected INR.', 400);
     }
 
     // 3. Constant-Time HMAC SHA256 Signature Verification
@@ -139,6 +158,8 @@ serve(async (req: Request) => {
       p_order_id: orderId,
       p_provider_payment_id: razorpayPaymentId,
       p_provider_order_id: razorpayOrderId,
+      p_amount: Number(order.grand_total),
+      p_currency: 'INR',
       p_method: 'online',
       p_signature_verified: true,
       p_metadata: { source: 'client_callback' },
@@ -153,7 +174,7 @@ serve(async (req: Request) => {
       success: true,
       message: 'Payment verified successfully.',
       orderId,
-      paymentStatus: finalizeData?.payment_status || 'paid',
+      paymentStatus: finalizeData?.payment_status || 'completed',
       orderStatus: finalizeData?.order_status || 'confirmed',
       isLatePayment: finalizeData?.is_late_payment || false,
     });
