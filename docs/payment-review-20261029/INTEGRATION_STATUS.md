@@ -1,13 +1,13 @@
 # Payment review integration status
 
-The corrected October 29 package is preserved in this folder, including its checksum manifest. The create-order handler, shared helpers, and behavioral tests are also integrated into the application source tree.
+The candidate in `supabase/migrations/20261029110000_aishu_payment_lifecycle_hardening.sql` under this review folder now consolidates the reported-schema checkout correction and the complete payment lifecycle. It is the single candidate for staging review; it supersedes the separate checkout-only draft and earlier candidate contents. It is not installed remotely.
 
-The consolidated SQL stays here as a review candidate, outside the active migration directory. Do not run db push or replay historical migrations: their repeated version prefixes and the remote migration baseline still require reconciliation. The application handler requires the reviewed idempotent record_payment_attempt RPC before deployment.
+Checkout uses weight-option prices only and preserves the existing item ID default. The migration includes payment/refund/webhook ledgers, all lifecycle RPCs, grants, customer INSERT-policy removal, and a transaction boundary. Existing active historical migrations are not a production deployment plan and must not be replayed.
 
-Local evidence: 11 package checksums verified; 12 package tests passed; candidate preflight, migration execution and repeat execution passed on disposable PostgreSQL fixtures; targeted database assertions passed. These results do not certify the actual remote schema or Supabase/Razorpay integration.
+The production handler and regression tests were already integrated into the source tree. Deployment still requires the matching database RPCs first. The new local database tests and their evidence are documented in LOCAL_VALIDATION.md.
 
-Production deployment is blocked pending a confirmed non-production Supabase target, remote schema comparison, approved migration plan, full Razorpay test-mode lifecycle validation, and a recovery plan. No secrets, remote SQL, Edge deployments, or frontend publication are authorized by this code update.
+The reported catalog came from the user's other chat. This workspace has not independently connected to the production catalog. Local fixtures cover the supplied findings; they are not a complete production export or full Supabase runtime.
 
-The source repository publishes production on pushes to main. Keep this work on a review branch until deployment is explicitly approved.
+Keep the GitHub PR in draft: a separate Supabase staging target, remote schema/history reconciliation, real Razorpay test-mode lifecycle validation, recoverable production rollout, and explicit deployment approval remain required. A push to main triggers frontend production publishing.
 
-Repository packaging removed trailing SQL whitespace and regenerated the manifest. The original downloaded ZIP remains unchanged. Package bytes are preserved by a local .gitattributes rule.
+No remote SQL, migration-history edits, secrets, Edge deployments or frontend publication were performed. SHA256SUMS.txt covers the current review package except itself and .gitattributes. Original downloaded ZIPs remain unchanged.

@@ -4,6 +4,16 @@ import { readFile } from 'node:fs/promises';
 
 const root = new URL('../', import.meta.url);
 
+test('consolidated checkout uses option pricing and preserves item identifiers', async () => {
+  const sql = await readFile(new URL('supabase/migrations/20261029110000_aishu_payment_lifecycle_hardening.sql', root), 'utf8');
+  assert.equal((sql.match(/CREATE OR REPLACE FUNCTION public\.place_order_secure\(/g) || []).length, 1);
+  assert.doesNotMatch(sql, /\('products','price'\)|v_db_product\.price|ALTER COLUMN id SET DEFAULT/);
+  assert.match(sql, /No configured weight-option price/);
+  assert.match(sql, /DROP POLICY IF EXISTS "Customers can create orders"/);
+  assert.match(sql, /^BEGIN;/);
+  assert.match(sql, /COMMIT;\s*$/);
+});
+
 test('financial table privilege block appears after refund operation table creation', async () => {
   const sql = await readFile(new URL('supabase/migrations/20261029110000_aishu_payment_lifecycle_hardening.sql', root), 'utf8');
   const table = sql.indexOf('CREATE TABLE IF NOT EXISTS public.payment_refund_operations');

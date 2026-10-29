@@ -45,3 +45,7 @@
 ## Explicit non-actions
 
 This package does not create a project/branch, alter secrets, run SQL remotely, change migration history, deploy Edge Functions, or publish frontend code.
+
+## Consolidated candidate update
+
+Use only the consolidated candidate in this review folder; do not apply the separate checkout draft or previous candidate first. Local execution and rerun now pass on the reported-schema fixture (see LOCAL_VALIDATION.md); this does not replace real Supabase staging. Preserve existing item-ID defaults and use weight-option prices exclusively. Verify unknown INSERT/ALL policies do not allow customer bypass. Sequence setval effects on existing sequences can survive rollback; preserve forward progress and allow gaps.

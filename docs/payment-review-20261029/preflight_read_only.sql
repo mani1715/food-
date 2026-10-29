@@ -7,7 +7,7 @@ SELECT current_database() AS database_name, current_user AS sql_role,
 SELECT n.nspname AS schema_name, c.relname AS relation_name, c.relkind
 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
 WHERE n.nspname IN ('public','auth')
-  AND c.relname IN ('orders','order_items','products','coupons','stock_history_logs','admin_roles','payments','payment_refunds','payment_webhook_events','payment_refund_operations','users')
+  AND c.relname IN ('orders','order_items','products','product_weight_options','coupons','stock_history_logs','admin_roles','payments','payment_refunds','payment_webhook_events','payment_refund_operations','users')
 ORDER BY 1,2;
 
 -- 2. Columns, nullability, defaults, and data types for all checkout dependencies.
@@ -15,7 +15,7 @@ SELECT table_name, ordinal_position, column_name, data_type, udt_name,
        is_nullable, column_default
 FROM information_schema.columns
 WHERE table_schema='public'
-  AND table_name IN ('orders','order_items','products','coupons','stock_history_logs','admin_roles','payments','payment_refunds','payment_webhook_events','payment_refund_operations')
+  AND table_name IN ('orders','order_items','products','product_weight_options','coupons','stock_history_logs','admin_roles','payments','payment_refunds','payment_webhook_events','payment_refund_operations')
 ORDER BY table_name, ordinal_position;
 
 -- 3. Constraints and FK delete behavior, including validation state.
@@ -23,7 +23,7 @@ SELECT conrelid::regclass AS table_name, conname, contype,
        pg_get_constraintdef(oid, true) AS definition, convalidated
 FROM pg_constraint
 WHERE connamespace='public'::regnamespace
-  AND conrelid::regclass::text IN ('orders','order_items','products','coupons','stock_history_logs','admin_roles','payments','payment_refunds','payment_webhook_events','payment_refund_operations')
+  AND conrelid::regclass::text IN ('orders','order_items','products','product_weight_options','coupons','stock_history_logs','admin_roles','payments','payment_refunds','payment_webhook_events','payment_refund_operations')
 ORDER BY 1,2;
 
 -- 4. Indexes and sequence state (confirm duplicate guards and non-regressive order numbering).

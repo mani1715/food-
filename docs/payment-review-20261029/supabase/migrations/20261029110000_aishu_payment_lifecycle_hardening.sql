@@ -1,8 +1,9 @@
+BEGIN;
 -- ==============================================================================
 -- Candidate migration: 20261029110000_aishu_payment_lifecycle_hardening.sql
 -- REVIEW ONLY. Do not execute until target project, schema preflight, and migration history are approved.
 -- Consolidates final checkout/payment/refund/webhook/cleanup dependencies from local 012 + 013.
---              Verified against confirmed live schema on akublyjmyrcoeemuxugr.
+--              Adapted to REPORTED catalog findings; not independently verified against production.
 --              Security & Architecture:
 --              1. Privileged payment RPCs (finalize, record_attempt, record_failure,
 --                 record_refund, cleanup) restricted strictly to service_role.
@@ -16,12 +17,13 @@
 --              9. Pinned search_path = pg_catalog, public, extensions, pg_temp on all functions.
 -- ==============================================================================
 
--- Verified remote baseline gate (from read-only inspection on 2026-10-29).
+-- Reported remote baseline gate (external read-only findings from 2026-10-29).
 -- Stop on unexpected schema drift; do not silently adapt a different project.
 DO $$
 BEGIN
     IF to_regclass('public.orders') IS NULL OR to_regclass('public.order_items') IS NULL
-       OR to_regclass('public.products') IS NULL OR to_regclass('public.coupons') IS NULL
+       OR to_regclass('public.products') IS NULL OR to_regclass('public.product_weight_options') IS NULL
+       OR to_regclass('public.coupons') IS NULL
        OR to_regclass('public.stock_history_logs') IS NULL OR to_regclass('public.admin_roles') IS NULL
        OR to_regclass('auth.users') IS NULL OR to_regprocedure('auth.uid()') IS NULL
        OR to_regprocedure('auth.role()') IS NULL THEN
@@ -38,7 +40,7 @@ BEGIN
           ('orders','admin_notes'), ('orders','cancel_reason'),
           ('order_items','id'), ('order_items','order_id'), ('order_items','product_id'),
           ('order_items','selected_weight'), ('order_items','unit_price'), ('order_items','quantity'),
-          ('products','id'), ('products','name'), ('products','price'), ('products','category_id'),
+          ('products','id'), ('products','name'), ('products','category_id'),
           ('products','inventory_count'), ('products','out_of_stock'), ('products','updated_at'),
           ('product_weight_options','product_id'), ('product_weight_options','weight_label'), ('product_weight_options','price'),
           ('coupons','code'), ('coupons','is_enabled'), ('coupons','expiry_date'),
@@ -142,12 +144,7 @@ ALTER TABLE public.order_items
     ADD COLUMN IF NOT EXISTS product_name_snapshot TEXT,
     ADD COLUMN IF NOT EXISTS line_total NUMERIC DEFAULT 0;
 
-DO $$
-BEGIN
-    ALTER TABLE public.order_items ALTER COLUMN id SET DEFAULT gen_random_uuid();
-EXCEPTION WHEN OTHERS THEN
-    NULL;
-END $$;
+-- Preserve the existing order_items.id type and default.
 
 ALTER TABLE public.stock_history_logs
     ADD COLUMN IF NOT EXISTS product_name TEXT,
@@ -584,7 +581,7 @@ BEGIN
         ORDER BY x.product_id ASC
     LOOP
         -- Lock product row in ascending sorted order to eliminate deadlocks
-        SELECT id, name, inventory_count, out_of_stock, price, category_id
+        SELECT id, name, inventory_count, out_of_stock, category_id
         INTO v_db_product
         FROM public.products
         WHERE id = v_agg_rec.product_id
@@ -616,7 +613,7 @@ BEGIN
     LOOP
         v_item_idx := v_item_idx + 1;
 
-        SELECT id, name, price, category_id
+        SELECT id, name, category_id
         INTO v_db_product
         FROM public.products
         WHERE id = v_item_rec.product_id;
@@ -639,8 +636,9 @@ BEGIN
                     v_item_rec.selected_weight, v_db_product.name;
             END IF;
         ELSE
-            -- Product does NOT have weight options: use base product price
-            v_db_price := v_db_product.price;
+            -- Live catalog has no products.price column. Fail closed if an item has
+            -- no configured weight-option price; never invent a fallback price.
+            RAISE EXCEPTION 'No configured weight-option price exists for product "%".', v_db_product.name;
         END IF;
 
         IF v_db_price IS NULL OR v_db_price <= 0 THEN
@@ -945,7 +943,6 @@ BEGIN
 END;
 $$;
 
--- 6. Record Payment Attempt RPC (Restricted strictly to trusted service_role)
 CREATE OR REPLACE FUNCTION public.record_payment_attempt(
     p_order_id TEXT,
     p_provider_order_id TEXT,
@@ -2216,3 +2213,13 @@ GRANT EXECUTE ON FUNCTION public.force_fail_refund_operation(UUID, TEXT, TEXT, B
 
 REVOKE ALL ON FUNCTION public.record_refund_success(TEXT, TEXT, NUMERIC, TEXT, TEXT, UUID) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.record_refund_success(TEXT, TEXT, NUMERIC, TEXT, TEXT, UUID) TO service_role;
+
+-- All customer order writes must use the authoritative checkout RPC.
+REVOKE INSERT ON TABLE public.orders, public.order_items FROM anon;
+DROP POLICY IF EXISTS "Customers can create orders" ON public.orders;
+DROP POLICY IF EXISTS "Customers can create order items" ON public.order_items;
+DROP POLICY IF EXISTS "Checkout can insert orders" ON public.orders;
+DROP POLICY IF EXISTS "Checkout can insert order items" ON public.order_items;
+NOTIFY pgrst, 'reload schema';
+
+COMMIT;

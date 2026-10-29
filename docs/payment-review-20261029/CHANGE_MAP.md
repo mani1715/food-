@@ -6,12 +6,15 @@
 
 **Target boundary:** `akublyjmyrcoeemuxugr` is the production project referenced by the handoff, not an approved staging target. Do not apply this migration there.
 
-## Verified remote findings → proposed changes
+## Reported remote findings → proposed changes
 
 The mapping below is based on the read-only inspection summarized in the handoff context and the supplied source ZIP. It is not a claim that this candidate has been executed against a live staging database.
 
-| Verified finding | Proposed change | Why / safety gate |
+| Reported finding | Proposed change | Why / safety gate |
 |---|---|---|
+| Reported `products.price` absent; pricing is in weight options | Use option prices exclusively; reject missing options | One consolidated checkout definition; no fabricated base-price column |
+| Reported `order_items.id` defaults to an `oitem-` UUID string | Preserve existing column type and default | No swallowed ALTER DEFAULT failures |
+| Customer insert policies permit bypassing authoritative checkout | Remove the two reported and two historical checkout INSERT policy names; retain admin policies | Verify all actual policies on staging; unknown permissive policies are not automatically removed |
 | `public.orders` and `public.order_items` exist; the remote order table has `order_number NOT NULL` without a default | Create `order_number_seq` and `tracking_code_seq` if missing; synchronize forward only; `place_order_secure` explicitly supplies both identifiers | Sequence sync never moves backwards; unique versioned migration; order number is not left to a missing default |
 | Remote `orders` already has `id` default, delivery fields, coupon scope and stock-history fields in partial form | Add only absent columns with `ADD COLUMN IF NOT EXISTS`; preserve existing IDs and unrelated data | Candidate is additive and reconciles known partial convergence rather than replaying 001–011 |
 | Missing remote order columns: `payment_session_token`, `payment_token_expires_at`, `idempotency_key`, `idempotency_payload_hash`, `applied_coupon_code` | Add these columns and indexes | Required by guest payment authorization, order idempotency and coupon restoration |
@@ -32,7 +35,7 @@ The mapping below is based on the read-only inspection summarized in the handoff
 - `auth.uid()` and `auth.role()` plus `auth.users`.
 - `public.orders`: `id`, `order_number`, `tracking_code`, `customer_id`, customer name/phone/email, `delivery_address_json`, subtotal, delivery fee, discount amount, grand total, payment method/status, order status, timestamps, delivery days, cancel reason, admin notes, `applied_coupon_code`, idempotency fields, guest payment token fields.
 - `public.order_items`: `order_id`, `product_id`, `product_name_snapshot`, `selected_weight`, `unit_price`, `quantity`, `line_total`.
-- `public.products`: product identifier, inventory count, out-of-stock flag, updated timestamp, price/weight data consumed by checkout.
+- `public.products`: product identifier, inventory count, out-of-stock flag, updated timestamp, no base price column. `public.product_weight_options` supplies product_id, weight_label and price.
 - `public.coupons`: code, usage count, limits/validity fields, discount configuration, and scope columns (`applies_to`, `target_category`, `target_product_id`).
 - `public.stock_history_logs`: id, product id/name, type, quantity, note, admin name, created timestamp.
 - `public.admin_roles`: user id, status (used by refund-operation staff read policy and Edge Function staff authorization).
