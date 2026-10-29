@@ -81,6 +81,6 @@ The candidate revokes browser-role writes to financial tables and grants mutatio
 
 ## Known review limitations
 
-- Candidate SQL has not been executed against PostgreSQL/Supabase for this corrected snapshot because a local PostgreSQL client/server is unavailable in this environment. The Node suite now includes direct execution of the injected create-razorpay-order handler using fake dependencies; it does not prove SQL execution or live Razorpay/Supabase integration.
+- The consolidated candidate passed local PostgreSQL 17 execution, repeat execution, checkout/lifecycle assertions and concurrency checks on October 29, 2026. See LOCAL_VALIDATION.md for evidence and fixture assumptions. It has not been executed on remote Supabase staging; local fixture success does not prove full Supabase/Razorpay integration.
 - Local source handoff reported 78 historical tests and a build passed on October 25, 2026; those historical results were not rerun for this artifact package.
-- Full validation requires a selected staging project and Razorpay test mode. No secret values are included or requested.
+- The user reports staging project aura-foods-staging (`mjnktiyufvzkibrsdxug`) is healthy and empty. This workspace has not independently verified its identity or catalog. Full validation requires a reviewed schema-only baseline and separate approval for staging writes, followed by Razorpay test-mode integration. No secret values are included or requested.
