@@ -30,6 +30,44 @@ function timingSafeEqual(a: string, b: string): boolean {
   return result === 0;
 }
 
+async function completeWebhookEventSafe(
+  supabase: any,
+  eventId: string,
+  status: string,
+  claimToken: string | null | undefined,
+  errorMessage?: string
+): Promise<{ success: boolean; stale?: boolean }> {
+  try {
+    const { data, error } = await supabase.rpc('complete_webhook_event', {
+      p_event_id: eventId,
+      p_status: status,
+      p_claim_token: claimToken || null,
+      p_error_message: errorMessage || null,
+    });
+
+    if (error) {
+      console.error(`[WEBHOOK_COMPLETE_ERROR] RPC error completing event ${eventId}:`, error.message);
+      return { success: false };
+    }
+
+    if (data && data.stale) {
+      console.warn(
+        `[WEBHOOK_STALE_LEASE] Worker completion rejected for event ${eventId}. Active lease was superseded by another claim.`
+      );
+      return { success: false, stale: true };
+    }
+
+    if (data?.success !== true) {
+      console.error(`[WEBHOOK_COMPLETE_REJECTED] Completion rejected for event ${eventId}`);
+      return { success: false };
+    }
+    return { success: true };
+  } catch (err: any) {
+    console.error(`[WEBHOOK_COMPLETE_EXCEPTION] Exception completing event ${eventId}:`, err?.message || err);
+    return { success: false };
+  }
+}
+
 serve(async (req: Request) => {
   if (req.method !== 'POST') {
     return new Response('Method Not Allowed', { status: 405 });
@@ -64,34 +102,52 @@ serve(async (req: Request) => {
 
     // 3. Parse Verified Webhook Event Payload
     const event = JSON.parse(rawBody);
-    const eventId = req.headers.get('x-razorpay-event-id') || event.event_id || `${event.event}_${event.created_at || Date.now()}`;
+    const eventId = req.headers.get('x-razorpay-event-id') || event.event_id;
     const eventType = event.event;
+    if (typeof eventId !== 'string' || !eventId.trim() || typeof eventType !== 'string' || !eventType.trim()) {
+      return new Response('Missing event identifiers', { status: 400 });
+    }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // 4. Webhook Idempotency Check with Atomic Insert
-    const { error: insertErr } = await supabase
-      .from('payment_webhook_events')
-      .insert({
-        event_id: eventId,
-        event_type: eventType,
-        provider: 'razorpay',
-        status: 'processed',
-        payload_hash: await hmacSha256Hex(webhookSecret, eventId),
-      });
+    // 4. Atomic Event Claiming with Lease Token & Stale Recovery
+    const payloadDigest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(rawBody));
+    const payloadHash = Array.from(new Uint8Array(payloadDigest), b => b.toString(16).padStart(2, '0')).join('');
+    const { data: claimResult, error: claimErr } = await supabase.rpc('claim_webhook_event', {
+      p_event_id: eventId,
+      p_event_type: eventType,
+      p_payload_hash: payloadHash,
+      p_stale_timeout_minutes: 5,
+    });
 
-    if (insertErr) {
-      if (
-        insertErr.code === '23505' ||
-        insertErr.message?.includes('duplicate key') ||
-        insertErr.message?.includes('unique constraint')
-      ) {
-        return new Response(JSON.stringify({ status: 'already_processed', event_id: eventId }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
-      console.warn('Webhook event record notice:', insertErr.message);
+    if (claimErr) {
+      console.error('Webhook atomic claim failed:', claimErr.message);
+      return new Response(JSON.stringify({ error: 'Database claim error' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (claimResult?.action === 'skip_processed') {
+      return new Response(JSON.stringify({ status: 'already_processed', event_id: eventId }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (claimResult?.action === 'retry_later') {
+      return new Response(JSON.stringify({ status: 'in_progress_by_another_worker', event_id: eventId }), {
+        status: 429,
+        headers: { 'Content-Type': 'application/json', 'Retry-After': '15' },
+      });
+    }
+
+    const claimToken = claimResult?.claim_token;
+    if (!['claimed', 'claimed_retry'].includes(claimResult?.action) ||
+        typeof claimToken !== 'string' ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(claimToken)) {
+      console.error(`[WEBHOOK_INVALID_CLAIM] Invalid claim response for event ${eventId}`);
+      return new Response('Invalid database claim', { status: 500 });
     }
 
     // 5. Process Webhook Event Types
@@ -117,67 +173,147 @@ serve(async (req: Request) => {
       }
     }
 
+    let processingSuccess = false;
+    let completionStatus = 'processed';
+
     if (eventType === 'payment.captured' || eventType === 'order.paid') {
-      if (storeOrderId && razorpayOrderId) {
-        // Fetch store order to validate amount and currency
-        const { data: storeOrder } = await supabase
-          .from('orders')
-          .select('id, grand_total, payment_status')
-          .eq('id', storeOrderId)
-          .single();
-
-        if (!storeOrder) {
-          console.error(`Webhook received for unknown store order: ${storeOrderId}`);
-          return new Response(JSON.stringify({ error: 'Order not found' }), { status: 404 });
-        }
-
-        // Validate amount (Razorpay payment entity amount is in integer paise)
-        if (paymentEntity?.amount !== undefined) {
-          const webhookAmountRupees = Number(paymentEntity.amount) / 100;
-          if (Math.abs(webhookAmountRupees - Number(storeOrder.grand_total)) > 0.01) {
-            console.error(
-              `Webhook amount mismatch: received ₹${webhookAmountRupees}, expected ₹${storeOrder.grand_total}`
-            );
-            return new Response(JSON.stringify({ error: 'Payment amount mismatch' }), { status: 400 });
-          }
-        }
-
-        if (paymentEntity?.currency && paymentEntity.currency.toUpperCase() !== 'INR') {
-          console.error(`Webhook currency mismatch: received ${paymentEntity.currency}`);
-          return new Response(JSON.stringify({ error: 'Invalid payment currency' }), { status: 400 });
-        }
-
-        await supabase.rpc('finalize_payment_success', {
-          p_order_id: storeOrderId,
-          p_provider_payment_id: razorpayPaymentId || 'pay_webhook_captured',
-          p_provider_order_id: razorpayOrderId,
-          p_amount: Number(storeOrder.grand_total),
-          p_currency: 'INR',
-          p_method: paymentEntity?.method || 'online',
-          p_signature_verified: true,
-          p_metadata: { source: 'razorpay_webhook', webhook_event: eventType },
-        });
+      if (!storeOrderId || !razorpayOrderId || !razorpayPaymentId) {
+        console.error(`Webhook payload missing required IDs for ${eventType}`);
+        await completeWebhookEventSafe(supabase, eventId, 'failed', claimToken, 'Missing payment identifiers');
+        return new Response(JSON.stringify({ error: 'Missing payment identifiers' }), { status: 400 });
       }
+
+      // Validate provider payment status
+      if (paymentEntity?.status !== 'captured') {
+        console.warn(`Ignoring non-captured payment status: ${paymentEntity.status}`);
+        const completion = await completeWebhookEventSafe(supabase, eventId, 'ignored', claimToken, `Ignored unmet status: ${paymentEntity?.status}`);
+        return new Response(JSON.stringify({ status: 'ignored_unmet_status' }), { status: completion.success ? 200 : 500 });
+      }
+
+      // Fetch store order to validate authoritative amount and currency
+      const { data: storeOrder, error: storeOrderErr } = await supabase
+        .from('orders')
+        .select('id, grand_total, payment_status')
+        .eq('id', storeOrderId)
+        .single();
+
+      if (storeOrderErr || !storeOrder) {
+        console.error(`Webhook received for unknown store order: ${storeOrderId}`);
+        await completeWebhookEventSafe(supabase, eventId, 'failed', claimToken, `Store order not found: ${storeOrderId}`);
+        return new Response(JSON.stringify({ error: 'Order not found' }), { status: 404 });
+      }
+
+      // Validate amount (Razorpay payment entity amount is in integer paise)
+      {
+        const webhookAmountRupees = Number(paymentEntity.amount) / 100;
+        const expectedPaise = Math.round(Number(storeOrder.grand_total) * 100);
+        if (!Number.isSafeInteger(paymentEntity.amount) || !Number.isSafeInteger(expectedPaise) || paymentEntity.amount !== expectedPaise) {
+          console.error(
+            `Webhook amount mismatch: received ₹${webhookAmountRupees}, expected ₹${storeOrder.grand_total}`
+          );
+          await completeWebhookEventSafe(
+            supabase,
+            eventId,
+            'failed',
+            claimToken,
+            `Amount mismatch: received ₹${webhookAmountRupees}, expected ₹${storeOrder.grand_total}`
+          );
+          return new Response(JSON.stringify({ error: 'Payment amount mismatch' }), { status: 400 });
+        }
+      }
+
+      if (paymentEntity?.currency !== 'INR') {
+        console.error(`Webhook currency mismatch: received ${paymentEntity.currency}`);
+        await completeWebhookEventSafe(supabase, eventId, 'failed', claimToken, `Invalid currency: ${paymentEntity.currency}`);
+        return new Response(JSON.stringify({ error: 'Invalid payment currency' }), { status: 400 });
+      }
+
+      const { data: finalizeData, error: finalizeErr } = await supabase.rpc('finalize_payment_success', {
+        p_order_id: storeOrderId,
+        p_provider_payment_id: razorpayPaymentId,
+        p_provider_order_id: razorpayOrderId,
+        p_amount: Number(storeOrder.grand_total),
+        p_currency: 'INR',
+        p_method: paymentEntity?.method || 'online',
+        p_signature_verified: true,
+        p_metadata: { source: 'razorpay_webhook', webhook_event: eventType, event_id: eventId },
+      });
+
+      if (finalizeErr || finalizeData?.success !== true) {
+        const errMsg = finalizeErr?.message || finalizeData?.error || 'Failed to finalize payment';
+        console.error('RPC Error finalizing payment via webhook:', errMsg);
+        await completeWebhookEventSafe(supabase, eventId, 'failed', claimToken, errMsg);
+        return new Response(JSON.stringify({ error: 'Failed to record payment success in database' }), { status: 500 });
+      }
+
+      processingSuccess = true;
     } else if (eventType === 'payment.failed') {
       if (storeOrderId && razorpayOrderId) {
-        await supabase.rpc('record_payment_failure', {
+        const { data: failData, error: failErr } = await supabase.rpc('record_payment_failure', {
           p_order_id: storeOrderId,
           p_provider_order_id: razorpayOrderId,
           p_failure_code: paymentEntity?.error_code || 'PAYMENT_FAILED',
           p_failure_desc:
             paymentEntity?.error_description || 'Payment failed as reported by webhook',
         });
+
+        if (failErr || failData?.success !== true) {
+          console.error('RPC Error recording payment failure via webhook:', failErr?.message || failData?.error);
+          await completeWebhookEventSafe(supabase, eventId, 'failed', claimToken, 'Failure recording rejected');
+          return new Response(JSON.stringify({ error: 'Failed to record payment failure' }), { status: 500 });
+        }
+      } else {
+        await completeWebhookEventSafe(supabase, eventId, 'failed', claimToken, 'Missing payment identifiers');
+        return new Response('Missing payment identifiers', { status: 400 });
       }
+      processingSuccess = true;
     } else if (eventType === 'refund.processed') {
       const refundEntity = event.payload?.refund?.entity;
-      if (storeOrderId && refundEntity) {
-        const refundAmount = (refundEntity.amount || 0) / 100;
-        await supabase.rpc('record_refund_success', {
+      if (!storeOrderId && refundEntity?.payment_id) {
+        const { data: payment } = await supabase.from('payments').select('order_id')
+          .eq('provider_payment_id', refundEntity.payment_id).single();
+        storeOrderId = payment?.order_id;
+      }
+      if (storeOrderId && refundEntity && refundEntity.id) {
+        const refundAmount = Number(refundEntity.amount || 0) / 100;
+        if (!Number.isSafeInteger(refundEntity.amount) || refundAmount <= 0 || !refundEntity.payment_id) {
+          console.error(`Invalid refund amount in webhook: ${refundAmount}`);
+          await completeWebhookEventSafe(supabase, eventId, 'failed', claimToken, 'Invalid refund amount');
+          return new Response(JSON.stringify({ error: 'Invalid refund amount' }), { status: 400 });
+        }
+
+        const { data: refundData, error: refundErr } = await supabase.rpc('record_refund_success', {
           p_order_id: storeOrderId,
           p_refund_id: refundEntity.id,
           p_refund_amount: refundAmount,
           p_reason: 'Webhook refund.processed event',
+          p_provider_payment_id: refundEntity.payment_id || razorpayPaymentId,
         });
+
+        if (refundErr || refundData?.success !== true) {
+          const errMsg = refundErr?.message || refundData?.error || 'Failed to record refund';
+          console.error('RPC Error recording refund via webhook:', errMsg);
+          await completeWebhookEventSafe(supabase, eventId, 'failed', claimToken, errMsg);
+          return new Response(JSON.stringify({ error: 'Failed to record refund in database' }), { status: 500 });
+        }
+      } else {
+        await completeWebhookEventSafe(supabase, eventId, 'failed', claimToken, 'Missing refund identifiers');
+        return new Response('Missing refund identifiers', { status: 400 });
+      }
+      processingSuccess = true;
+    } else {
+      // Safely ignore unhandled event types through complete_webhook_event
+      processingSuccess = true;
+      completionStatus = 'ignored';
+    }
+
+    // 6. Complete active lease with token verification
+    if (processingSuccess) {
+      const completion = await completeWebhookEventSafe(supabase, eventId, completionStatus, claimToken);
+      if (!completion.success) {
+        // Financial RPCs are idempotent: request redelivery without undoing committed money records.
+        console.error(`[WEBHOOK_RECONCILIATION_REQUIRED] Event ${eventId}: operation succeeded but completion failed`);
+        return new Response('Webhook completion failed; retry required', { status: 500 });
       }
     }
 

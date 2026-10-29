@@ -296,8 +296,9 @@ CREATE INDEX IF NOT EXISTS idx_shipment_attempts_order_id ON public.shipment_att
 -- ------------------------------------------------------------------------------
 -- Ensure allowed_tabs on admin_roles includes 'shipping'
 UPDATE public.admin_roles
-SET allowed_tabs = array_append(allowed_tabs, 'shipping')
-WHERE NOT ('shipping' = ANY(allowed_tabs));
+SET allowed_tabs = (jsonb_populate_record(NULL::public.admin_roles,
+    jsonb_build_object('allowed_tabs', COALESCE(to_jsonb(allowed_tabs), '[]'::jsonb) || '["shipping"]'::jsonb))).allowed_tabs
+WHERE NOT (COALESCE(to_jsonb(allowed_tabs), '[]'::jsonb) ? 'shipping');
 
 -- ------------------------------------------------------------------------------
 -- 9. SERVER-AUTHORITATIVE FUNCTIONS & RPCS

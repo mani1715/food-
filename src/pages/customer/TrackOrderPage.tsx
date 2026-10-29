@@ -25,9 +25,39 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { Order } from '../../types';
 
+const maskCustomerPhone = (phone?: string): string => {
+  if (!phone) return 'N/A';
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length < 4) return '******';
+  const last4 = digits.slice(-4);
+  return `+91 ******${last4}`;
+};
+
+const maskCustomerEmail = (email?: string): string => {
+  if (!email || !email.includes('@')) return 'N/A';
+  const [user, domain] = email.split('@');
+  if (user.length <= 2) {
+    return `${user[0] || '*'}***@${domain}`;
+  }
+  return `${user[0]}***${user[user.length - 1]}@${domain}`;
+};
+
+const maskCustomerAddress = (address?: string): string => {
+  if (!address) return 'Address on file';
+  const parts = address.split(',');
+  if (parts.length > 1) {
+    return `***, ${parts.slice(1).join(',').trim()}`;
+  }
+  const words = address.trim().split(' ');
+  if (words.length > 1) {
+    return `*** ${words.slice(1).join(' ')}`;
+  }
+  return '*** (Confidential)';
+};
+
 export const TrackOrderPage: React.FC = () => {
   const navigate = useNavigate();
-  const { orders, addToCart, cancelOrder, updatePaymentStatus, addToast } = useApp();
+  const { orders, addToCart, cancelOrder, updatePaymentStatus, addToast, isAdminAuthenticated } = useApp();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [matchedOrders, setMatchedOrders] = useState<Order[]>([]);
@@ -50,9 +80,23 @@ export const TrackOrderPage: React.FC = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const query = searchTerm.trim().toLowerCase();
+    const queryDigits = query.replace(/\D/g, '');
 
     if (!query) {
-      addToast('Search Required', 'Please enter your Order ID, Tracking Code, Phone Number, or Email.', 'error');
+      addToast('Search Required', 'Please enter your Order ID, Tracking Code, 10-digit Phone, or Email.', 'error');
+      return;
+    }
+
+    const isPhoneQuery = queryDigits.length === 10 || (queryDigits.length === 12 && queryDigits.startsWith('91'));
+    const isEmailQuery = query.includes('@') && query.includes('.');
+    const isOrderOrTracking = query.length >= 4;
+
+    if (!isPhoneQuery && !isEmailQuery && !isOrderOrTracking) {
+      addToast(
+        'Specific Search Required',
+        'To protect customer privacy, please enter a full 10-digit Phone Number, exact Email, or complete Order ID.',
+        'error'
+      );
       return;
     }
 
@@ -60,27 +104,26 @@ export const TrackOrderPage: React.FC = () => {
     setSearched(true);
 
     setTimeout(() => {
-      const queryDigits = query.replace(/\D/g, '');
-      const query10Digits = queryDigits.length >= 10 ? queryDigits.slice(-10) : queryDigits;
+      const targetPhone10 = isPhoneQuery ? queryDigits.slice(-10) : null;
 
       const matches = orders.filter((o) => {
-        const orderIdMatch = o.id.toLowerCase().includes(query);
-        const orderNumMatch = o.orderNumber.toLowerCase().includes(query);
-        const trackingMatch = o.trackingCode ? o.trackingCode.toLowerCase().includes(query) : false;
+        const orderIdMatch = o.id.toLowerCase() === query || o.id.toLowerCase().includes(query);
+        const orderNumMatch = o.orderNumber.toLowerCase() === query;
+        const trackingMatch = o.trackingCode ? o.trackingCode.toLowerCase() === query : false;
         
-        // Robust Phone Number Matching
+        // Exact 10-digit Phone Number Matching ONLY (prevents loose 4-digit substring matches)
         let phoneMatch = false;
-        if (o.customerPhone) {
+        if (targetPhone10 && o.customerPhone) {
           const rawDigits = o.customerPhone.replace(/\D/g, '');
           const last10Digits = rawDigits.length >= 10 ? rawDigits.slice(-10) : rawDigits;
-          
-          if (query10Digits.length >= 4) {
-            phoneMatch = last10Digits.includes(query10Digits) || rawDigits.includes(queryDigits);
-          }
+          phoneMatch = (last10Digits === targetPhone10);
         }
         
-        // Email Matching
-        const emailMatch = o.customerEmail ? o.customerEmail.toLowerCase().includes(query) : false;
+        // Exact Email Matching ONLY
+        let emailMatch = false;
+        if (isEmailQuery && o.customerEmail) {
+          emailMatch = (o.customerEmail.trim().toLowerCase() === query);
+        }
 
         return orderIdMatch || orderNumMatch || trackingMatch || phoneMatch || emailMatch;
       });
@@ -143,6 +186,19 @@ export const TrackOrderPage: React.FC = () => {
 
   const handleConfirmCancel = () => {
     if (!selectedOrderForCancel) return;
+
+    // Prohibit customer self-cancellation of paid orders (matches database security guard)
+    if (selectedOrderForCancel.paymentStatus === 'completed' && !isAdminAuthenticated) {
+      addToast(
+        'Cancellation Restricted',
+        'Paid orders cannot be self-cancelled. Please contact customer support for cancellation and refund processing.',
+        'error'
+      );
+      setShowCancelModal(false);
+      setSelectedOrderForCancel(null);
+      return;
+    }
+
     if (!cancelReason.trim()) {
       addToast('Reason Required', 'Please provide a reason for cancelling this order.', 'error');
       return;
@@ -355,16 +411,29 @@ export const TrackOrderPage: React.FC = () => {
                             )}
 
                             {ord.status !== 'Cancelled' && ord.orderStatus !== 'delivered' && (
-                              <button
-                                onClick={() => {
-                                  setSelectedOrderForCancel(ord);
-                                  setShowCancelModal(true);
-                                }}
-                                className="px-4 py-2 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5"
-                              >
-                                <XCircle className="w-3.5 h-3.5" />
-                                <span>Cancel Order</span>
-                              </button>
+                              ord.paymentStatus === 'completed' && !isAdminAuthenticated ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    addToast('Paid Order Notice', 'Paid orders cannot be self-cancelled. Please contact support at info@aishufoods.com for cancellation & refund assistance.', 'info');
+                                  }}
+                                  className="px-4 py-2 bg-neutral-100 border border-neutral-300 text-neutral-600 hover:bg-neutral-200 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                                >
+                                  <AlertCircle className="w-3.5 h-3.5 text-neutral-500" />
+                                  <span>Paid (Support Cancel)</span>
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    setSelectedOrderForCancel(ord);
+                                    setShowCancelModal(true);
+                                  }}
+                                  className="px-4 py-2 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5"
+                                >
+                                  <XCircle className="w-3.5 h-3.5" />
+                                  <span>Cancel Order</span>
+                                </button>
+                              )
                             )}
 
                             <button
@@ -442,20 +511,28 @@ export const TrackOrderPage: React.FC = () => {
                           <div className="space-y-3">
                             <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
                               <User className="w-3.5 h-3.5 text-black" />
-                              Customer Details
+                              Customer Details {!isAdminAuthenticated && <span className="text-[10px] text-neutral-400 font-normal">(PII Protected)</span>}
                             </h4>
                             <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-4 space-y-2 text-xs">
                               <div className="flex justify-between">
                                 <span className="text-neutral-500 font-medium">Customer Name:</span>
-                                <span className="font-bold text-black">{ord.customerName || 'Customer'}</span>
+                                <span className="font-bold text-black">
+                                  {isAdminAuthenticated
+                                    ? (ord.customerName || 'Customer')
+                                    : (ord.customerName ? ord.customerName.split(' ')[0] + ' ***' : 'Customer')}
+                                </span>
                               </div>
                               <div className="flex justify-between font-mono">
                                 <span className="text-neutral-500 font-medium">Phone Number:</span>
-                                <span className="font-bold text-black">{ord.customerPhone || 'N/A'}</span>
+                                <span className="font-bold text-black">
+                                  {isAdminAuthenticated ? ord.customerPhone || 'N/A' : maskCustomerPhone(ord.customerPhone)}
+                                </span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-neutral-500 font-medium">Email Address:</span>
-                                <span className="font-bold text-black">{ord.customerEmail || 'N/A'}</span>
+                                <span className="font-bold text-black">
+                                  {isAdminAuthenticated ? ord.customerEmail || 'N/A' : maskCustomerEmail(ord.customerEmail)}
+                                </span>
                               </div>
                             </div>
                           </div>
@@ -470,7 +547,9 @@ export const TrackOrderPage: React.FC = () => {
                               <span className="inline-block px-2 py-0.5 rounded-md bg-black text-white font-extrabold text-[10px] mb-1">
                                 {ord.deliveryAddress?.label || 'Home'}
                               </span>
-                              <p className="font-bold text-black">{ord.deliveryAddress?.address}</p>
+                              <p className="font-bold text-black">
+                                {isAdminAuthenticated ? ord.deliveryAddress?.address : maskCustomerAddress(ord.deliveryAddress?.address)}
+                              </p>
                               <p className="text-neutral-600">{ord.deliveryAddress?.city}, {ord.deliveryAddress?.pincode}</p>
                             </div>
                           </div>
