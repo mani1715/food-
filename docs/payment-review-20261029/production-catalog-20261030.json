@@ -1,0 +1,2902 @@
+{
+  "columns": [
+    {
+      "udt_name": "uuid",
+      "data_type": "uuid",
+      "table_name": "admin_profiles",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 1
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "admin_profiles",
+      "column_name": "name",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 2
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "admin_profiles",
+      "column_name": "role_title",
+      "is_nullable": "NO",
+      "column_default": "'Store Manager'::text",
+      "ordinal_position": 3
+    },
+    {
+      "udt_name": "jsonb",
+      "data_type": "jsonb",
+      "table_name": "admin_profiles",
+      "column_name": "allowed_tabs",
+      "is_nullable": "NO",
+      "column_default": "'[\"analytics\", \"products\", \"orders\"]'::jsonb",
+      "ordinal_position": 4
+    },
+    {
+      "udt_name": "timestamptz",
+      "data_type": "timestamp with time zone",
+      "table_name": "admin_profiles",
+      "column_name": "created_at",
+      "is_nullable": "NO",
+      "column_default": "now()",
+      "ordinal_position": 5
+    },
+    {
+      "udt_name": "timestamptz",
+      "data_type": "timestamp with time zone",
+      "table_name": "admin_profiles",
+      "column_name": "updated_at",
+      "is_nullable": "NO",
+      "column_default": "now()",
+      "ordinal_position": 6
+    },
+    {
+      "udt_name": "uuid",
+      "data_type": "uuid",
+      "table_name": "admin_roles",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "uuid_generate_v4()",
+      "ordinal_position": 1
+    },
+    {
+      "udt_name": "uuid",
+      "data_type": "uuid",
+      "table_name": "admin_roles",
+      "column_name": "user_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 2
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "admin_roles",
+      "column_name": "role",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 3
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "admin_roles",
+      "column_name": "status",
+      "is_nullable": "NO",
+      "column_default": "'active'::text",
+      "ordinal_position": 4
+    },
+    {
+      "udt_name": "_text",
+      "data_type": "ARRAY",
+      "table_name": "admin_roles",
+      "column_name": "allowed_tabs",
+      "is_nullable": "NO",
+      "column_default": "ARRAY['analytics'::text, 'notifications'::text, 'products'::text, 'orders'::text, 'shipping'::text, 'banners'::text, 'bestsellers'::text, 'discounts'::text, 'settings'::text, 'newsletter'::text, 'profile'::text]",
+      "ordinal_position": 5
+    },
+    {
+      "udt_name": "_text",
+      "data_type": "ARRAY",
+      "table_name": "admin_roles",
+      "column_name": "permissions",
+      "is_nullable": "NO",
+      "column_default": "ARRAY['*'::text]",
+      "ordinal_position": 6
+    },
+    {
+      "udt_name": "uuid",
+      "data_type": "uuid",
+      "table_name": "admin_roles",
+      "column_name": "created_by",
+      "is_nullable": "YES",
+      "column_default": null,
+      "ordinal_position": 7
+    },
+    {
+      "udt_name": "timestamptz",
+      "data_type": "timestamp with time zone",
+      "table_name": "admin_roles",
+      "column_name": "created_at",
+      "is_nullable": "NO",
+      "column_default": "now()",
+      "ordinal_position": 8
+    },
+    {
+      "udt_name": "timestamptz",
+      "data_type": "timestamp with time zone",
+      "table_name": "admin_roles",
+      "column_name": "updated_at",
+      "is_nullable": "NO",
+      "column_default": "now()",
+      "ordinal_position": 9
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "categories",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "('cat-'::text || (gen_random_uuid())::text)",
+      "ordinal_position": 1
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "categories",
+      "column_name": "name",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 2
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "categories",
+      "column_name": "slug",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 3
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "categories",
+      "column_name": "image_url",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 4
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "categories",
+      "column_name": "description",
+      "is_nullable": "YES",
+      "column_default": null,
+      "ordinal_position": 5
+    },
+    {
+      "udt_name": "int4",
+      "data_type": "integer",
+      "table_name": "categories",
+      "column_name": "display_order",
+      "is_nullable": "NO",
+      "column_default": "0",
+      "ordinal_position": 6
+    },
+    {
+      "udt_name": "timestamptz",
+      "data_type": "timestamp with time zone",
+      "table_name": "categories",
+      "column_name": "created_at",
+      "is_nullable": "NO",
+      "column_default": "now()",
+      "ordinal_position": 7
+    },
+    {
+      "udt_name": "timestamptz",
+      "data_type": "timestamp with time zone",
+      "table_name": "categories",
+      "column_name": "updated_at",
+      "is_nullable": "NO",
+      "column_default": "now()",
+      "ordinal_position": 8
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "coupons",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "('cpn-'::text || (gen_random_uuid())::text)",
+      "ordinal_position": 1
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "coupons",
+      "column_name": "code",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 2
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "coupons",
+      "column_name": "description",
+      "is_nullable": "YES",
+      "column_default": null,
+      "ordinal_position": 3
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "coupons",
+      "column_name": "discount_type",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 4
+    },
+    {
+      "udt_name": "numeric",
+      "data_type": "numeric",
+      "table_name": "coupons",
+      "column_name": "discount_value",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 5
+    },
+    {
+      "udt_name": "numeric",
+      "data_type": "numeric",
+      "table_name": "coupons",
+      "column_name": "min_order_amount",
+      "is_nullable": "NO",
+      "column_default": "0",
+      "ordinal_position": 6
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "coupons",
+      "column_name": "applies_to",
+      "is_nullable": "NO",
+      "column_default": "'all'::text",
+      "ordinal_position": 7
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "coupons",
+      "column_name": "target_category",
+      "is_nullable": "YES",
+      "column_default": null,
+      "ordinal_position": 8
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "coupons",
+      "column_name": "target_product_id",
+      "is_nullable": "YES",
+      "column_default": null,
+      "ordinal_position": 9
+    },
+    {
+      "udt_name": "timestamptz",
+      "data_type": "timestamp with time zone",
+      "table_name": "coupons",
+      "column_name": "expiry_date",
+      "is_nullable": "YES",
+      "column_default": null,
+      "ordinal_position": 10
+    },
+    {
+      "udt_name": "bool",
+      "data_type": "boolean",
+      "table_name": "coupons",
+      "column_name": "is_enabled",
+      "is_nullable": "NO",
+      "column_default": "true",
+      "ordinal_position": 11
+    },
+    {
+      "udt_name": "int4",
+      "data_type": "integer",
+      "table_name": "coupons",
+      "column_name": "usage_count",
+      "is_nullable": "NO",
+      "column_default": "0",
+      "ordinal_position": 12
+    },
+    {
+      "udt_name": "timestamptz",
+      "data_type": "timestamp with time zone",
+      "table_name": "coupons",
+      "column_name": "created_at",
+      "is_nullable": "NO",
+      "column_default": "now()",
+      "ordinal_position": 13
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "customer_addresses",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "('loc-'::text || (gen_random_uuid())::text)",
+      "ordinal_position": 1
+    },
+    {
+      "udt_name": "uuid",
+      "data_type": "uuid",
+      "table_name": "customer_addresses",
+      "column_name": "user_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 2
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "customer_addresses",
+      "column_name": "label",
+      "is_nullable": "NO",
+      "column_default": "'Home'::text",
+      "ordinal_position": 3
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "customer_addresses",
+      "column_name": "address_line",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 4
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "customer_addresses",
+      "column_name": "city",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 5
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "customer_addresses",
+      "column_name": "state",
+      "is_nullable": "NO",
+      "column_default": "'Telangana'::text",
+      "ordinal_position": 6
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "customer_addresses",
+      "column_name": "pincode",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 7
+    },
+    {
+      "udt_name": "timestamptz",
+      "data_type": "timestamp with time zone",
+      "table_name": "customer_addresses",
+      "column_name": "created_at",
+      "is_nullable": "NO",
+      "column_default": "now()",
+      "ordinal_position": 8
+    },
+    {
+      "udt_name": "timestamptz",
+      "data_type": "timestamp with time zone",
+      "table_name": "customer_addresses",
+      "column_name": "updated_at",
+      "is_nullable": "NO",
+      "column_default": "now()",
+      "ordinal_position": 9
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "delivery_cities",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "('city-'::text || (gen_random_uuid())::text)",
+      "ordinal_position": 1
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "delivery_cities",
+      "column_name": "name",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 2
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "delivery_cities",
+      "column_name": "state",
+      "is_nullable": "NO",
+      "column_default": "'Telangana'::text",
+      "ordinal_position": 3
+    },
+    {
+      "udt_name": "numeric",
+      "data_type": "numeric",
+      "table_name": "delivery_cities",
+      "column_name": "charge",
+      "is_nullable": "NO",
+      "column_default": "0",
+      "ordinal_position": 4
+    },
+    {
+      "udt_name": "numeric",
+      "data_type": "numeric",
+      "table_name": "delivery_cities",
+      "column_name": "free_delivery_threshold",
+      "is_nullable": "YES",
+      "column_default": null,
+      "ordinal_position": 5
+    },
+    {
+      "udt_name": "bool",
+      "data_type": "boolean",
+      "table_name": "delivery_cities",
+      "column_name": "is_enabled",
+      "is_nullable": "NO",
+      "column_default": "true",
+      "ordinal_position": 6
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "header_announcements",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "('ann-'::text || (gen_random_uuid())::text)",
+      "ordinal_position": 1
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "header_announcements",
+      "column_name": "text",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 2
+    },
+    {
+      "udt_name": "bool",
+      "data_type": "boolean",
+      "table_name": "header_announcements",
+      "column_name": "is_enabled",
+      "is_nullable": "NO",
+      "column_default": "true",
+      "ordinal_position": 3
+    },
+    {
+      "udt_name": "int4",
+      "data_type": "integer",
+      "table_name": "header_announcements",
+      "column_name": "display_order",
+      "is_nullable": "NO",
+      "column_default": "0",
+      "ordinal_position": 4
+    },
+    {
+      "udt_name": "timestamptz",
+      "data_type": "timestamp with time zone",
+      "table_name": "header_announcements",
+      "column_name": "created_at",
+      "is_nullable": "NO",
+      "column_default": "now()",
+      "ordinal_position": 5
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "hero_banners",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "('banner-'::text || (gen_random_uuid())::text)",
+      "ordinal_position": 1
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "hero_banners",
+      "column_name": "image_url",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 2
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "hero_banners",
+      "column_name": "badge",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 3
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "hero_banners",
+      "column_name": "title",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 4
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "hero_banners",
+      "column_name": "subtitle",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 5
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "hero_banners",
+      "column_name": "cta_text",
+      "is_nullable": "NO",
+      "column_default": "'Shop Now'::text",
+      "ordinal_position": 6
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "hero_banners",
+      "column_name": "cta_link",
+      "is_nullable": "NO",
+      "column_default": "'/'::text",
+      "ordinal_position": 7
+    },
+    {
+      "udt_name": "bool",
+      "data_type": "boolean",
+      "table_name": "hero_banners",
+      "column_name": "is_enabled",
+      "is_nullable": "NO",
+      "column_default": "true",
+      "ordinal_position": 8
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "hero_banners",
+      "column_name": "object_position",
+      "is_nullable": "YES",
+      "column_default": "'center'::text",
+      "ordinal_position": 9
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "hero_banners",
+      "column_name": "object_fit",
+      "is_nullable": "YES",
+      "column_default": "'cover'::text",
+      "ordinal_position": 10
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "hero_banners",
+      "column_name": "overlay_opacity",
+      "is_nullable": "YES",
+      "column_default": "'medium'::text",
+      "ordinal_position": 11
+    },
+    {
+      "udt_name": "int4",
+      "data_type": "integer",
+      "table_name": "hero_banners",
+      "column_name": "display_order",
+      "is_nullable": "NO",
+      "column_default": "0",
+      "ordinal_position": 12
+    },
+    {
+      "udt_name": "timestamptz",
+      "data_type": "timestamp with time zone",
+      "table_name": "hero_banners",
+      "column_name": "created_at",
+      "is_nullable": "NO",
+      "column_default": "now()",
+      "ordinal_position": 13
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "home_section_products",
+      "column_name": "section_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 1
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "home_section_products",
+      "column_name": "product_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 2
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "home_sections",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "('sec-'::text || (gen_random_uuid())::text)",
+      "ordinal_position": 1
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "home_sections",
+      "column_name": "title",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 2
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "home_sections",
+      "column_name": "subtitle",
+      "is_nullable": "YES",
+      "column_default": null,
+      "ordinal_position": 3
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "home_sections",
+      "column_name": "badge",
+      "is_nullable": "YES",
+      "column_default": null,
+      "ordinal_position": 4
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "home_sections",
+      "column_name": "category_filter",
+      "is_nullable": "YES",
+      "column_default": "'all'::text",
+      "ordinal_position": 5
+    },
+    {
+      "udt_name": "bool",
+      "data_type": "boolean",
+      "table_name": "home_sections",
+      "column_name": "is_enabled",
+      "is_nullable": "NO",
+      "column_default": "true",
+      "ordinal_position": 6
+    },
+    {
+      "udt_name": "int4",
+      "data_type": "integer",
+      "table_name": "home_sections",
+      "column_name": "display_order",
+      "is_nullable": "NO",
+      "column_default": "0",
+      "ordinal_position": 7
+    },
+    {
+      "udt_name": "timestamptz",
+      "data_type": "timestamp with time zone",
+      "table_name": "home_sections",
+      "column_name": "created_at",
+      "is_nullable": "NO",
+      "column_default": "now()",
+      "ordinal_position": 8
+    },
+    {
+      "udt_name": "timestamptz",
+      "data_type": "timestamp with time zone",
+      "table_name": "home_sections",
+      "column_name": "updated_at",
+      "is_nullable": "NO",
+      "column_default": "now()",
+      "ordinal_position": 9
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "order_items",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "('oitem-'::text || (gen_random_uuid())::text)",
+      "ordinal_position": 1
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "order_items",
+      "column_name": "order_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 2
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "order_items",
+      "column_name": "product_id",
+      "is_nullable": "YES",
+      "column_default": null,
+      "ordinal_position": 3
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "order_items",
+      "column_name": "product_name_snapshot",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 4
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "order_items",
+      "column_name": "selected_weight",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 5
+    },
+    {
+      "udt_name": "numeric",
+      "data_type": "numeric",
+      "table_name": "order_items",
+      "column_name": "unit_price",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 6
+    },
+    {
+      "udt_name": "int4",
+      "data_type": "integer",
+      "table_name": "order_items",
+      "column_name": "quantity",
+      "is_nullable": "NO",
+      "column_default": "1",
+      "ordinal_position": 7
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "orders",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "('ord-'::text || (gen_random_uuid())::text)",
+      "ordinal_position": 1
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "orders",
+      "column_name": "order_number",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 2
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "orders",
+      "column_name": "tracking_code",
+      "is_nullable": "YES",
+      "column_default": null,
+      "ordinal_position": 3
+    },
+    {
+      "udt_name": "uuid",
+      "data_type": "uuid",
+      "table_name": "orders",
+      "column_name": "customer_id",
+      "is_nullable": "YES",
+      "column_default": null,
+      "ordinal_position": 4
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "orders",
+      "column_name": "customer_name",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 5
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "orders",
+      "column_name": "customer_phone",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 6
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "orders",
+      "column_name": "customer_email",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 7
+    },
+    {
+      "udt_name": "jsonb",
+      "data_type": "jsonb",
+      "table_name": "orders",
+      "column_name": "delivery_address_json",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 8
+    },
+    {
+      "udt_name": "numeric",
+      "data_type": "numeric",
+      "table_name": "orders",
+      "column_name": "subtotal",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 9
+    },
+    {
+      "udt_name": "numeric",
+      "data_type": "numeric",
+      "table_name": "orders",
+      "column_name": "delivery_fee",
+      "is_nullable": "NO",
+      "column_default": "0",
+      "ordinal_position": 10
+    },
+    {
+      "udt_name": "numeric",
+      "data_type": "numeric",
+      "table_name": "orders",
+      "column_name": "discount_amount",
+      "is_nullable": "NO",
+      "column_default": "0",
+      "ordinal_position": 11
+    },
+    {
+      "udt_name": "numeric",
+      "data_type": "numeric",
+      "table_name": "orders",
+      "column_name": "grand_total",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 12
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "orders",
+      "column_name": "payment_method",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 13
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "orders",
+      "column_name": "payment_status",
+      "is_nullable": "NO",
+      "column_default": "'completed'::text",
+      "ordinal_position": 14
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "orders",
+      "column_name": "order_status",
+      "is_nullable": "NO",
+      "column_default": "'placed'::text",
+      "ordinal_position": 15
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "orders",
+      "column_name": "admin_notes",
+      "is_nullable": "YES",
+      "column_default": null,
+      "ordinal_position": 16
+    },
+    {
+      "udt_name": "int4",
+      "data_type": "integer",
+      "table_name": "orders",
+      "column_name": "delivery_days",
+      "is_nullable": "YES",
+      "column_default": "3",
+      "ordinal_position": 17
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "orders",
+      "column_name": "cancel_reason",
+      "is_nullable": "YES",
+      "column_default": null,
+      "ordinal_position": 18
+    },
+    {
+      "udt_name": "timestamptz",
+      "data_type": "timestamp with time zone",
+      "table_name": "orders",
+      "column_name": "created_at",
+      "is_nullable": "NO",
+      "column_default": "now()",
+      "ordinal_position": 19
+    },
+    {
+      "udt_name": "timestamptz",
+      "data_type": "timestamp with time zone",
+      "table_name": "orders",
+      "column_name": "shipped_at",
+      "is_nullable": "YES",
+      "column_default": null,
+      "ordinal_position": 20
+    },
+    {
+      "udt_name": "timestamptz",
+      "data_type": "timestamp with time zone",
+      "table_name": "orders",
+      "column_name": "delivered_at",
+      "is_nullable": "YES",
+      "column_default": null,
+      "ordinal_position": 21
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "product_gallery",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "('gal-'::text || (gen_random_uuid())::text)",
+      "ordinal_position": 1
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "product_gallery",
+      "column_name": "product_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 2
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "product_gallery",
+      "column_name": "image_url",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 3
+    },
+    {
+      "udt_name": "bool",
+      "data_type": "boolean",
+      "table_name": "product_gallery",
+      "column_name": "is_main",
+      "is_nullable": "NO",
+      "column_default": "false",
+      "ordinal_position": 4
+    },
+    {
+      "udt_name": "int4",
+      "data_type": "integer",
+      "table_name": "product_gallery",
+      "column_name": "display_order",
+      "is_nullable": "NO",
+      "column_default": "0",
+      "ordinal_position": 5
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "product_ingredients",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "('ing-'::text || (gen_random_uuid())::text)",
+      "ordinal_position": 1
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "product_ingredients",
+      "column_name": "product_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 2
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "product_ingredients",
+      "column_name": "ingredient_name",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 3
+    },
+    {
+      "udt_name": "int4",
+      "data_type": "integer",
+      "table_name": "product_ingredients",
+      "column_name": "display_order",
+      "is_nullable": "NO",
+      "column_default": "0",
+      "ordinal_position": 4
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "product_weight_options",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "('wopt-'::text || (gen_random_uuid())::text)",
+      "ordinal_position": 1
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "product_weight_options",
+      "column_name": "product_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 2
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "product_weight_options",
+      "column_name": "weight_label",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 3
+    },
+    {
+      "udt_name": "numeric",
+      "data_type": "numeric",
+      "table_name": "product_weight_options",
+      "column_name": "price",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 4
+    },
+    {
+      "udt_name": "timestamptz",
+      "data_type": "timestamp with time zone",
+      "table_name": "product_weight_options",
+      "column_name": "created_at",
+      "is_nullable": "NO",
+      "column_default": "now()",
+      "ordinal_position": 5
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "products",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "('prod-'::text || (gen_random_uuid())::text)",
+      "ordinal_position": 1
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "products",
+      "column_name": "name",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 2
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "products",
+      "column_name": "slug",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 3
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "products",
+      "column_name": "category_id",
+      "is_nullable": "YES",
+      "column_default": null,
+      "ordinal_position": 4
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "products",
+      "column_name": "description",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 5
+    },
+    {
+      "udt_name": "bool",
+      "data_type": "boolean",
+      "table_name": "products",
+      "column_name": "is_veg",
+      "is_nullable": "NO",
+      "column_default": "true",
+      "ordinal_position": 6
+    },
+    {
+      "udt_name": "int4",
+      "data_type": "integer",
+      "table_name": "products",
+      "column_name": "inventory_count",
+      "is_nullable": "NO",
+      "column_default": "100",
+      "ordinal_position": 7
+    },
+    {
+      "udt_name": "bool",
+      "data_type": "boolean",
+      "table_name": "products",
+      "column_name": "out_of_stock",
+      "is_nullable": "NO",
+      "column_default": "false",
+      "ordinal_position": 8
+    },
+    {
+      "udt_name": "numeric",
+      "data_type": "numeric",
+      "table_name": "products",
+      "column_name": "rating",
+      "is_nullable": "NO",
+      "column_default": "5.00",
+      "ordinal_position": 9
+    },
+    {
+      "udt_name": "int4",
+      "data_type": "integer",
+      "table_name": "products",
+      "column_name": "reviews_count",
+      "is_nullable": "NO",
+      "column_default": "1",
+      "ordinal_position": 10
+    },
+    {
+      "udt_name": "bool",
+      "data_type": "boolean",
+      "table_name": "products",
+      "column_name": "is_bestseller",
+      "is_nullable": "NO",
+      "column_default": "false",
+      "ordinal_position": 11
+    },
+    {
+      "udt_name": "bool",
+      "data_type": "boolean",
+      "table_name": "products",
+      "column_name": "is_new_arrival",
+      "is_nullable": "NO",
+      "column_default": "false",
+      "ordinal_position": 12
+    },
+    {
+      "udt_name": "bool",
+      "data_type": "boolean",
+      "table_name": "products",
+      "column_name": "is_festival",
+      "is_nullable": "NO",
+      "column_default": "false",
+      "ordinal_position": 13
+    },
+    {
+      "udt_name": "numeric",
+      "data_type": "numeric",
+      "table_name": "products",
+      "column_name": "discount_percentage",
+      "is_nullable": "YES",
+      "column_default": "0",
+      "ordinal_position": 14
+    },
+    {
+      "udt_name": "timestamptz",
+      "data_type": "timestamp with time zone",
+      "table_name": "products",
+      "column_name": "discount_expiry_date",
+      "is_nullable": "YES",
+      "column_default": null,
+      "ordinal_position": 15
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "products",
+      "column_name": "grandma_story",
+      "is_nullable": "YES",
+      "column_default": null,
+      "ordinal_position": 16
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "products",
+      "column_name": "how_we_do_text",
+      "is_nullable": "YES",
+      "column_default": null,
+      "ordinal_position": 17
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "products",
+      "column_name": "sourcing_text",
+      "is_nullable": "YES",
+      "column_default": null,
+      "ordinal_position": 18
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "products",
+      "column_name": "quality_guarantee_text",
+      "is_nullable": "YES",
+      "column_default": null,
+      "ordinal_position": 19
+    },
+    {
+      "udt_name": "timestamptz",
+      "data_type": "timestamp with time zone",
+      "table_name": "products",
+      "column_name": "created_at",
+      "is_nullable": "NO",
+      "column_default": "now()",
+      "ordinal_position": 20
+    },
+    {
+      "udt_name": "timestamptz",
+      "data_type": "timestamp with time zone",
+      "table_name": "products",
+      "column_name": "updated_at",
+      "is_nullable": "NO",
+      "column_default": "now()",
+      "ordinal_position": 21
+    },
+    {
+      "udt_name": "uuid",
+      "data_type": "uuid",
+      "table_name": "profiles",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 1
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "profiles",
+      "column_name": "full_name",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 2
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "profiles",
+      "column_name": "phone_number",
+      "is_nullable": "YES",
+      "column_default": null,
+      "ordinal_position": 3
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "profiles",
+      "column_name": "avatar_url",
+      "is_nullable": "YES",
+      "column_default": "'/aishu-logo.jpg'::text",
+      "ordinal_position": 4
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "profiles",
+      "column_name": "role",
+      "is_nullable": "NO",
+      "column_default": "'customer'::text",
+      "ordinal_position": 5
+    },
+    {
+      "udt_name": "timestamptz",
+      "data_type": "timestamp with time zone",
+      "table_name": "profiles",
+      "column_name": "joined_date",
+      "is_nullable": "NO",
+      "column_default": "now()",
+      "ordinal_position": 6
+    },
+    {
+      "udt_name": "timestamptz",
+      "data_type": "timestamp with time zone",
+      "table_name": "profiles",
+      "column_name": "updated_at",
+      "is_nullable": "NO",
+      "column_default": "now()",
+      "ordinal_position": 7
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "stock_history_logs",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "('log-'::text || (gen_random_uuid())::text)",
+      "ordinal_position": 1
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "stock_history_logs",
+      "column_name": "product_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 2
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "stock_history_logs",
+      "column_name": "product_name",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 3
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "stock_history_logs",
+      "column_name": "type",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 4
+    },
+    {
+      "udt_name": "int4",
+      "data_type": "integer",
+      "table_name": "stock_history_logs",
+      "column_name": "quantity",
+      "is_nullable": "NO",
+      "column_default": null,
+      "ordinal_position": 5
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "stock_history_logs",
+      "column_name": "note",
+      "is_nullable": "YES",
+      "column_default": null,
+      "ordinal_position": 6
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "stock_history_logs",
+      "column_name": "admin_name",
+      "is_nullable": "NO",
+      "column_default": "'Store Admin'::text",
+      "ordinal_position": 7
+    },
+    {
+      "udt_name": "timestamptz",
+      "data_type": "timestamp with time zone",
+      "table_name": "stock_history_logs",
+      "column_name": "created_at",
+      "is_nullable": "NO",
+      "column_default": "now()",
+      "ordinal_position": 8
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "store_settings",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "'default'::text",
+      "ordinal_position": 1
+    },
+    {
+      "udt_name": "text",
+      "data_type": "text",
+      "table_name": "store_settings",
+      "column_name": "site_logo_url",
+      "is_nullable": "YES",
+      "column_default": "'/aishu-logo.jpg'::text",
+      "ordinal_position": 2
+    },
+    {
+      "udt_name": "jsonb",
+      "data_type": "jsonb",
+      "table_name": "store_settings",
+      "column_name": "header_settings_json",
+      "is_nullable": "YES",
+      "column_default": null,
+      "ordinal_position": 3
+    },
+    {
+      "udt_name": "bool",
+      "data_type": "boolean",
+      "table_name": "store_settings",
+      "column_name": "payment_enabled",
+      "is_nullable": "NO",
+      "column_default": "true",
+      "ordinal_position": 4
+    },
+    {
+      "udt_name": "timestamptz",
+      "data_type": "timestamp with time zone",
+      "table_name": "store_settings",
+      "column_name": "updated_at",
+      "is_nullable": "NO",
+      "column_default": "now()",
+      "ordinal_position": 5
+    }
+  ],
+  "indexes": [
+    {
+      "indexdef": "CREATE UNIQUE INDEX admin_roles_pkey ON public.admin_roles USING btree (id)",
+      "indexname": "admin_roles_pkey",
+      "tablename": "admin_roles"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX admin_roles_user_id_key ON public.admin_roles USING btree (user_id)",
+      "indexname": "admin_roles_user_id_key",
+      "tablename": "admin_roles"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_admin_roles_user_id ON public.admin_roles USING btree (user_id)",
+      "indexname": "idx_admin_roles_user_id",
+      "tablename": "admin_roles"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_admin_roles_role ON public.admin_roles USING btree (role)",
+      "indexname": "idx_admin_roles_role",
+      "tablename": "admin_roles"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX admin_profiles_pkey ON public.admin_profiles USING btree (id)",
+      "indexname": "admin_profiles_pkey",
+      "tablename": "admin_profiles"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX customer_addresses_pkey ON public.customer_addresses USING btree (id)",
+      "indexname": "customer_addresses_pkey",
+      "tablename": "customer_addresses"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_customer_addresses_user_id ON public.customer_addresses USING btree (user_id)",
+      "indexname": "idx_customer_addresses_user_id",
+      "tablename": "customer_addresses"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX orders_pkey ON public.orders USING btree (id)",
+      "indexname": "orders_pkey",
+      "tablename": "orders"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX orders_order_number_key ON public.orders USING btree (order_number)",
+      "indexname": "orders_order_number_key",
+      "tablename": "orders"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX orders_tracking_code_key ON public.orders USING btree (tracking_code)",
+      "indexname": "orders_tracking_code_key",
+      "tablename": "orders"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_orders_customer_id ON public.orders USING btree (customer_id)",
+      "indexname": "idx_orders_customer_id",
+      "tablename": "orders"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_orders_order_number ON public.orders USING btree (order_number)",
+      "indexname": "idx_orders_order_number",
+      "tablename": "orders"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_orders_tracking_code ON public.orders USING btree (tracking_code)",
+      "indexname": "idx_orders_tracking_code",
+      "tablename": "orders"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX order_items_pkey ON public.order_items USING btree (id)",
+      "indexname": "order_items_pkey",
+      "tablename": "order_items"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_order_items_order_id ON public.order_items USING btree (order_id)",
+      "indexname": "idx_order_items_order_id",
+      "tablename": "order_items"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_order_items_product_id ON public.order_items USING btree (product_id)",
+      "indexname": "idx_order_items_product_id",
+      "tablename": "order_items"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX home_section_products_pkey ON public.home_section_products USING btree (section_id, product_id)",
+      "indexname": "home_section_products_pkey",
+      "tablename": "home_section_products"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_home_section_products_product_id ON public.home_section_products USING btree (product_id)",
+      "indexname": "idx_home_section_products_product_id",
+      "tablename": "home_section_products"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX coupons_pkey ON public.coupons USING btree (id)",
+      "indexname": "coupons_pkey",
+      "tablename": "coupons"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX coupons_code_key ON public.coupons USING btree (code)",
+      "indexname": "coupons_code_key",
+      "tablename": "coupons"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_coupons_code ON public.coupons USING btree (code)",
+      "indexname": "idx_coupons_code",
+      "tablename": "coupons"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX delivery_cities_pkey ON public.delivery_cities USING btree (id)",
+      "indexname": "delivery_cities_pkey",
+      "tablename": "delivery_cities"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX delivery_cities_name_key ON public.delivery_cities USING btree (name)",
+      "indexname": "delivery_cities_name_key",
+      "tablename": "delivery_cities"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX profiles_pkey ON public.profiles USING btree (id)",
+      "indexname": "profiles_pkey",
+      "tablename": "profiles"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_products_slug ON public.products USING btree (slug)",
+      "indexname": "idx_products_slug",
+      "tablename": "products"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX products_pkey ON public.products USING btree (id)",
+      "indexname": "products_pkey",
+      "tablename": "products"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX products_slug_key ON public.products USING btree (slug)",
+      "indexname": "products_slug_key",
+      "tablename": "products"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_products_category_id ON public.products USING btree (category_id)",
+      "indexname": "idx_products_category_id",
+      "tablename": "products"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX product_gallery_pkey ON public.product_gallery USING btree (id)",
+      "indexname": "product_gallery_pkey",
+      "tablename": "product_gallery"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_product_gallery_product_id ON public.product_gallery USING btree (product_id)",
+      "indexname": "idx_product_gallery_product_id",
+      "tablename": "product_gallery"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX product_weight_options_pkey ON public.product_weight_options USING btree (id)",
+      "indexname": "product_weight_options_pkey",
+      "tablename": "product_weight_options"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_product_weight_options_product_id ON public.product_weight_options USING btree (product_id)",
+      "indexname": "idx_product_weight_options_product_id",
+      "tablename": "product_weight_options"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX product_ingredients_pkey ON public.product_ingredients USING btree (id)",
+      "indexname": "product_ingredients_pkey",
+      "tablename": "product_ingredients"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_product_ingredients_product_id ON public.product_ingredients USING btree (product_id)",
+      "indexname": "idx_product_ingredients_product_id",
+      "tablename": "product_ingredients"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX categories_pkey ON public.categories USING btree (id)",
+      "indexname": "categories_pkey",
+      "tablename": "categories"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX categories_name_key ON public.categories USING btree (name)",
+      "indexname": "categories_name_key",
+      "tablename": "categories"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX categories_slug_key ON public.categories USING btree (slug)",
+      "indexname": "categories_slug_key",
+      "tablename": "categories"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_categories_slug ON public.categories USING btree (slug)",
+      "indexname": "idx_categories_slug",
+      "tablename": "categories"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX home_sections_pkey ON public.home_sections USING btree (id)",
+      "indexname": "home_sections_pkey",
+      "tablename": "home_sections"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX hero_banners_pkey ON public.hero_banners USING btree (id)",
+      "indexname": "hero_banners_pkey",
+      "tablename": "hero_banners"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX header_announcements_pkey ON public.header_announcements USING btree (id)",
+      "indexname": "header_announcements_pkey",
+      "tablename": "header_announcements"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX store_settings_pkey ON public.store_settings USING btree (id)",
+      "indexname": "store_settings_pkey",
+      "tablename": "store_settings"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX stock_history_logs_pkey ON public.stock_history_logs USING btree (id)",
+      "indexname": "stock_history_logs_pkey",
+      "tablename": "stock_history_logs"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_stock_history_product_id ON public.stock_history_logs USING btree (product_id)",
+      "indexname": "idx_stock_history_product_id",
+      "tablename": "stock_history_logs"
+    }
+  ],
+  "policies": [
+    {
+      "cmd": "SELECT",
+      "qual": "true",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "products",
+      "permissive": "PERMISSIVE",
+      "policyname": "Public can view products",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "true",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "categories",
+      "permissive": "PERMISSIVE",
+      "policyname": "Public can view categories",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "true",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "product_weight_options",
+      "permissive": "PERMISSIVE",
+      "policyname": "Public can view product weights",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "true",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "product_gallery",
+      "permissive": "PERMISSIVE",
+      "policyname": "Public can view product gallery",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "true",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "product_ingredients",
+      "permissive": "PERMISSIVE",
+      "policyname": "Public can view ingredients",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "true",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "home_sections",
+      "permissive": "PERMISSIVE",
+      "policyname": "Public can view home sections",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "true",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "home_section_products",
+      "permissive": "PERMISSIVE",
+      "policyname": "Public can view home section products",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "true",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "hero_banners",
+      "permissive": "PERMISSIVE",
+      "policyname": "Public can view hero banners",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "true",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "header_announcements",
+      "permissive": "PERMISSIVE",
+      "policyname": "Public can view announcements",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "true",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "coupons",
+      "permissive": "PERMISSIVE",
+      "policyname": "Public can view coupons",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(is_enabled = true)",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "delivery_cities",
+      "permissive": "PERMISSIVE",
+      "policyname": "Public can view delivery cities",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "true",
+      "roles": [
+        "anon",
+        "authenticated"
+      ],
+      "tablename": "store_settings",
+      "permissive": "PERMISSIVE",
+      "policyname": "Public can view store settings",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((id = auth.uid()) OR is_admin())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "profiles",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can view own profile",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "((id = auth.uid()) OR is_admin())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "profiles",
+      "permissive": "PERMISSIVE",
+      "policyname": "Users can update own profile",
+      "schemaname": "public",
+      "with_check": "((id = auth.uid()) OR is_admin())"
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "profiles",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins can insert profiles",
+      "schemaname": "public",
+      "with_check": "is_admin()"
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "is_admin()",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "profiles",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins can delete profiles",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((id = auth.uid()) OR is_admin())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "admin_profiles",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins can view admin profiles",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "admin_profiles",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins can insert admin profiles",
+      "schemaname": "public",
+      "with_check": "is_admin()"
+    },
+    {
+      "cmd": "UPDATE",
+      "qual": "is_admin()",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "admin_profiles",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins can update admin profiles",
+      "schemaname": "public",
+      "with_check": "is_admin()"
+    },
+    {
+      "cmd": "DELETE",
+      "qual": "is_admin()",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "admin_profiles",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins can delete admin profiles",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "qual": "((user_id = auth.uid()) OR is_admin())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "customer_addresses",
+      "permissive": "PERMISSIVE",
+      "policyname": "Customers manage own addresses",
+      "schemaname": "public",
+      "with_check": "((user_id = auth.uid()) OR is_admin())"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "is_admin()",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "products",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins manage products",
+      "schemaname": "public",
+      "with_check": "is_admin()"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "is_admin()",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "categories",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins manage categories",
+      "schemaname": "public",
+      "with_check": "is_admin()"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "is_admin()",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "product_weight_options",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins manage product weights",
+      "schemaname": "public",
+      "with_check": "is_admin()"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "is_admin()",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "product_gallery",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins manage product gallery",
+      "schemaname": "public",
+      "with_check": "is_admin()"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "is_admin()",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "product_ingredients",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins manage ingredients",
+      "schemaname": "public",
+      "with_check": "is_admin()"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "is_admin()",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "home_sections",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins manage home sections",
+      "schemaname": "public",
+      "with_check": "is_admin()"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "is_admin()",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "home_section_products",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins manage home section products",
+      "schemaname": "public",
+      "with_check": "is_admin()"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "is_admin()",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "hero_banners",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins manage banners",
+      "schemaname": "public",
+      "with_check": "is_admin()"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "is_admin()",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "header_announcements",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins manage announcements",
+      "schemaname": "public",
+      "with_check": "is_admin()"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "is_admin()",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "coupons",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins manage coupons",
+      "schemaname": "public",
+      "with_check": "is_admin()"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "is_admin()",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "delivery_cities",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins manage delivery cities",
+      "schemaname": "public",
+      "with_check": "is_admin()"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "is_admin()",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "store_settings",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins manage store settings",
+      "schemaname": "public",
+      "with_check": "is_admin()"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "is_admin()",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "stock_history_logs",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins manage stock history",
+      "schemaname": "public",
+      "with_check": "is_admin()"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((customer_id = auth.uid()) OR is_admin())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "orders",
+      "permissive": "PERMISSIVE",
+      "policyname": "Customers can view own orders",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "orders",
+      "permissive": "PERMISSIVE",
+      "policyname": "Customers can create orders",
+      "schemaname": "public",
+      "with_check": "((customer_id = auth.uid()) OR (customer_id IS NULL))"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "is_admin()",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "orders",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins manage orders",
+      "schemaname": "public",
+      "with_check": "is_admin()"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(EXISTS ( SELECT 1\n   FROM orders o\n  WHERE ((o.id = order_items.order_id) AND ((o.customer_id = auth.uid()) OR is_admin()))))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "order_items",
+      "permissive": "PERMISSIVE",
+      "policyname": "Customers can view own order items",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "order_items",
+      "permissive": "PERMISSIVE",
+      "policyname": "Customers can create order items",
+      "schemaname": "public",
+      "with_check": "(EXISTS ( SELECT 1\n   FROM orders o\n  WHERE ((o.id = order_items.order_id) AND ((o.customer_id = auth.uid()) OR is_admin()))))"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "is_admin()",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "order_items",
+      "permissive": "PERMISSIVE",
+      "policyname": "Admins manage order items",
+      "schemaname": "public",
+      "with_check": "is_admin()"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "true",
+      "roles": [
+        "public"
+      ],
+      "tablename": "products",
+      "permissive": "PERMISSIVE",
+      "policyname": "Allow public all products",
+      "schemaname": "public",
+      "with_check": "true"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "true",
+      "roles": [
+        "public"
+      ],
+      "tablename": "product_gallery",
+      "permissive": "PERMISSIVE",
+      "policyname": "Allow public all gallery",
+      "schemaname": "public",
+      "with_check": "true"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "true",
+      "roles": [
+        "public"
+      ],
+      "tablename": "product_weight_options",
+      "permissive": "PERMISSIVE",
+      "policyname": "Allow public all weights",
+      "schemaname": "public",
+      "with_check": "true"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "true",
+      "roles": [
+        "public"
+      ],
+      "tablename": "product_ingredients",
+      "permissive": "PERMISSIVE",
+      "policyname": "Allow public all ingredients",
+      "schemaname": "public",
+      "with_check": "true"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "true",
+      "roles": [
+        "public"
+      ],
+      "tablename": "categories",
+      "permissive": "PERMISSIVE",
+      "policyname": "Allow public all categories",
+      "schemaname": "public",
+      "with_check": "true"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "true",
+      "roles": [
+        "public"
+      ],
+      "tablename": "home_sections",
+      "permissive": "PERMISSIVE",
+      "policyname": "Allow public all sections",
+      "schemaname": "public",
+      "with_check": "true"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "true",
+      "roles": [
+        "public"
+      ],
+      "tablename": "hero_banners",
+      "permissive": "PERMISSIVE",
+      "policyname": "Allow public all banners",
+      "schemaname": "public",
+      "with_check": "true"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "true",
+      "roles": [
+        "public"
+      ],
+      "tablename": "header_announcements",
+      "permissive": "PERMISSIVE",
+      "policyname": "Allow public all announcements",
+      "schemaname": "public",
+      "with_check": "true"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "true",
+      "roles": [
+        "public"
+      ],
+      "tablename": "store_settings",
+      "permissive": "PERMISSIVE",
+      "policyname": "Allow public all settings",
+      "schemaname": "public",
+      "with_check": "true"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "true",
+      "roles": [
+        "public"
+      ],
+      "tablename": "stock_history_logs",
+      "permissive": "PERMISSIVE",
+      "policyname": "Allow public all logs",
+      "schemaname": "public",
+      "with_check": "true"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "((user_id = auth.uid()) OR (auth.role() = 'service_role'::text))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "admin_roles",
+      "permissive": "PERMISSIVE",
+      "policyname": "allow_authenticated_read_admin_roles",
+      "schemaname": "public",
+      "with_check": null
+    }
+  ],
+  "triggers": [
+    {
+      "name": "profiles_updated_at",
+      "table": "profiles",
+      "definition": "CREATE TRIGGER profiles_updated_at BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+    },
+    {
+      "name": "admin_profiles_updated_at",
+      "table": "admin_profiles",
+      "definition": "CREATE TRIGGER admin_profiles_updated_at BEFORE UPDATE ON public.admin_profiles FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+    },
+    {
+      "name": "customer_addresses_updated_at",
+      "table": "customer_addresses",
+      "definition": "CREATE TRIGGER customer_addresses_updated_at BEFORE UPDATE ON public.customer_addresses FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+    },
+    {
+      "name": "categories_updated_at",
+      "table": "categories",
+      "definition": "CREATE TRIGGER categories_updated_at BEFORE UPDATE ON public.categories FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+    },
+    {
+      "name": "products_updated_at",
+      "table": "products",
+      "definition": "CREATE TRIGGER products_updated_at BEFORE UPDATE ON public.products FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+    },
+    {
+      "name": "home_sections_updated_at",
+      "table": "home_sections",
+      "definition": "CREATE TRIGGER home_sections_updated_at BEFORE UPDATE ON public.home_sections FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+    },
+    {
+      "name": "store_settings_updated_at",
+      "table": "store_settings",
+      "definition": "CREATE TRIGGER store_settings_updated_at BEFORE UPDATE ON public.store_settings FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+    }
+  ],
+  "functions": [
+    {
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "owner": "postgres",
+      "signature": "get_current_admin_identity()",
+      "definition": "CREATE OR REPLACE FUNCTION public.get_current_admin_identity()\n RETURNS jsonb\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO 'public', 'auth'\nAS $function$\r\nDECLARE\r\n    v_role_row RECORD;\r\n    v_email TEXT;\r\n    v_full_name TEXT;\r\nBEGIN\r\n    IF auth.uid() IS NULL THEN\r\n        RETURN NULL;\r\n    END IF;\r\n\r\n    SELECT email INTO v_email FROM auth.users WHERE id = auth.uid();\r\n    SELECT full_name INTO v_full_name FROM public.profiles WHERE id = auth.uid();\r\n\r\n    SELECT role, status, allowed_tabs, permissions, created_at\r\n    INTO v_role_row\r\n    FROM public.admin_roles\r\n    WHERE user_id = auth.uid();\r\n\r\n    IF NOT FOUND THEN\r\n        RETURN NULL;\r\n    END IF;\r\n\r\n    IF v_role_row.status <> 'active' THEN\r\n        RETURN jsonb_build_object(\r\n            'user_id', auth.uid(),\r\n            'email', v_email,\r\n            'role', v_role_row.role,\r\n            'status', v_role_row.status,\r\n            'is_active', false,\r\n            'error', 'Account is suspended or revoked'\r\n        );\r\n    END IF;\r\n\r\n    RETURN jsonb_build_object(\r\n        'user_id', auth.uid(),\r\n        'email', v_email,\r\n        'name', COALESCE(v_full_name, split_part(v_email, '@', 1)),\r\n        'role', v_role_row.role,\r\n        'status', v_role_row.status,\r\n        'is_active', true,\r\n        'allowed_tabs', v_role_row.allowed_tabs,\r\n        'permissions', v_role_row.permissions,\r\n        'created_at', v_role_row.created_at\r\n    );\r\nEND;\r\n$function$\n"
+    },
+    {
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "owner": "postgres",
+      "signature": "handle_new_user()",
+      "definition": "CREATE OR REPLACE FUNCTION public.handle_new_user()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\r\nBEGIN\r\n  INSERT INTO public.profiles (\r\n    id,\r\n    full_name,\r\n    phone_number,\r\n    avatar_url,\r\n    role\r\n  )\r\n  VALUES (\r\n    NEW.id,\r\n    COALESCE(\r\n      NEW.raw_user_meta_data ->> 'full_name',\r\n      'Customer'\r\n    ),\r\n    NEW.raw_user_meta_data ->> 'phone_number',\r\n    COALESCE(\r\n      NEW.raw_user_meta_data ->> 'avatar_url',\r\n      '/aishu-logo.jpg'\r\n    ),\r\n    'customer'\r\n  )\r\n  ON CONFLICT (id) DO NOTHING;\r\n\r\n  RETURN NEW;\r\nEND;\r\n$function$\n"
+    },
+    {
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "owner": "postgres",
+      "signature": "is_admin()",
+      "definition": "CREATE OR REPLACE FUNCTION public.is_admin()\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\r\n  SELECT EXISTS (\r\n    SELECT 1\r\n    FROM public.admin_profiles\r\n    WHERE id = auth.uid()\r\n  );\r\n$function$\n"
+    },
+    {
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "owner": "postgres",
+      "signature": "set_updated_at()",
+      "definition": "CREATE OR REPLACE FUNCTION public.set_updated_at()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\r\nBEGIN\r\n  NEW.updated_at = NOW();\r\n  RETURN NEW;\r\nEND;\r\n$function$\n"
+    }
+  ],
+  "constraints": [
+    {
+      "name": "product_ingredients_product_id_fkey",
+      "table": "product_ingredients",
+      "validated": true,
+      "definition": "FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "profiles_pkey",
+      "table": "profiles",
+      "validated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "profiles_id_fkey",
+      "table": "profiles",
+      "validated": true,
+      "definition": "FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "admin_profiles_pkey",
+      "table": "admin_profiles",
+      "validated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "admin_profiles_id_fkey",
+      "table": "admin_profiles",
+      "validated": true,
+      "definition": "FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "customer_addresses_label_check",
+      "table": "customer_addresses",
+      "validated": true,
+      "definition": "CHECK ((label = ANY (ARRAY['Home'::text, 'Work'::text, 'Other'::text])))"
+    },
+    {
+      "name": "customer_addresses_pkey",
+      "table": "customer_addresses",
+      "validated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "customer_addresses_user_id_fkey",
+      "table": "customer_addresses",
+      "validated": true,
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "categories_pkey",
+      "table": "categories",
+      "validated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "categories_name_key",
+      "table": "categories",
+      "validated": true,
+      "definition": "UNIQUE (name)"
+    },
+    {
+      "name": "categories_slug_key",
+      "table": "categories",
+      "validated": true,
+      "definition": "UNIQUE (slug)"
+    },
+    {
+      "name": "products_inventory_count_check",
+      "table": "products",
+      "validated": true,
+      "definition": "CHECK ((inventory_count >= 0))"
+    },
+    {
+      "name": "products_rating_check",
+      "table": "products",
+      "validated": true,
+      "definition": "CHECK (((rating >= (0)::numeric) AND (rating <= (5)::numeric)))"
+    },
+    {
+      "name": "products_reviews_count_check",
+      "table": "products",
+      "validated": true,
+      "definition": "CHECK ((reviews_count >= 0))"
+    },
+    {
+      "name": "products_discount_percentage_check",
+      "table": "products",
+      "validated": true,
+      "definition": "CHECK (((discount_percentage >= (0)::numeric) AND (discount_percentage <= (100)::numeric)))"
+    },
+    {
+      "name": "products_pkey",
+      "table": "products",
+      "validated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "products_slug_key",
+      "table": "products",
+      "validated": true,
+      "definition": "UNIQUE (slug)"
+    },
+    {
+      "name": "products_category_id_fkey",
+      "table": "products",
+      "validated": true,
+      "definition": "FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL"
+    },
+    {
+      "name": "product_weight_options_price_check",
+      "table": "product_weight_options",
+      "validated": true,
+      "definition": "CHECK ((price >= (0)::numeric))"
+    },
+    {
+      "name": "product_weight_options_pkey",
+      "table": "product_weight_options",
+      "validated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "product_weight_options_product_id_fkey",
+      "table": "product_weight_options",
+      "validated": true,
+      "definition": "FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "product_gallery_pkey",
+      "table": "product_gallery",
+      "validated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "product_gallery_product_id_fkey",
+      "table": "product_gallery",
+      "validated": true,
+      "definition": "FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "product_ingredients_pkey",
+      "table": "product_ingredients",
+      "validated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "orders_subtotal_check",
+      "table": "orders",
+      "validated": true,
+      "definition": "CHECK ((subtotal >= (0)::numeric))"
+    },
+    {
+      "name": "orders_delivery_fee_check",
+      "table": "orders",
+      "validated": true,
+      "definition": "CHECK ((delivery_fee >= (0)::numeric))"
+    },
+    {
+      "name": "orders_discount_amount_check",
+      "table": "orders",
+      "validated": true,
+      "definition": "CHECK ((discount_amount >= (0)::numeric))"
+    },
+    {
+      "name": "orders_grand_total_check",
+      "table": "orders",
+      "validated": true,
+      "definition": "CHECK ((grand_total >= (0)::numeric))"
+    },
+    {
+      "name": "orders_payment_status_check",
+      "table": "orders",
+      "validated": true,
+      "definition": "CHECK ((payment_status = ANY (ARRAY['pending'::text, 'completed'::text, 'failed'::text])))"
+    },
+    {
+      "name": "orders_order_status_check",
+      "table": "orders",
+      "validated": true,
+      "definition": "CHECK ((order_status = ANY (ARRAY['placed'::text, 'pending'::text, 'confirmed'::text, 'processing'::text, 'ready_to_ship'::text, 'shipped'::text, 'out for delivery'::text, 'delivered'::text, 'cancelled'::text])))"
+    },
+    {
+      "name": "orders_delivery_days_check",
+      "table": "orders",
+      "validated": true,
+      "definition": "CHECK ((delivery_days >= 0))"
+    },
+    {
+      "name": "orders_pkey",
+      "table": "orders",
+      "validated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "orders_order_number_key",
+      "table": "orders",
+      "validated": true,
+      "definition": "UNIQUE (order_number)"
+    },
+    {
+      "name": "orders_tracking_code_key",
+      "table": "orders",
+      "validated": true,
+      "definition": "UNIQUE (tracking_code)"
+    },
+    {
+      "name": "orders_customer_id_fkey",
+      "table": "orders",
+      "validated": true,
+      "definition": "FOREIGN KEY (customer_id) REFERENCES auth.users(id) ON DELETE SET NULL"
+    },
+    {
+      "name": "order_items_unit_price_check",
+      "table": "order_items",
+      "validated": true,
+      "definition": "CHECK ((unit_price >= (0)::numeric))"
+    },
+    {
+      "name": "order_items_quantity_check",
+      "table": "order_items",
+      "validated": true,
+      "definition": "CHECK ((quantity > 0))"
+    },
+    {
+      "name": "order_items_pkey",
+      "table": "order_items",
+      "validated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "order_items_order_id_fkey",
+      "table": "order_items",
+      "validated": true,
+      "definition": "FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "order_items_product_id_fkey",
+      "table": "order_items",
+      "validated": true,
+      "definition": "FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL"
+    },
+    {
+      "name": "stock_history_logs_type_check",
+      "table": "stock_history_logs",
+      "validated": true,
+      "definition": "CHECK ((type = ANY (ARRAY['restock'::text, 'destock'::text])))"
+    },
+    {
+      "name": "stock_history_logs_pkey",
+      "table": "stock_history_logs",
+      "validated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "home_sections_pkey",
+      "table": "home_sections",
+      "validated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "home_section_products_pkey",
+      "table": "home_section_products",
+      "validated": true,
+      "definition": "PRIMARY KEY (section_id, product_id)"
+    },
+    {
+      "name": "home_section_products_section_id_fkey",
+      "table": "home_section_products",
+      "validated": true,
+      "definition": "FOREIGN KEY (section_id) REFERENCES home_sections(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "home_section_products_product_id_fkey",
+      "table": "home_section_products",
+      "validated": true,
+      "definition": "FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "hero_banners_pkey",
+      "table": "hero_banners",
+      "validated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "header_announcements_pkey",
+      "table": "header_announcements",
+      "validated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "coupons_discount_type_check",
+      "table": "coupons",
+      "validated": true,
+      "definition": "CHECK ((discount_type = ANY (ARRAY['percentage'::text, 'flat'::text])))"
+    },
+    {
+      "name": "coupons_discount_value_check",
+      "table": "coupons",
+      "validated": true,
+      "definition": "CHECK ((discount_value >= (0)::numeric))"
+    },
+    {
+      "name": "coupons_min_order_amount_check",
+      "table": "coupons",
+      "validated": true,
+      "definition": "CHECK ((min_order_amount >= (0)::numeric))"
+    },
+    {
+      "name": "coupons_applies_to_check",
+      "table": "coupons",
+      "validated": true,
+      "definition": "CHECK ((applies_to = ANY (ARRAY['all'::text, 'category'::text, 'product'::text])))"
+    },
+    {
+      "name": "coupons_usage_count_check",
+      "table": "coupons",
+      "validated": true,
+      "definition": "CHECK ((usage_count >= 0))"
+    },
+    {
+      "name": "coupons_pkey",
+      "table": "coupons",
+      "validated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "coupons_code_key",
+      "table": "coupons",
+      "validated": true,
+      "definition": "UNIQUE (code)"
+    },
+    {
+      "name": "coupons_target_product_id_fkey",
+      "table": "coupons",
+      "validated": true,
+      "definition": "FOREIGN KEY (target_product_id) REFERENCES products(id) ON DELETE SET NULL"
+    },
+    {
+      "name": "delivery_cities_charge_check",
+      "table": "delivery_cities",
+      "validated": true,
+      "definition": "CHECK ((charge >= (0)::numeric))"
+    },
+    {
+      "name": "delivery_cities_free_delivery_threshold_check",
+      "table": "delivery_cities",
+      "validated": true,
+      "definition": "CHECK (((free_delivery_threshold IS NULL) OR (free_delivery_threshold >= (0)::numeric)))"
+    },
+    {
+      "name": "delivery_cities_pkey",
+      "table": "delivery_cities",
+      "validated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "delivery_cities_name_key",
+      "table": "delivery_cities",
+      "validated": true,
+      "definition": "UNIQUE (name)"
+    },
+    {
+      "name": "store_settings_pkey",
+      "table": "store_settings",
+      "validated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "admin_roles_role_check",
+      "table": "admin_roles",
+      "validated": true,
+      "definition": "CHECK ((role = ANY (ARRAY['super_admin'::text, 'admin'::text, 'sub_admin'::text])))"
+    },
+    {
+      "name": "admin_roles_status_check",
+      "table": "admin_roles",
+      "validated": true,
+      "definition": "CHECK ((status = ANY (ARRAY['active'::text, 'suspended'::text, 'revoked'::text])))"
+    },
+    {
+      "name": "admin_roles_pkey",
+      "table": "admin_roles",
+      "validated": true,
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "admin_roles_user_id_key",
+      "table": "admin_roles",
+      "validated": true,
+      "definition": "UNIQUE (user_id)"
+    },
+    {
+      "name": "admin_roles_user_id_fkey",
+      "table": "admin_roles",
+      "validated": true,
+      "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "admin_roles_created_by_fkey",
+      "table": "admin_roles",
+      "validated": true,
+      "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL"
+    }
+  ],
+  "table_security": [
+    {
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "admin_roles",
+      "owner": "postgres"
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "admin_profiles",
+      "owner": "postgres"
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "customer_addresses",
+      "owner": "postgres"
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "orders",
+      "owner": "postgres"
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "order_items",
+      "owner": "postgres"
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "home_section_products",
+      "owner": "postgres"
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "coupons",
+      "owner": "postgres"
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "delivery_cities",
+      "owner": "postgres"
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "profiles",
+      "owner": "postgres"
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "products",
+      "owner": "postgres"
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "product_gallery",
+      "owner": "postgres"
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "product_weight_options",
+      "owner": "postgres"
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "product_ingredients",
+      "owner": "postgres"
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "categories",
+      "owner": "postgres"
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "home_sections",
+      "owner": "postgres"
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "hero_banners",
+      "owner": "postgres"
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "header_announcements",
+      "owner": "postgres"
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "store_settings",
+      "owner": "postgres"
+    },
+    {
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "rls": true,
+      "name": "stock_history_logs",
+      "owner": "postgres"
+    }
+  ]
+}

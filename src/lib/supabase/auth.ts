@@ -71,11 +71,17 @@ export const getCustomerProfile = async (userId: string): Promise<DbProfile | nu
 
 export const updateCustomerProfile = async (
   userId: string,
-  updates: Partial<Omit<DbProfile, 'id' | 'created_at'>>
+  updates: Partial<Pick<DbProfile, 'full_name' | 'phone_number' | 'avatar_url'>>
 ) => {
+  // Whitelist at runtime too; the database owns timestamps and authorization fields.
+  const permittedUpdates = Object.fromEntries(
+    ['full_name', 'phone_number', 'avatar_url']
+      .filter(key => Object.prototype.hasOwnProperty.call(updates, key))
+      .map(key => [key, updates[key as keyof typeof updates]])
+  );
   const { data, error } = await supabase
     .from('profiles')
-    .update({ ...updates, updated_at: new Date().toISOString() })
+    .update(permittedUpdates)
     .eq('id', userId)
     .select()
     .single();
