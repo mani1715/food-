@@ -70,16 +70,6 @@ serve(async (req: Request) => {
       return errorResponse('Order not found.', 404);
     }
 
-    if (order.payment_status === 'completed') {
-      return jsonResponse({
-        success: true,
-        message: 'Payment has already been verified and marked completed.',
-        orderId,
-        paymentStatus: 'completed',
-        orderStatus: order.order_status || 'confirmed',
-      });
-    }
-
     let isAuthorized = false;
     const authHeader = req.headers.get('Authorization');
     if (authHeader) {
@@ -112,6 +102,16 @@ serve(async (req: Request) => {
 
     if (!isAuthorized) {
       return errorResponse('Unauthorized: Invalid payment verification authority.', 403);
+    }
+
+    if (order.payment_status === 'completed') {
+      return jsonResponse({
+        success: true,
+        message: 'Payment has already been verified and marked completed.',
+        orderId,
+        paymentStatus: 'completed',
+        orderStatus: order.order_status || 'confirmed',
+      });
     }
 
     // 2. Verify Payment Attempt Belongs to Order in Database
