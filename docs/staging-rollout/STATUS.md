@@ -35,6 +35,8 @@ Security advisors report intentional SECURITY DEFINER API exposure warnings for 
 
 A staging-only `staging-payment-health` function checked environment presence without returning values. Runtime result: `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, and `RAZORPAY_WEBHOOK_SECRET` **all absent**. This conflicts with the earlier user report that they were configured. Configure them in this exact project's Edge Function secrets; use `rzp_test_` credentials only. No secret values were requested, copied, or logged.
 
+Follow-up authenticated CLI inventory confirmed the exact cause: all three Razorpay names exist in **production**, while staging lists only built-in Supabase secrets. No production secret values were read or copied. Configure separate test-mode credentials on staging.
+
 Provider checkout/capture, real test webhook HMAC delivery/retry, provider refunds, and browser end-to-end flow remain unverified. Database simulations do not establish provider integration success. Production's original missing-RPC failure remains unmodified.
 
 No real staff account was provisioned. Trusted provisioning requires an existing verified Auth user; bootstrap the first super-admin through a server-side service-role call to `manage_staff_account`, then use active super-admin sessions. Do not expose service credentials in the browser or authorize through profile metadata. Legacy profile-only identities have no admin authority until explicitly provisioned.
