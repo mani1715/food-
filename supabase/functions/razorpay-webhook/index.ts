@@ -288,6 +288,7 @@ serve(async (req: Request) => {
           p_refund_amount: refundAmount,
           p_reason: 'Webhook refund.processed event',
           p_provider_payment_id: refundEntity.payment_id || razorpayPaymentId,
+          p_operation_id: refundEntity.notes?.operation_id || null,
         });
 
         if (refundErr || refundData?.success !== true) {

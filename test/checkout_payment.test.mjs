@@ -2043,3 +2043,18 @@ test('PostgreSQL: concurrent reservations serialize on the payment row', { skip:
     sync("BEGIN; DELETE FROM public.payment_refund_operations WHERE order_id='ord-stage-concurrent'; DELETE FROM public.payments WHERE order_id='ord-stage-concurrent'; DELETE FROM public.orders WHERE id='ord-stage-concurrent'; COMMIT;");
   }
 });
+
+for (const operationId of [undefined, 'aaaaaaaa-1111-4111-8111-bbbbbbbbbbbb']) {
+  test(`Actual webhook links refund reservation: ${operationId ?? 'external refund'}`, async () => {
+    const f = webhookFixture();
+    const { handler } = await loadEdgeHandler('razorpay-webhook', f.client);
+    const event = { event: 'refund.processed', payload: { refund: { entity: {
+      id: 'rfnd-test', payment_id: 'pay-test', amount: 101,
+      notes: operationId ? { operation_id: operationId } : {},
+    } } } };
+    assert.equal((await handler(signedRequest(event))).status, 200);
+    const record = f.calls.find(c => c.name === 'record_refund_success');
+    assert.equal(record.args.p_operation_id, operationId ?? null);
+    assert.equal(record.args.p_refund_amount, 1.01);
+  });
+}

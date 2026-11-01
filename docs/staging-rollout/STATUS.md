@@ -1,5 +1,7 @@
 # Staging verification — 2026-10-31
 
+**Latest evidence:** See [2026-11-01 integration results](VALIDATION-20261101.md). Test capture and signed provider webhooks now pass; the partial refund succeeded, a refund-operation reservation bug was fixed, and Razorpay still rejects the exact remaining test refund. The historical missing-secret blocker below has been resolved.
+
 Target: `aura-foods-staging`, `mjnktiyufvzkibrsdxug`. Production `akublyjmyrcoeemuxugr` was read only. No production deployment, Git merge, or frontend publication.
 
 ## Installed and verified
