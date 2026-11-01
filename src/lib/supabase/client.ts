@@ -4,12 +4,8 @@ import { createClient } from '@supabase/supabase-js';
 // Environment variable extraction with secure fallback handling
 const envUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
 const envAnonKey =
-  (import.meta as any).env?.VITE_SUPABASE_ANON_KEY ||
-  (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-// Default fallback for development/sandbox mode
-const DEV_FALLBACK_URL = 'https://akublyjmyrcoeemuxugr.supabase.co';
-const DEV_FALLBACK_KEY = 'sb_publishable_KREZO8qrQFap24pBhrQuuw_q8nlcOrs';
+  (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  (import.meta as any).env?.VITE_SUPABASE_ANON_KEY;
 
 export const isProductionEnv = (): boolean => {
   return (
@@ -18,13 +14,13 @@ export const isProductionEnv = (): boolean => {
   );
 };
 
-const supabaseUrl = envUrl || DEV_FALLBACK_URL;
-const supabaseAnonKey = envAnonKey || DEV_FALLBACK_KEY;
+const supabaseUrl = envUrl || 'http://127.0.0.1:54321';
+const supabaseAnonKey = envAnonKey || 'not-configured';
 
 export const isSupabaseConfigured = (): boolean => {
-  const hasUrl = Boolean(supabaseUrl) && typeof supabaseUrl === 'string' && supabaseUrl.startsWith('http');
+  const hasUrl = Boolean(envUrl) && typeof supabaseUrl === 'string' && supabaseUrl.startsWith('http');
   const hasKey =
-    Boolean(supabaseAnonKey) &&
+    Boolean(envAnonKey) &&
     supabaseAnonKey !== 'your-anon-key-here' &&
     supabaseAnonKey !== 'your-anon-publishable-key-here';
 
