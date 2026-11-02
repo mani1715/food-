@@ -1835,12 +1835,17 @@ test('Actual payment failure rejects RPC business failure', async () => {
   assert.equal(f.calls.at(-1).args.p_status, 'failed');
 });
 
-function refundFixture(recordResult, listItems = [], role = 'admin') {
+function refundFixture(recordResult, listItems = [], role = 'admin', paymentAmount = 499, pastRefunds = []) {
   const calls = [], requests = [];
   const client = {
     auth: { getUser: async () => ({ data: { user: { id: 'staff-test' } } }) },
     from: table => {
-      const result = { data: table === 'admin_roles' ? { role, status: 'active', permissions: [] } : table === 'payments' ? { id: 'payment-test', provider_payment_id: 'pay-test', amount: 499 } : [] };
+      const result = {
+        data: table === 'admin_roles' ? { role, status: 'active', permissions: [] }
+            : table === 'payments' ? { id: 'payment-test', provider_payment_id: 'pay-test', amount: paymentAmount }
+            : table === 'payment_refunds' ? pastRefunds
+            : []
+      };
       const query = { select: () => query, eq: () => query, in: () => query, order: () => query, limit: () => query,
         single: async () => result, then: (resolve, reject) => Promise.resolve(result).then(resolve, reject) };
       return query;
@@ -1852,7 +1857,7 @@ function refundFixture(recordResult, listItems = [], role = 'admin') {
     },
   };
   const fetchMock = async (url, options = {}) => {
-    requests.push({ url, method: options.method || 'GET' });
+    requests.push({ url, method: options.method || 'GET', headers: options.headers, body: options.body });
     return Response.json(options.method === 'POST' ? { id: 'rfnd-test', status: 'processed' } : { items: listItems });
   };
   return { client, calls, requests, fetchMock };
@@ -2008,13 +2013,48 @@ ROLLBACK;
 });
 
 test('Actual refund rejects zero, malformed and fractional-paise amounts before creating an operation', async () => {
-  for (const amount of [0, null, 'not-a-number', 499.001, -1]) {
+  for (const amount of [0, null, 'not-a-number', 499.001, -1, 0.50, 0.99]) {
     const f = refundFixture({ data: { success: true } });
     const { handler } = await loadEdgeHandler('refund-razorpay-payment', f.client, f.fetchMock);
-    assert.equal((await handler(refundRequest(amount))).status, 400);
+    const res = await handler(refundRequest(amount));
+    assert.equal(res.status, 400);
     assert.equal(f.calls.length, 0);
     assert.equal(f.requests.length, 0);
   }
+
+  // Explicitly verify error message matches actual ₹1.00 minimum validation
+  const fMin = refundFixture({ data: { success: true } });
+  const { handler } = await loadEdgeHandler('refund-razorpay-payment', fMin.client, fMin.fetchMock);
+  const minRes = await handler(refundRequest(0.50));
+  const minJson = await minRes.json();
+  assert.equal(minJson.error, 'Invalid refund amount. Must be between ₹1.00 and ₹499.00.');
+});
+
+test('Actual refund outbound request serialization: ₹546.99 produces JSON amount: 54699', async () => {
+  const f = refundFixture(
+    { data: { success: true } },
+    [],
+    'admin',
+    548.00,
+    [{ amount: 1.01, provider_refund_id: 'rfnd_TusE3QPDusvgKp' }]
+  );
+  const { handler } = await loadEdgeHandler('refund-razorpay-payment', f.client, f.fetchMock);
+  const res = await handler(refundRequest(546.99));
+  assert.equal(res.status, 200);
+
+  const postReq = f.requests.find(r => r.method === 'POST');
+  assert.ok(postReq, 'Outbound POST request must be dispatched to Razorpay');
+  assert.equal(postReq.url, 'https://api.razorpay.com/v1/payments/pay-test/refund');
+  assert.equal(typeof postReq.body, 'string');
+
+  // Verify raw JSON string serialization has exact integer 54699
+  assert.match(postReq.body, /"amount":\s*54699\b/);
+  const parsed = JSON.parse(postReq.body);
+  assert.strictEqual(typeof parsed.amount, 'number');
+  assert.strictEqual(Number.isSafeInteger(parsed.amount), true);
+  assert.strictEqual(parsed.amount, 54699);
+  assert.notStrictEqual(parsed.amount, 54699n);
+  assert.notStrictEqual(parsed.amount, 546.99);
 });
 
 test('PostgreSQL: concurrent reservations serialize on the payment row', { skip: process.env.AISHU_STAGE_C_PG !== '1' }, async () => {

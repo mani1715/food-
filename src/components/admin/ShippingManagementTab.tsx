@@ -33,6 +33,8 @@ import {
   savePickupLocationInDb,
   fetchAllShipmentsFromDb,
   createManualShipmentInDb,
+  createNimbusShipmentViaEdge,
+  checkNimbusServiceability,
   updateShipmentStatusInDb,
   dispositionReturnedFoodStockInDb,
   calculateOrderPackageFromDb,
@@ -105,12 +107,12 @@ export const ShippingManagementTab: React.FC = () => {
 
   // Pickup Location Form
   const [pickupName, setPickupName] = useState('Aishu Foods Central Kitchen');
-  const [pickupContact, setPickupContact] = useState('Store Manager');
-  const [pickupPhone, setPickupPhone] = useState('9876543210');
-  const [pickupAddress, setPickupAddress] = useState('Road No 12, Jubilee Hills');
-  const [pickupCity, setPickupCity] = useState('Hyderabad');
-  const [pickupState, setPickupState] = useState('Telangana');
-  const [pickupPincode, setPickupPincode] = useState('500033');
+  const [pickupContact, setPickupContact] = useState('');
+  const [pickupPhone, setPickupPhone] = useState('');
+  const [pickupAddress, setPickupAddress] = useState('');
+  const [pickupCity, setPickupCity] = useState('');
+  const [pickupState, setPickupState] = useState('');
+  const [pickupPincode, setPickupPincode] = useState('');
 
   // Load Data
   const loadShippingData = async () => {
@@ -196,6 +198,39 @@ export const ShippingManagementTab: React.FC = () => {
       return matchSearch && matchStatus;
     });
   }, [shipments, searchTerm, statusFilter]);
+
+  // Handle Automated NimbusPost Dispatch
+  const handleCreateNimbusDispatch = async () => {
+    if (!dispatchOrderId) {
+      addToast('Order Required', 'Please select an order to dispatch.', 'error');
+      return;
+    }
+
+    try {
+      setDispatchSubmitting(true);
+      const res = await createNimbusShipmentViaEdge({
+        orderId: dispatchOrderId,
+      });
+
+      if (res.success) {
+        addToast(
+          'NimbusPost Shipment Created',
+          `AWB ${res.awb || 'assigned'} generated with ${res.courier || 'courier'}.`,
+          'success'
+        );
+        setShowManualDispatchModal(false);
+        setDispatchOrderId('');
+        setDispatchAwb('');
+        setDispatchTrackingUrl('');
+        setDispatchNotes('');
+        await loadShippingData();
+      }
+    } catch (err: any) {
+      addToast('NimbusPost Dispatch Failed', err.message || 'Could not create shipment.', 'error');
+    } finally {
+      setDispatchSubmitting(false);
+    }
+  };
 
   // Handle Manual Dispatch Submit
   const handleCreateManualDispatch = async (e: React.FormEvent) => {
@@ -337,7 +372,7 @@ export const ShippingManagementTab: React.FC = () => {
               <h2 className="text-xl font-extrabold text-black tracking-tight flex items-center gap-2">
                 <span>Shipping & Logistics Control</span>
                 <span className="text-[10px] font-black uppercase bg-purple-100 text-purple-900 border border-purple-200 px-2.5 py-0.5 rounded-full">
-                  NimbusPost Ready
+                  NimbusPost Integration
                 </span>
               </h2>
               <p className="text-xs text-neutral-500 mt-0.5">
@@ -882,20 +917,29 @@ export const ShippingManagementTab: React.FC = () => {
               </div>
 
               {/* Buttons */}
-              <div className="flex gap-3 pt-3">
+              <div className="flex flex-col sm:flex-row gap-3 pt-3">
                 <button
                   type="button"
                   onClick={() => setShowManualDispatchModal(false)}
-                  className="flex-1 py-3 border border-neutral-200 hover:bg-neutral-100 rounded-2xl font-bold text-black transition-all cursor-pointer"
+                  className="py-3 px-4 border border-neutral-200 hover:bg-neutral-100 rounded-2xl font-bold text-black transition-all cursor-pointer"
                 >
                   Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateNimbusDispatch}
+                  disabled={dispatchSubmitting || !dispatchOrderId || (dispatchEligibility && !dispatchEligibility.eligible)}
+                  className="flex-1 py-3 bg-purple-700 hover:bg-purple-800 disabled:opacity-50 text-white rounded-2xl font-extrabold transition-all cursor-pointer shadow-subtle flex items-center justify-center gap-2"
+                >
+                  <Truck className="w-4 h-4" />
+                  {dispatchSubmitting ? 'Contacting Nimbus...' : 'Book via NimbusPost'}
                 </button>
                 <button
                   type="submit"
                   disabled={dispatchSubmitting || (dispatchEligibility && !dispatchEligibility.eligible)}
                   className="flex-1 py-3 bg-black hover:bg-neutral-800 disabled:opacity-50 text-white rounded-2xl font-extrabold transition-all cursor-pointer shadow-subtle flex items-center justify-center gap-2"
                 >
-                  {dispatchSubmitting ? 'Creating Dispatch...' : 'Confirm Dispatch'}
+                  {dispatchSubmitting ? 'Creating...' : 'Manual Dispatch'}
                 </button>
               </div>
             </form>

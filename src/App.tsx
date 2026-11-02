@@ -53,12 +53,15 @@ const ScrollRestorationManager: React.FC = () => {
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('beforeunload', () => {
-      sessionStorage.setItem('scroll_pos_' + currentKey, window.scrollY.toString());
-    });
+    const savePosition = () => {
+      try { sessionStorage.setItem('scroll_pos_' + currentKey, window.scrollY.toString()); } catch { /* Storage may be unavailable. */ }
+    };
+    window.addEventListener('beforeunload', savePosition);
 
     return () => {
+      clearTimeout(timeoutId);
       window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('beforeunload', savePosition);
     };
   }, [location.pathname, location.search]);
 

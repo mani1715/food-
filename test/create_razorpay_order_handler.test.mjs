@@ -16,13 +16,20 @@ const secrets = {
   RAZORPAY_KEY_SECRET: 'test-razorpay-secret',
 };
 
-function makeHarness({ rpcResults }) {
+function makeHarness({ rpcResults, storePaymentEnabled = true }) {
   let rpcIndex = 0;
   const rpcCalls = [];
   const providerCalls = [];
   const logs = [];
   const supabase = {
     from(table) {
+      if (table === 'store_settings') {
+        return {
+          select() { return this; },
+          eq(column, value) { return this; },
+          async maybeSingle() { return { data: { payment_enabled: storePaymentEnabled }, error: null }; },
+        };
+      }
       assert.equal(table, 'orders');
       return {
         select() { return this; },
@@ -110,4 +117,15 @@ test('handler does not retry a definitive success:false RPC rejection and withho
   assert.equal(Object.hasOwn(payload, 'razorpayOrderId'), false);
   assert.equal(rpcCalls.length, 1);
   assert.equal(providerCalls.length, 1);
+});
+
+test('handler returns HTTP 403 when store_settings payment_enabled is false', async () => {
+  const { handler, providerCalls, rpcCalls } = makeHarness({ rpcResults: [], storePaymentEnabled: false });
+  const response = await handler(request());
+  assert.equal(response.status, 403);
+  const data = await response.json();
+  assert.equal(data.success, false);
+  assert.match(data.error, /disabled by store administrator/i);
+  assert.equal(providerCalls.length, 0, 'No gateway order should be created when payments are disabled');
+  assert.equal(rpcCalls.length, 0);
 });

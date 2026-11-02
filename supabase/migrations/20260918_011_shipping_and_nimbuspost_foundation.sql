@@ -70,21 +70,8 @@ CREATE TABLE IF NOT EXISTS public.shipping_pickup_locations (
 CREATE INDEX IF NOT EXISTS idx_shipping_pickup_locations_default ON public.shipping_pickup_locations(is_default) WHERE is_default = true;
 CREATE INDEX IF NOT EXISTS idx_shipping_pickup_locations_active ON public.shipping_pickup_locations(is_active);
 
--- Seed Initial Default Pickup Location Placeholder
-INSERT INTO public.shipping_pickup_locations (
-    name, contact_name, phone, address_line_1, city, state, postal_code, is_default, is_active
-) 
-SELECT 
-    'Aishu Foods Central Kitchen',
-    'Store Manager',
-    '9876543210',
-    'Road No 12, Jubilee Hills',
-    'Hyderabad',
-    'Telangana',
-    '500033',
-    true,
-    true
-WHERE NOT EXISTS (SELECT 1 FROM public.shipping_pickup_locations);
+-- Do not seed a fictional pickup address. An administrator must enter and verify
+-- the real NimbusPost pickup location before a shipment can be booked.
 
 -- ------------------------------------------------------------------------------
 -- 3. SHIPPING SETTINGS TABLE
@@ -272,6 +259,11 @@ CREATE TABLE IF NOT EXISTS public.shipping_webhook_events (
 
 CREATE INDEX IF NOT EXISTS idx_shipping_webhook_events_hash ON public.shipping_webhook_events(payload_hash);
 CREATE INDEX IF NOT EXISTS idx_shipping_webhook_events_status ON public.shipping_webhook_events(processing_status);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_shipping_webhook_event_provider_id
+    ON public.shipping_webhook_events(provider, provider_event_id)
+    WHERE provider_event_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_shipping_webhook_event_payload_hash
+    ON public.shipping_webhook_events(provider, payload_hash);
 
 -- ------------------------------------------------------------------------------
 -- 7. SHIPMENT ATTEMPTS TABLE (Auditing & Retry Safety)
@@ -300,6 +292,26 @@ SET allowed_tabs = (jsonb_populate_record(NULL::public.admin_roles,
     jsonb_build_object('allowed_tabs', COALESCE(to_jsonb(allowed_tabs), '[]'::jsonb) || '["shipping"]'::jsonb))).allowed_tabs
 WHERE NOT (COALESCE(to_jsonb(allowed_tabs), '[]'::jsonb) ? 'shipping');
 
+-- Shipping access is based on active staff roles and exact permissions. A broad
+-- allowed_tabs entry only controls UI visibility and never grants API authority.
+CREATE OR REPLACE FUNCTION public.has_shipping_permission(p_permission TEXT)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+    SELECT EXISTS (
+        SELECT 1
+        FROM public.admin_roles ar
+        WHERE ar.user_id = auth.uid()
+          AND ar.status = 'active'
+          AND (ar.role IN ('admin', 'super_admin') OR p_permission = ANY(COALESCE(ar.permissions, ARRAY[]::TEXT[])))
+    );
+$$;
+REVOKE ALL ON FUNCTION public.has_shipping_permission(TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.has_shipping_permission(TEXT) TO authenticated, service_role;
+
 -- ------------------------------------------------------------------------------
 -- 9. SERVER-AUTHORITATIVE FUNCTIONS & RPCS
 -- ------------------------------------------------------------------------------
@@ -321,13 +333,17 @@ DECLARE
     v_reasons TEXT[] := ARRAY[]::TEXT[];
     v_pkg JSONB;
 BEGIN
+    IF auth.uid() IS NOT NULL AND NOT public.has_shipping_permission('shipping.read') THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Access denied');
+    END IF;
+
     SELECT * INTO v_order FROM public.orders WHERE id = p_order_id;
     IF NOT FOUND THEN
         RETURN jsonb_build_object('eligible', false, 'error', 'Order not found');
     END IF;
 
     -- Order Status Check
-    IF v_order.order_status = 'cancelled' OR v_order.status = 'Cancelled' THEN
+    IF v_order.order_status = 'cancelled' THEN
         v_eligible := false;
         v_reasons := array_append(v_reasons, 'Order is cancelled');
     END IF;
@@ -415,6 +431,10 @@ DECLARE
     v_volumetric_status TEXT := 'NOT_CONFIGURED';
     v_is_complete BOOLEAN := true;
 BEGIN
+    IF auth.uid() IS NOT NULL AND NOT public.has_shipping_permission('shipping.read') THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Access denied');
+    END IF;
+
     SELECT * INTO v_order FROM public.orders WHERE id = p_order_id;
     IF NOT FOUND THEN
         RETURN jsonb_build_object('success', false, 'error', 'Order not found');
@@ -551,11 +571,14 @@ DECLARE
     v_active_shipment_count INT;
 BEGIN
     -- Verify RBAC
-    IF NOT public.has_admin_permission('shipping.create') THEN
+    IF NOT public.has_shipping_permission('shipping.create') THEN
         RAISE EXCEPTION 'Access Denied: Insufficient administrative privileges to create shipments.';
     END IF;
 
-    SELECT * INTO v_admin FROM public.admin_roles WHERE user_id = auth.uid() AND status = 'active';
+    SELECT ar.*, au.email INTO v_admin
+    FROM public.admin_roles ar
+    LEFT JOIN auth.users au ON au.id = ar.user_id
+    WHERE ar.user_id = auth.uid() AND ar.status = 'active';
 
     -- Lock and verify Order
     SELECT * INTO v_order FROM public.orders WHERE id = p_order_id FOR UPDATE;
@@ -663,8 +686,8 @@ BEGIN
     WHERE id = p_order_id;
 
     -- Audit log entry
-    INSERT INTO public.admin_audit_logs (
-        admin_id, admin_email, action, target_type, target_id, details
+    INSERT INTO public.audit_logs (
+        actor_id, actor_email, action, entity, entity_id, metadata
     ) VALUES (
         auth.uid(),
         COALESCE(v_admin.email, 'admin@aishufoods.com'),
@@ -711,11 +734,14 @@ DECLARE
     v_is_valid_transition BOOLEAN := false;
 BEGIN
     -- Verify RBAC
-    IF NOT public.has_admin_permission('shipping.update') THEN
+    IF NOT public.has_shipping_permission('shipping.update') THEN
         RAISE EXCEPTION 'Access Denied: Insufficient administrative privileges to update shipment status.';
     END IF;
 
-    SELECT * INTO v_admin FROM public.admin_roles WHERE user_id = auth.uid() AND status = 'active';
+    SELECT ar.*, au.email INTO v_admin
+    FROM public.admin_roles ar
+    LEFT JOIN auth.users au ON au.id = ar.user_id
+    WHERE ar.user_id = auth.uid() AND ar.status = 'active';
 
     SELECT * INTO v_shipment FROM public.shipments WHERE id = p_shipment_id FOR UPDATE;
     IF NOT FOUND THEN
@@ -819,8 +845,8 @@ BEGIN
     END IF;
 
     -- Audit log
-    INSERT INTO public.admin_audit_logs (
-        admin_id, admin_email, action, target_type, target_id, details
+    INSERT INTO public.audit_logs (
+        actor_id, actor_email, action, entity, entity_id, metadata
     ) VALUES (
         auth.uid(),
         COALESCE(v_admin.email, 'admin@aishufoods.com'),
@@ -856,8 +882,11 @@ DECLARE
     v_shipment RECORD;
     v_item JSONB;
     v_restocked_count INT := 0;
+    v_product_name TEXT;
+    v_current_stock INTEGER;
+    v_quantity INTEGER;
 BEGIN
-    IF NOT public.has_admin_permission('shipping.return') THEN
+    IF NOT public.has_shipping_permission('shipping.return') THEN
         RAISE EXCEPTION 'Access Denied: Insufficient privileges for food return disposition.';
     END IF;
 
@@ -865,7 +894,10 @@ BEGIN
         RAISE EXCEPTION 'Invalid disposition action. Must be discard, non_sellable, or approved_for_restock.';
     END IF;
 
-    SELECT * INTO v_admin FROM public.admin_roles WHERE user_id = auth.uid() AND status = 'active';
+    SELECT ar.*, au.email INTO v_admin
+    FROM public.admin_roles ar
+    LEFT JOIN auth.users au ON au.id = ar.user_id
+    WHERE ar.user_id = auth.uid() AND ar.status = 'active';
 
     SELECT * INTO v_shipment FROM public.shipments WHERE id = p_shipment_id FOR UPDATE;
     IF NOT FOUND THEN
@@ -879,12 +911,35 @@ BEGIN
     -- Only increment inventory if explicitly approved after kitchen inspection
     IF p_action = 'approved_for_restock' AND jsonb_array_length(p_restock_items) > 0 THEN
         FOR v_item IN SELECT * FROM jsonb_array_elements(p_restock_items) LOOP
-            -- Call safe restock primitive
-            PERFORM public.restock_product_stock(
+            v_quantity := (v_item->>'quantity')::integer;
+            IF v_quantity IS NULL OR v_quantity <= 0 THEN
+                RAISE EXCEPTION 'Restock quantity must be positive';
+            END IF;
+
+            SELECT name, inventory_count INTO v_product_name, v_current_stock
+            FROM public.products
+            WHERE id = (v_item->>'product_id')::text
+            FOR UPDATE;
+            IF NOT FOUND THEN
+                RAISE EXCEPTION 'Product % does not exist', v_item->>'product_id';
+            END IF;
+
+            UPDATE public.products
+            SET inventory_count = inventory_count + v_quantity,
+                out_of_stock = false,
+                updated_at = now()
+            WHERE id = (v_item->>'product_id')::text;
+
+            INSERT INTO public.stock_history_logs (
+                id, product_id, product_name, type, quantity, note, admin_name
+            ) VALUES (
+                'stock-' || replace(gen_random_uuid()::text, '-', ''),
                 (v_item->>'product_id')::text,
-                (v_item->>'quantity')::integer,
-                v_item->>'selected_weight',
-                'Returned Food Inspected & Approved Restock (Shipment: ' || p_shipment_id::text || ')'
+                v_product_name,
+                'restock',
+                v_quantity,
+                'Returned food inspected and approved (shipment ' || p_shipment_id::text || ')',
+                COALESCE(v_admin.email, auth.uid()::text, 'Store Admin')
             );
             v_restocked_count := v_restocked_count + 1;
         END LOOP;
@@ -901,8 +956,8 @@ BEGIN
     WHERE id = p_shipment_id;
 
     -- Audit log
-    INSERT INTO public.admin_audit_logs (
-        admin_id, admin_email, action, target_type, target_id, details
+    INSERT INTO public.audit_logs (
+        actor_id, actor_email, action, entity, entity_id, metadata
     ) VALUES (
         auth.uid(),
         COALESCE(v_admin.email, 'admin@aishufoods.com'),
@@ -962,7 +1017,7 @@ DECLARE
     v_shipment RECORD;
     v_events JSONB;
 BEGIN
-    v_is_staff := public.is_staff();
+    v_is_staff := public.has_shipping_permission('shipping.read');
 
     SELECT * INTO v_order FROM public.orders WHERE id = p_order_id;
     IF NOT FOUND THEN
@@ -971,7 +1026,7 @@ BEGIN
 
     -- If not staff, enforce customer ownership
     IF NOT v_is_staff THEN
-        IF v_order.customer_id IS NOT NULL AND v_order.customer_id != auth.uid() THEN
+        IF auth.uid() IS NULL OR v_order.customer_id IS NULL OR v_order.customer_id != auth.uid() THEN
             RETURN jsonb_build_object('found', false, 'error', 'Access denied');
         END IF;
     END IF;
@@ -1056,6 +1111,129 @@ BEGIN
 END;
 $$;
 
+-- Validate provider-driven state transitions and process each webhook atomically.
+CREATE OR REPLACE FUNCTION public.shipping_status_transition_allowed(p_current TEXT, p_next TEXT)
+RETURNS BOOLEAN
+LANGUAGE sql
+IMMUTABLE
+SET search_path = pg_catalog
+AS $$
+    SELECT p_current = p_next OR CASE p_current
+        WHEN 'not_created' THEN p_next IN ('ready_to_ship', 'cancelled')
+        WHEN 'ready_to_ship' THEN p_next IN ('shipment_created', 'pickup_scheduled', 'cancelled')
+        WHEN 'shipment_created' THEN p_next IN ('pickup_scheduled', 'picked_up', 'cancelled')
+        WHEN 'pickup_scheduled' THEN p_next IN ('picked_up', 'pickup_failed', 'cancelled')
+        WHEN 'pickup_failed' THEN p_next IN ('pickup_scheduled', 'cancelled')
+        WHEN 'picked_up' THEN p_next IN ('in_transit', 'ndr')
+        WHEN 'in_transit' THEN p_next IN ('out_for_delivery', 'ndr', 'rto_initiated', 'delivered')
+        WHEN 'out_for_delivery' THEN p_next IN ('delivered', 'delivery_failed', 'ndr')
+        WHEN 'delivery_failed' THEN p_next IN ('out_for_delivery', 'ndr', 'rto_initiated')
+        WHEN 'ndr' THEN p_next IN ('in_transit', 'out_for_delivery', 'rto_initiated', 'delivered')
+        WHEN 'rto_initiated' THEN p_next IN ('rto_in_transit', 'cancelled')
+        WHEN 'rto_in_transit' THEN p_next = 'rto_delivered'
+        WHEN 'return_requested' THEN p_next IN ('return_in_transit', 'cancelled')
+        WHEN 'return_in_transit' THEN p_next = 'returned'
+        WHEN 'delivered' THEN p_next = 'return_requested'
+        ELSE false
+    END;
+$$;
+REVOKE ALL ON FUNCTION public.shipping_status_transition_allowed(TEXT, TEXT) FROM PUBLIC, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.process_nimbuspost_webhook(
+    p_awb TEXT,
+    p_provider_event_id TEXT,
+    p_payload_hash TEXT,
+    p_event_type TEXT,
+    p_status TEXT,
+    p_description TEXT,
+    p_location TEXT,
+    p_event_at TIMESTAMPTZ,
+    p_metadata JSONB DEFAULT '{}'::jsonb
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+DECLARE
+    v_event_id UUID;
+    v_shipment RECORD;
+    v_processed_at TIMESTAMPTZ := now();
+BEGIN
+    IF NULLIF(TRIM(p_awb), '') IS NULL OR NULLIF(TRIM(p_payload_hash), '') IS NULL THEN
+        RAISE EXCEPTION 'AWB and payload hash are required';
+    END IF;
+
+    INSERT INTO public.shipping_webhook_events (
+        provider, provider_event_id, event_type, payload_hash, sanitized_metadata
+    ) VALUES (
+        'nimbuspost', NULLIF(TRIM(p_provider_event_id), ''),
+        COALESCE(NULLIF(TRIM(p_event_type), ''), 'shipment_update'),
+        p_payload_hash, COALESCE(p_metadata, '{}'::jsonb)
+    )
+    ON CONFLICT DO NOTHING
+    RETURNING id INTO v_event_id;
+
+    IF v_event_id IS NULL THEN
+        RETURN jsonb_build_object('success', true, 'duplicate', true);
+    END IF;
+
+    SELECT * INTO v_shipment
+    FROM public.shipments
+    WHERE awb_number = TRIM(p_awb) AND provider = 'nimbuspost'
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        UPDATE public.shipping_webhook_events
+        SET processing_status = 'ignored', processed_at = v_processed_at, error_code = 'unknown_awb'
+        WHERE id = v_event_id;
+        RETURN jsonb_build_object('success', true, 'ignored', 'unknown_shipment');
+    END IF;
+
+    IF NOT public.shipping_status_transition_allowed(v_shipment.shipping_status, p_status) THEN
+        UPDATE public.shipping_webhook_events
+        SET processing_status = 'ignored', processed_at = v_processed_at, error_code = 'invalid_transition'
+        WHERE id = v_event_id;
+        RETURN jsonb_build_object('success', true, 'ignored', 'invalid_transition');
+    END IF;
+
+    UPDATE public.shipments
+    SET shipping_status = p_status,
+        last_tracking_sync_at = v_processed_at,
+        delivered_at = CASE WHEN p_status = 'delivered' THEN COALESCE(delivered_at, p_event_at, v_processed_at) ELSE delivered_at END,
+        actual_delivery_at = CASE WHEN p_status = 'delivered' THEN COALESCE(actual_delivery_at, p_event_at, v_processed_at) ELSE actual_delivery_at END,
+        picked_up_at = CASE WHEN p_status = 'picked_up' THEN COALESCE(picked_up_at, p_event_at, v_processed_at) ELSE picked_up_at END,
+        out_for_delivery_at = CASE WHEN p_status = 'out_for_delivery' THEN COALESCE(out_for_delivery_at, p_event_at, v_processed_at) ELSE out_for_delivery_at END,
+        food_disposition_status = CASE WHEN p_status IN ('rto_delivered', 'returned') THEN 'inspection_required' ELSE food_disposition_status END,
+        updated_at = v_processed_at
+    WHERE id = v_shipment.id;
+
+    INSERT INTO public.shipment_events (
+        shipment_id, provider, provider_event_id, status, description, location, event_at, metadata
+    ) VALUES (
+        v_shipment.id, 'nimbuspost', NULLIF(TRIM(p_provider_event_id), ''), p_status,
+        LEFT(COALESCE(NULLIF(TRIM(p_description), ''), 'NimbusPost status: ' || p_status), 500),
+        NULLIF(TRIM(p_location), ''), COALESCE(p_event_at, v_processed_at), COALESCE(p_metadata, '{}'::jsonb)
+    );
+
+    IF p_status = 'delivered' THEN
+        UPDATE public.orders SET order_status = 'delivered', updated_at = v_processed_at WHERE id = v_shipment.order_id;
+    ELSIF p_status = 'out_for_delivery' THEN
+        UPDATE public.orders SET order_status = 'out for delivery', updated_at = v_processed_at WHERE id = v_shipment.order_id;
+    ELSIF p_status IN ('picked_up', 'in_transit') THEN
+        UPDATE public.orders SET order_status = 'shipped', updated_at = v_processed_at WHERE id = v_shipment.order_id;
+    END IF;
+
+    UPDATE public.shipping_webhook_events
+    SET processing_status = 'processed', processed_at = v_processed_at
+    WHERE id = v_event_id;
+
+    RETURN jsonb_build_object('success', true, 'shipment_id', v_shipment.id, 'status', p_status);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.process_nimbuspost_webhook(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, JSONB) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.process_nimbuspost_webhook(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, JSONB) TO service_role;
+
 -- ------------------------------------------------------------------------------
 -- 10. ROW LEVEL SECURITY (RLS) POLICIES
 -- ------------------------------------------------------------------------------
@@ -1072,24 +1250,24 @@ DROP POLICY IF EXISTS "Staff can manage pickup locations" ON public.shipping_pic
 CREATE POLICY "Staff can manage pickup locations"
     ON public.shipping_pickup_locations FOR ALL
     TO authenticated
-    USING (public.is_staff())
-    WITH CHECK (public.is_staff());
+    USING (public.has_shipping_permission('shipping.settings'))
+    WITH CHECK (public.has_shipping_permission('shipping.settings'));
 
 -- 2. shipping_settings
 DROP POLICY IF EXISTS "Staff can manage shipping settings" ON public.shipping_settings;
 CREATE POLICY "Staff can manage shipping settings"
     ON public.shipping_settings FOR ALL
     TO authenticated
-    USING (public.is_staff())
-    WITH CHECK (public.is_staff());
+    USING (public.has_shipping_permission('shipping.settings'))
+    WITH CHECK (public.has_shipping_permission('shipping.settings'));
 
 -- 3. shipments
 DROP POLICY IF EXISTS "Staff can manage all shipments" ON public.shipments;
-CREATE POLICY "Staff can manage all shipments"
-    ON public.shipments FOR ALL
+DROP POLICY IF EXISTS "Staff can view all shipments" ON public.shipments;
+CREATE POLICY "Staff can view all shipments"
+    ON public.shipments FOR SELECT
     TO authenticated
-    USING (public.is_staff())
-    WITH CHECK (public.is_staff());
+    USING (public.has_shipping_permission('shipping.read'));
 
 DROP POLICY IF EXISTS "Customers can view their own shipments" ON public.shipments;
 CREATE POLICY "Customers can view their own shipments"
@@ -1105,11 +1283,11 @@ CREATE POLICY "Customers can view their own shipments"
 
 -- 4. shipment_events
 DROP POLICY IF EXISTS "Staff can manage shipment events" ON public.shipment_events;
-CREATE POLICY "Staff can manage shipment events"
-    ON public.shipment_events FOR ALL
+DROP POLICY IF EXISTS "Staff can view shipment events" ON public.shipment_events;
+CREATE POLICY "Staff can view shipment events"
+    ON public.shipment_events FOR SELECT
     TO authenticated
-    USING (public.is_staff())
-    WITH CHECK (public.is_staff());
+    USING (public.has_shipping_permission('shipping.read'));
 
 DROP POLICY IF EXISTS "Customers can view their shipment events" ON public.shipment_events;
 CREATE POLICY "Customers can view their shipment events"
@@ -1129,21 +1307,24 @@ DROP POLICY IF EXISTS "Admins can view webhook logs" ON public.shipping_webhook_
 CREATE POLICY "Admins can view webhook logs"
     ON public.shipping_webhook_events FOR SELECT
     TO authenticated
-    USING (public.is_staff());
+    USING (public.has_shipping_permission('shipping.read'));
 
 DROP POLICY IF EXISTS "Admins can view shipment attempts" ON public.shipment_attempts;
 CREATE POLICY "Admins can view shipment attempts"
     ON public.shipment_attempts FOR SELECT
     TO authenticated
-    USING (public.is_staff());
+    USING (public.has_shipping_permission('shipping.read'));
 
 -- Grant execute on shipping RPCs
-GRANT EXECUTE ON FUNCTION public.is_order_ready_for_shipment(TEXT) TO authenticated, anon;
-GRANT EXECUTE ON FUNCTION public.calculate_order_package_details(TEXT) TO authenticated, anon;
+REVOKE ALL ON FUNCTION public.is_order_ready_for_shipment(TEXT) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.calculate_order_package_details(TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.is_order_ready_for_shipment(TEXT) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.calculate_order_package_details(TEXT) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.create_manual_shipment(TEXT, TEXT, TEXT, TEXT, INTEGER, NUMERIC, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.update_shipment_status_secure(UUID, TEXT, TEXT, TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.disposition_returned_food_stock(UUID, TEXT, TEXT, JSONB) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.check_shipping_serviceability(TEXT, TEXT, INTEGER, BOOLEAN) TO authenticated, anon;
-GRANT EXECUTE ON FUNCTION public.get_order_shipping_details(TEXT) TO authenticated, anon;
+REVOKE ALL ON FUNCTION public.get_order_shipping_details(TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_order_shipping_details(TEXT) TO authenticated;
 
 -- End of Migration 011

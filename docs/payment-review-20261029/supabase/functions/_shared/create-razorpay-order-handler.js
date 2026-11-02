@@ -47,6 +47,17 @@ export function createRazorpayOrderHandler({ env, createClient, fetchImpl = fetc
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // 0. Check Master Online Payment Policy in store_settings (Admin Kill-Switch)
+    const { data: storeSettings } = await supabase
+      .from('store_settings')
+      .select('payment_enabled')
+      .eq('id', 'default')
+      .maybeSingle();
+
+    if (storeSettings && storeSettings.payment_enabled === false) {
+      return errorResponse('Online payments are currently disabled by store administrator.', 403);
+    }
+
     // 1. Fetch Authoritative Order Record
     const { data: order, error: orderErr } = await supabase
       .from('orders')

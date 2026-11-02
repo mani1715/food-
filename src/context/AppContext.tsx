@@ -247,7 +247,7 @@ interface AppContextType {
   // Store Settings & Controls Admin
   storeInfo: StoreInfo;
   updateStoreInfo: (updated: Partial<StoreInfo>) => void;
-  setPaymentEnabled: (enabled: boolean) => void;
+  setPaymentEnabled: (enabled: boolean) => Promise<boolean>;
   updateHeaderSettings: (settings: Partial<HeaderSettings>) => void;
   exportStoreBackupJson: () => string;
   resetStoreToDefault: () => void;
@@ -266,6 +266,8 @@ interface AppContextType {
   deleteWhatsAppContact: (id: string) => void;
   addNewsletterSubscriber: (email: string) => void;
 }
+
+const EMPTY_LOCATION: UserLocation = { id: 'unselected', label: 'Select location', address: '', city: '', pincode: '' };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
@@ -581,7 +583,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     []
   );
   const [currentLocation, setCurrentLocation] = useState<UserLocation>(() =>
-    MOCK_LOCATIONS[0]
+    EMPTY_LOCATION
   );
   const [userProfile, setUserProfile] = useState<UserProfile>(() =>
     ({ ...MOCK_USER_PROFILE, name: 'Customer', email: '', phone: '' })
@@ -715,7 +717,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (changed) {
           setWishlistProductIds(getInitialState('aura_wishlist_' + user.id, []));
           setLocations(getInitialState('aura_locations_' + user.id, []));
-          setCurrentLocation(getInitialState('aura_current_location_' + user.id, MOCK_LOCATIONS[0]));
+          setCurrentLocation(getInitialState('aura_current_location_' + user.id, EMPTY_LOCATION));
         }
         setSupabaseUser(data.user);
         setUserProfile({
@@ -751,7 +753,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setOrders([]);
         setUserProfile({ ...MOCK_USER_PROFILE, name: 'Customer', email: '', phone: '' });
         setLocations([]);
-        setCurrentLocation(MOCK_LOCATIONS[0]);
+        setCurrentLocation(EMPTY_LOCATION);
         if (event !== 'INITIAL_SESSION') setWishlistProductIds([]);
       }
       if (event === 'PASSWORD_RECOVERY') {
@@ -1232,9 +1234,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [newsletterSubscribers, setNewsletterSubscribers] = useState<string[]>(() =>
     getInitialState('aura_subscribers', MOCK_SUBSCRIBERS)
   );
-  const [paymentEnabled, setPaymentEnabledState] = useState<boolean>(() =>
-    getInitialState('aura_payment_enabled', true)
-  );
+  // Online payments stay denied until the authoritative Supabase policy loads.
+  const [paymentEnabled, setPaymentEnabledState] = useState<boolean>(false);
   const [storeInfo, setStoreInfo] = useState<StoreInfo>(() =>
     getInitialState('aura_store_info', DEFAULT_STORE_INFO)
   );
@@ -1346,6 +1347,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.setItem('aura_orders', JSON.stringify(orders));
     }
   }, [orders]);
+
+  // Load Authoritative Payment Policy from Supabase store_settings (Default: Denied)
+  useEffect(() => {
+    let isMounted = true;
+    async function loadStorePaymentPolicy() {
+      try {
+        const { data, error } = await supabase
+          .from('store_settings')
+          .select('payment_enabled')
+          .eq('id', 'default')
+          .maybeSingle();
+
+        if (isMounted) {
+          const enabled = !error && data?.payment_enabled === true;
+          setPaymentEnabledState(enabled);
+          localStorage.setItem('aura_payment_enabled', JSON.stringify(enabled));
+        }
+      } catch (err) {
+        console.warn('Failed to load store payment policy:', err);
+        if (isMounted) {
+          setPaymentEnabledState(false);
+          localStorage.setItem('aura_payment_enabled', 'false');
+        }
+      }
+    }
+    loadStorePaymentPolicy();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Toast Helper
   const addToast = (title: string, message: string, type: 'success' | 'error' | 'info' = 'success') => {
@@ -2563,13 +2594,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const resetStoreToDefault = () => {
     setStoreInfo(DEFAULT_STORE_INFO);
-    setPaymentEnabledState(true);
+    void setPaymentEnabled(false);
     addToast('Settings Reset', 'Store settings restored to default values.', 'info');
   };
 
-  const setPaymentEnabled = (enabled: boolean) => {
-    setPaymentEnabledState(enabled);
-    addToast('Payment Settings Saved', `Payment gateway is now ${enabled ? 'ENABLED' : 'DISABLED'}.`, 'success');
+  const setPaymentEnabled = async (enabled: boolean): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase
+        .from('store_settings')
+        .upsert(
+          { id: 'default', payment_enabled: enabled, updated_at: new Date().toISOString() },
+          { onConflict: 'id' }
+        )
+        .select('payment_enabled')
+        .single();
+
+      if (error || data?.payment_enabled !== enabled) {
+        throw error ?? new Error('The saved payment policy did not match the requested value.');
+      }
+
+      setPaymentEnabledState(enabled);
+      localStorage.setItem('aura_payment_enabled', JSON.stringify(enabled));
+      addToast(
+        'Payment Policy Updated',
+        `Online payments (Razorpay) are now ${enabled ? 'ALLOWED (ACTIVE)' : 'DENIED (BLOCKED)'}.`,
+        enabled ? 'success' : 'info'
+      );
+      return true;
+    } catch (err: any) {
+      console.error('Could not persist payment policy to Supabase:', err);
+      addToast('Payment Policy Not Saved', 'The database did not confirm this change. The existing policy remains in effect.', 'error');
+      return false;
+    }
   };
 
   const addWhatsAppContact = (name: string, phone: string) => {

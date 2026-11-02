@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { MapPin, CreditCard, Smartphone, DollarSign, ShieldCheck, ArrowRight, Navigation, User, Phone, Mail, FileText, Home, Briefcase, Tag, Gift } from 'lucide-react';
+import { MapPin, CreditCard, Smartphone, DollarSign, ShieldCheck, ArrowRight, Navigation, User, Phone, Mail, FileText, Home, Briefcase, Tag, Gift, AlertCircle } from 'lucide-react';
 
 import { validateEmail, validateIndianPhone, validatePincode } from '../../utils/security';
 
 export const CheckoutPage: React.FC = () => {
-  const { cartItems, userProfile, locations, currentLocation, setCurrentLocation, createOrder, addToast, getBestCartOffer } = useApp();
+  const { cartItems, userProfile, locations, currentLocation, setCurrentLocation, createOrder, addToast, getBestCartOffer, paymentEnabled } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -18,19 +18,26 @@ export const CheckoutPage: React.FC = () => {
   } | undefined;
 
   // Form State for Customer & Delivery Details
-  const [customerName, setCustomerName] = useState(userProfile.name || 'Lakshmi Narayana');
-  const [customerPhone, setCustomerPhone] = useState(userProfile.phone || '9876543210');
-  const [customerEmail, setCustomerEmail] = useState(userProfile.email || 'lakshmi.n@example.com');
+  const [customerName, setCustomerName] = useState(userProfile.name === 'Customer' ? '' : (userProfile.name || ''));
+  const [customerPhone, setCustomerPhone] = useState(userProfile.phone || '');
+  const [customerEmail, setCustomerEmail] = useState(userProfile.email || '');
   
-  const [address, setAddress] = useState(currentLocation.address || 'Plot 42, Road No 12, Jubilee Hills');
-  const [city, setCity] = useState(currentLocation.city || 'Hyderabad');
-  const [pincode, setPincode] = useState(currentLocation.pincode || '500033');
+  const [address, setAddress] = useState(currentLocation.address || '');
+  const [city, setCity] = useState(currentLocation.city || '');
+  const [pincode, setPincode] = useState(currentLocation.pincode || '');
   const [deliveryNotes, setDeliveryNotes] = useState('');
 
-  const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'Card' | 'COD'>('UPI');
-  const [upiId, setUpiId] = useState('user@okaxis');
+  const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'Card' | 'COD'>(() => (paymentEnabled ? 'UPI' : 'COD'));
+  const [upiId, setUpiId] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
+
+  // Sync paymentMethod when store payment policy changes
+  React.useEffect(() => {
+    if (!paymentEnabled && (paymentMethod === 'UPI' || paymentMethod === 'Card')) {
+      setPaymentMethod('COD');
+    }
+  }, [paymentEnabled, paymentMethod]);
 
   const subtotal = cartItems.reduce((acc, i) => acc + i.unitPrice * i.quantity, 0);
 
@@ -61,6 +68,7 @@ export const CheckoutPage: React.FC = () => {
           const res = await fetch(
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`
           );
+          if (!res.ok) throw new Error('Location lookup failed');
           const data = await res.json();
           const addr = data.address || {};
 
@@ -71,9 +79,9 @@ export const CheckoutPage: React.FC = () => {
             addr.municipality ||
             addr.suburb ||
             addr.district ||
-            'Hyderabad';
+            '';
 
-          const detectedPincode = addr.postcode || '500001';
+          const detectedPincode = addr.postcode || '';
 
           const detectedStreet = [
             addr.road,
@@ -109,6 +117,7 @@ export const CheckoutPage: React.FC = () => {
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isProcessing) return;
     if (cartItems.length === 0) {
       addToast('Cart Empty', 'Add products before checking out.', 'error');
       return;
@@ -131,6 +140,17 @@ export const CheckoutPage: React.FC = () => {
 
     if (!validatePincode(pincode.trim())) {
       addToast('Invalid PIN Code', 'Please enter a valid 6-digit postal PIN code.', 'error');
+      return;
+    }
+
+    // Verify online payment eligibility against store-wide policy
+    if (!paymentEnabled && (paymentMethod === 'UPI' || paymentMethod === 'Card')) {
+      addToast(
+        'Online Payments Paused',
+        'Online payments are currently disabled by store administration. Please checkout using Cash on Delivery (COD).',
+        'error'
+      );
+      setPaymentMethod('COD');
       return;
     }
 
@@ -434,27 +454,49 @@ export const CheckoutPage: React.FC = () => {
 
           {/* SECTION 2: PAYMENT METHOD OPTIONS */}
           <div className="p-4 sm:p-6 rounded-3xl border border-neutral-200 bg-white space-y-4 shadow-subtle">
-            <h3 className="text-base font-extrabold text-black flex items-center gap-2">
-              <CreditCard className="w-5 h-5 text-black" />
-              <span>2. Payment Option</span>
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-extrabold text-black flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-black" />
+                <span>2. Payment Option</span>
+              </h3>
+              {!paymentEnabled && (
+                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-200">
+                  Online Paused (COD Only)
+                </span>
+              )}
+            </div>
+
+            {!paymentEnabled && (
+              <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-amber-700 mt-0.5" />
+                <span className="leading-relaxed">
+                  <strong>Online Payments Temporarily Paused:</strong> Online checkout (UPI & Cards) is currently disabled while payment gateway testing is in progress. You can place your order securely with <strong>Cash on Delivery (COD)</strong>!
+                </span>
+              </div>
+            )}
 
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
               {[
-                { id: 'UPI', label: 'UPI / GPay', icon: <Smartphone className="w-4 h-4" /> },
-                { id: 'Card', label: 'Card', icon: <CreditCard className="w-4 h-4" /> },
-                { id: 'COD', label: 'Cash on Del.', icon: <DollarSign className="w-4 h-4" /> },
+                { id: 'UPI', label: 'UPI / GPay', icon: <Smartphone className="w-4 h-4" />, disabled: !paymentEnabled },
+                { id: 'Card', label: 'Card', icon: <CreditCard className="w-4 h-4" />, disabled: !paymentEnabled },
+                { id: 'COD', label: 'Cash on Del.', icon: <DollarSign className="w-4 h-4" />, disabled: false },
               ].map((pm) => (
                 <button
                   key={pm.id}
                   type="button"
-                  onClick={() => setPaymentMethod(pm.id as any)}
-                  className={`p-3 sm:p-3.5 min-h-[52px] rounded-2xl border text-xs font-extrabold transition-all flex flex-col items-center justify-center gap-1 cursor-pointer select-none active:scale-95 ${
-                    paymentMethod === pm.id ? 'bg-black text-white border-black shadow-subtle' : 'bg-neutral-50 text-black border-neutral-200 hover:border-black'
+                  disabled={pm.disabled}
+                  onClick={() => !pm.disabled && setPaymentMethod(pm.id as any)}
+                  className={`p-3 sm:p-3.5 min-h-[52px] rounded-2xl border text-xs font-extrabold transition-all flex flex-col items-center justify-center gap-1 select-none ${
+                    pm.disabled
+                      ? 'bg-neutral-100 text-neutral-400 border-neutral-200 cursor-not-allowed opacity-60'
+                      : paymentMethod === pm.id
+                      ? 'bg-black text-white border-black shadow-subtle cursor-pointer active:scale-95'
+                      : 'bg-neutral-50 text-black border-neutral-200 hover:border-black cursor-pointer active:scale-95'
                   }`}
                 >
                   {pm.icon}
                   <span className="text-[11px] leading-none">{pm.label}</span>
+                  {pm.disabled && <span className="text-[9px] text-neutral-400 font-normal leading-none">(Paused)</span>}
                 </button>
               ))}
             </div>

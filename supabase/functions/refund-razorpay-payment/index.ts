@@ -3,6 +3,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { corsHeaders, jsonResponse, errorResponse } from '../_shared/cors.ts';
 
 function moneyToPaise(value: unknown): number {
+  if (typeof value === 'bigint') {
+    if (value <= 0n || value > BigInt(Number.MAX_SAFE_INTEGER)) {
+      return NaN;
+    }
+    return Number(value);
+  }
   if ((typeof value !== 'number' && typeof value !== 'string') || !/^\d+(?:\.\d{1,2})?$/.test(String(value))) {
     return NaN;
   }
@@ -110,12 +116,20 @@ serve(async (req: Request) => {
       });
     }
 
+    const minRefundPaise = 100; // Razorpay requires minimum refund amount of ₹1.00 (100 paise)
+    if (remainingPaise < minRefundPaise) {
+      return errorResponse(
+        `Remaining refundable balance of ₹${remainingRefundable.toFixed(2)} is below the minimum refund amount of ₹1.00.`,
+        400
+      );
+    }
+
     const requestedPaise = amount === undefined ? remainingPaise : moneyToPaise(amount);
     const requestedRefund = requestedPaise / 100;
 
-    if (!Number.isSafeInteger(requestedPaise) || requestedPaise <= 0 || requestedPaise > remainingPaise) {
+    if (!Number.isSafeInteger(requestedPaise) || requestedPaise < minRefundPaise || requestedPaise > remainingPaise) {
       return errorResponse(
-        `Invalid refund amount. Must be between ₹1 and ₹${remainingRefundable.toFixed(2)}.`,
+        `Invalid refund amount. Must be between ₹1.00 and ₹${remainingRefundable.toFixed(2)}.`,
         400
       );
     }
@@ -290,7 +304,10 @@ serve(async (req: Request) => {
     }
 
     // 4. Dispatch POST Refund to Razorpay with X-Refund-Idempotency Header
-    const refundAmountInPaise = Math.round(requestedRefund * 100);
+    const refundAmountInPaise = Number(requestedPaise);
+    if (!Number.isSafeInteger(refundAmountInPaise) || refundAmountInPaise < minRefundPaise) {
+      return errorResponse('Invalid refund amount in paise.', 400);
+    }
     let rzpRes: Response;
     let rzpData: any;
 
