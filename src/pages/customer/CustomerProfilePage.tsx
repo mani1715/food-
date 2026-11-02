@@ -1,3 +1,4 @@
+import { signOutUser } from '../../lib/supabase/auth';
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useNavigate } from 'react-router-dom';
@@ -47,14 +48,14 @@ export const CustomerProfilePage: React.FC = () => {
     setIsEditing(false);
   };
 
-  const handleLogout = () => {
-    updateUserProfile({
-      name: 'Customer',
-      email: '',
-      phone: '',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop',
-    });
-    addToast('Signed Out', 'You have been signed out of your account.', 'info');
+  const handleLogout = async () => {
+    try {
+      await signOutUser();
+      navigate('/login', { replace: true });
+      addToast('Signed Out', 'You have been signed out of your account.', 'info');
+    } catch {
+      addToast('Sign out failed', 'Please try again.', 'error');
+    }
   };
 
   // Auto-Detect GPS Location for Add Address Form
@@ -278,10 +279,7 @@ export const CustomerProfilePage: React.FC = () => {
       {/* Logout */}
       <div className="pt-4 border-t border-neutral-200">
         <button
-          onClick={() => {
-            addToast('Signed Out', 'Signed out of account.', 'info');
-            navigate('/');
-          }}
+          onClick={handleLogout}
           className="w-full py-4 bg-neutral-100 hover:bg-black hover:text-white text-black text-xs font-bold rounded-2xl transition-all flex items-center justify-center gap-2 border border-neutral-300 cursor-pointer"
         >
           <LogOut className="w-4 h-4" />

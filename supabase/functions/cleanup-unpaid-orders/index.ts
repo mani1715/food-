@@ -24,12 +24,15 @@ serve(async (req: Request) => {
 
       const { data: staffData } = await supabase
         .from('admin_roles')
-        .select('role, status')
+        .select('role, status, permissions')
         .eq('user_id', userData.user.id)
         .eq('status', 'active')
         .single();
 
-      if (!staffData) {
+      if (!staffData || !(
+        staffData.role === 'admin' || staffData.role === 'super_admin' ||
+        (staffData.role === 'sub_admin' && staffData.permissions?.includes('orders.cleanup'))
+      )) {
         return errorResponse('Forbidden: Administrative privileges required.', 403);
       }
     }

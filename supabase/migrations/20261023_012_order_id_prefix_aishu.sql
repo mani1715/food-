@@ -30,21 +30,21 @@ DECLARE
     v_curr_trk BIGINT;
 BEGIN
     -- Synchronize order_number_seq (never moves backwards)
-    SELECT COALESCE(MAX(SUBSTRING(order_number FROM '[0-9]+$')::BIGINT), 0) INTO v_max_num 
+    SELECT COALESCE(MAX(SUBSTRING(order_number FROM '[0-9]+$')::BIGINT), 0) INTO v_max_num
     FROM public.orders WHERE order_number ~ '[0-9]+$';
-    
+
     SELECT last_value INTO v_curr_num FROM public.order_number_seq;
-    
+
     IF v_max_num >= v_curr_num THEN
         PERFORM setval('public.order_number_seq', v_max_num + 1, false);
     END IF;
 
     -- Synchronize tracking_code_seq (never moves backwards)
-    SELECT COALESCE(MAX(SUBSTRING(tracking_code FROM '[0-9]+$')::BIGINT), 0) INTO v_max_trk 
+    SELECT COALESCE(MAX(SUBSTRING(tracking_code FROM '[0-9]+$')::BIGINT), 0) INTO v_max_trk
     FROM public.orders WHERE tracking_code ~ '[0-9]+$';
-    
+
     SELECT last_value INTO v_curr_trk FROM public.tracking_code_seq;
-    
+
     IF v_max_trk >= v_curr_trk THEN
         PERFORM setval('public.tracking_code_seq', v_max_trk + 1, false);
     END IF;
@@ -53,19 +53,21 @@ END $$;
 GRANT USAGE, SELECT ON SEQUENCE public.order_number_seq, public.tracking_code_seq TO anon, authenticated, service_role;
 
 -- 3. Additive Column Extensions on Orders Table
-ALTER TABLE public.orders 
+ALTER TABLE public.orders
+    ADD COLUMN IF NOT EXISTS delivery_address_json JSONB,
     ADD COLUMN IF NOT EXISTS payment_session_token TEXT,
     ADD COLUMN IF NOT EXISTS payment_token_expires_at TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS idempotency_key TEXT,
     ADD COLUMN IF NOT EXISTS idempotency_payload_hash TEXT,
-    ADD COLUMN IF NOT EXISTS applied_coupon_code TEXT;
+    ADD COLUMN IF NOT EXISTS applied_coupon_code TEXT,
+    ADD COLUMN IF NOT EXISTS delivery_days INT DEFAULT 3;
 
-CREATE INDEX IF NOT EXISTS idx_orders_payment_token 
-    ON public.orders (payment_session_token) 
+CREATE INDEX IF NOT EXISTS idx_orders_payment_token
+    ON public.orders (payment_session_token)
     WHERE payment_session_token IS NOT NULL;
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idempotency_key 
-    ON public.orders (idempotency_key) 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idempotency_key
+    ON public.orders (idempotency_key)
     WHERE idempotency_key IS NOT NULL AND idempotency_key <> '';
 
 -- Ensure coupon scope columns exist with safe defaults (No max_discount or is_active)
@@ -74,10 +76,28 @@ ALTER TABLE public.coupons
     ADD COLUMN IF NOT EXISTS target_category TEXT,
     ADD COLUMN IF NOT EXISTS target_product_id TEXT;
 
+-- Ensure order_items and stock_history_logs schema compatibility
+ALTER TABLE public.order_items
+    ADD COLUMN IF NOT EXISTS product_name_snapshot TEXT,
+    ADD COLUMN IF NOT EXISTS line_total NUMERIC DEFAULT 0;
+
+DO $$
+BEGIN
+    ALTER TABLE public.order_items ALTER COLUMN id SET DEFAULT gen_random_uuid();
+EXCEPTION WHEN OTHERS THEN
+    NULL;
+END $$;
+
+ALTER TABLE public.stock_history_logs
+    ADD COLUMN IF NOT EXISTS product_name TEXT,
+    ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'destock',
+    ADD COLUMN IF NOT EXISTS note TEXT,
+    ADD COLUMN IF NOT EXISTS admin_name TEXT DEFAULT 'Checkout System';
+
 -- 4. Supporting Tables for Razorpay Edge Functions
 CREATE TABLE IF NOT EXISTS public.payments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    order_id TEXT NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
+    order_id TEXT NOT NULL REFERENCES public.orders(id) ON DELETE RESTRICT,
     provider TEXT NOT NULL DEFAULT 'razorpay',
     provider_order_id TEXT,
     provider_payment_id TEXT,
@@ -99,8 +119,50 @@ CREATE TABLE IF NOT EXISTS public.payments (
 );
 
 CREATE INDEX IF NOT EXISTS idx_payments_order_id ON public.payments(order_id);
-CREATE INDEX IF NOT EXISTS idx_payments_provider_order_id ON public.payments(provider_order_id);
 CREATE INDEX IF NOT EXISTS idx_payments_status ON public.payments(status);
+
+-- Safe uniqueness index creation: Verify existing data before applying UNIQUE constraints
+DO $$
+DECLARE
+    v_dup_order_id_count INT := 0;
+    v_dup_payment_id_count INT := 0;
+BEGIN
+    SELECT COUNT(*) INTO v_dup_order_id_count
+    FROM (
+        SELECT provider_order_id
+        FROM public.payments
+        WHERE provider_order_id IS NOT NULL AND provider_order_id <> ''
+        GROUP BY provider_order_id
+        HAVING COUNT(*) > 1
+    ) s1;
+
+    IF v_dup_order_id_count = 0 THEN
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_provider_order_id_unique
+            ON public.payments (provider_order_id)
+            WHERE provider_order_id IS NOT NULL AND provider_order_id <> '';
+    ELSE
+        CREATE INDEX IF NOT EXISTS idx_payments_provider_order_id
+            ON public.payments (provider_order_id);
+    END IF;
+
+    SELECT COUNT(*) INTO v_dup_payment_id_count
+    FROM (
+        SELECT provider_payment_id
+        FROM public.payments
+        WHERE provider_payment_id IS NOT NULL AND provider_payment_id <> ''
+        GROUP BY provider_payment_id
+        HAVING COUNT(*) > 1
+    ) s2;
+
+    IF v_dup_payment_id_count = 0 THEN
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_provider_payment_id_unique
+            ON public.payments (provider_payment_id)
+            WHERE provider_payment_id IS NOT NULL AND provider_payment_id <> '';
+    ELSE
+        CREATE INDEX IF NOT EXISTS idx_payments_provider_payment_id
+            ON public.payments (provider_payment_id);
+    END IF;
+END $$;
 
 ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
 
@@ -123,17 +185,78 @@ CREATE POLICY "Service role manages payments"
     USING (true)
     WITH CHECK (true);
 
+-- Durable Refund Records Table
+CREATE TABLE IF NOT EXISTS public.payment_refunds (
+    id TEXT PRIMARY KEY DEFAULT ('rfnd_log_' || replace(gen_random_uuid()::text, '-', '')),
+    order_id TEXT NOT NULL REFERENCES public.orders(id) ON DELETE RESTRICT,
+    payment_id UUID REFERENCES public.payments(id) ON DELETE RESTRICT,
+    provider_refund_id TEXT NOT NULL UNIQUE,
+    provider_payment_id TEXT NOT NULL,
+    amount NUMERIC NOT NULL CHECK (amount > 0),
+    currency TEXT NOT NULL DEFAULT 'INR',
+    status TEXT NOT NULL DEFAULT 'processed' CHECK (status IN ('processing', 'processed', 'failed')),
+    reason TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_payment_refunds_order_id ON public.payment_refunds(order_id);
+CREATE INDEX IF NOT EXISTS idx_payment_refunds_provider_refund_id ON public.payment_refunds(provider_refund_id);
+CREATE INDEX IF NOT EXISTS idx_payment_refunds_payment_id ON public.payment_refunds(payment_id);
+
+ALTER TABLE public.payment_refunds ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Customers can view own refunds" ON public.payment_refunds;
+CREATE POLICY "Customers can view own refunds"
+    ON public.payment_refunds FOR SELECT
+    TO authenticated
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.orders o
+            WHERE o.id = payment_refunds.order_id
+              AND (o.customer_id = auth.uid())
+        )
+    );
+
+DROP POLICY IF EXISTS "Service role manages refunds" ON public.payment_refunds;
+CREATE POLICY "Service role manages refunds"
+    ON public.payment_refunds FOR ALL
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
+
+-- Ensure payment_webhook_events table and schema extensions exist
 CREATE TABLE IF NOT EXISTS public.payment_webhook_events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     event_id TEXT NOT NULL UNIQUE,
     event_type TEXT NOT NULL,
     provider TEXT NOT NULL DEFAULT 'razorpay',
     payload_hash TEXT,
-    status TEXT NOT NULL DEFAULT 'processed' CHECK (status IN ('processed', 'failed', 'ignored')),
+    status TEXT NOT NULL DEFAULT 'processing',
+    locked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    error_message TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Ensure columns exist if table was created by older migrations
+ALTER TABLE public.payment_webhook_events
+    ADD COLUMN IF NOT EXISTS locked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ADD COLUMN IF NOT EXISTS error_message TEXT;
+
+DO $$
+BEGIN
+    ALTER TABLE public.payment_webhook_events
+        DROP CONSTRAINT IF EXISTS payment_webhook_events_status_check;
+
+    ALTER TABLE public.payment_webhook_events
+        ADD CONSTRAINT payment_webhook_events_status_check
+        CHECK (status IN ('processing', 'processed', 'failed', 'ignored'));
+EXCEPTION
+    WHEN undefined_table THEN
+        NULL;
+END $$;
+
 CREATE INDEX IF NOT EXISTS idx_payment_webhook_events_event_id ON public.payment_webhook_events(event_id);
+CREATE INDEX IF NOT EXISTS idx_payment_webhook_events_status ON public.payment_webhook_events(status);
 
 ALTER TABLE public.payment_webhook_events ENABLE ROW LEVEL SECURITY;
 
@@ -144,6 +267,107 @@ CREATE POLICY "Service role manages webhook events"
     USING (true)
     WITH CHECK (true);
 
+-- Webhook Event Claiming & Stuck-Event Recovery RPC
+CREATE OR REPLACE FUNCTION public.claim_webhook_event(
+    p_event_id TEXT,
+    p_event_type TEXT,
+    p_payload_hash TEXT DEFAULT NULL,
+    p_stale_timeout_minutes INT DEFAULT 5
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, extensions, public, pg_temp
+AS $$
+DECLARE
+    v_event RECORD;
+    v_now TIMESTAMPTZ := NOW();
+    v_inserted_count INT := 0;
+BEGIN
+    IF auth.role() IS DISTINCT FROM 'service_role' THEN
+        RAISE EXCEPTION 'Access Denied: claim_webhook_event can only be executed by trusted server-side payment functions.';
+    END IF;
+
+    -- Atomically insert event with processing status if not exists
+    INSERT INTO public.payment_webhook_events (
+        event_id,
+        event_type,
+        provider,
+        payload_hash,
+        status,
+        locked_at,
+        created_at
+    ) VALUES (
+        p_event_id,
+        p_event_type,
+        'razorpay',
+        p_payload_hash,
+        'processing',
+        v_now,
+        v_now
+    )
+    ON CONFLICT (event_id) DO NOTHING;
+
+    GET DIAGNOSTICS v_inserted_count = ROW_COUNT;
+
+    -- Case 1: Freshly inserted claim by this transaction
+    IF v_inserted_count = 1 THEN
+        RETURN jsonb_build_object('action', 'claimed', 'status', 'processing');
+    END IF;
+
+    -- Row already exists: Lock the event row for update to inspect and transition state safely
+    SELECT id, status, locked_at INTO v_event
+    FROM public.payment_webhook_events
+    WHERE event_id = p_event_id
+    FOR UPDATE;
+
+    -- Case 2: Already successfully completed
+    IF v_event.status = 'processed' THEN
+        RETURN jsonb_build_object('action', 'skip_processed', 'status', 'processed');
+    END IF;
+
+    -- Case 3: Failed previously or stuck in processing beyond stale timeout
+    IF v_event.status = 'failed' OR
+       (v_event.status = 'processing' AND v_event.locked_at < (v_now - (p_stale_timeout_minutes || ' minutes')::INTERVAL)) THEN
+
+        UPDATE public.payment_webhook_events
+        SET status = 'processing',
+            locked_at = v_now,
+            payload_hash = COALESCE(p_payload_hash, payload_hash)
+        WHERE event_id = p_event_id;
+
+        RETURN jsonb_build_object('action', 'claimed_retry', 'status', 'processing');
+    END IF;
+
+    -- Case 4: Currently being processed by another worker within the active lock window
+    RETURN jsonb_build_object('action', 'retry_later', 'status', 'processing');
+END;
+$$;
+
+-- Complete Webhook Event RPC
+CREATE OR REPLACE FUNCTION public.complete_webhook_event(
+    p_event_id TEXT,
+    p_status TEXT,
+    p_error_message TEXT DEFAULT NULL
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, extensions, public, pg_temp
+AS $$
+BEGIN
+    IF auth.role() IS DISTINCT FROM 'service_role' THEN
+        RAISE EXCEPTION 'Access Denied: complete_webhook_event can only be executed by trusted server-side payment functions.';
+    END IF;
+
+    UPDATE public.payment_webhook_events
+    SET status = p_status,
+        error_message = p_error_message,
+        locked_at = NOW()
+    WHERE event_id = p_event_id;
+END;
+$$;
+
 -- 5. Authoritative place_order_secure RPC
 CREATE OR REPLACE FUNCTION public.place_order_secure(
     p_order_payload JSONB
@@ -151,7 +375,7 @@ CREATE OR REPLACE FUNCTION public.place_order_secure(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public, extensions, pg_temp
+SET search_path = pg_catalog, extensions, public, pg_temp
 AS $$
 DECLARE
     v_user_id UUID := auth.uid();
@@ -163,34 +387,34 @@ DECLARE
     v_delivery_notes TEXT;
     v_idempotency_key TEXT;
     v_payload_hash TEXT;
-    
+
     -- Canonical representation variables
     v_canonical_items JSONB;
     v_canonical_payload JSONB;
     v_canonical_text TEXT;
-    
+
     -- Processing variables
     v_item_element JSONB;
     v_agg_rec RECORD;
     v_item_rec RECORD;
     v_item_idx INT := 0;
-    
+
     v_db_product RECORD;
     v_db_price NUMERIC;
     v_weight_count INT;
     v_item_subtotal NUMERIC;
     v_subtotal NUMERIC := 0;
-    
+
     -- Coupon verification variables
     v_coupon_rec RECORD;
     v_coupon_discount NUMERIC := 0;
     v_coupon_eligible_subtotal NUMERIC := 0;
-    
+
     -- Delivery & Totals
     v_delivery_fee NUMERIC := 49.00;
     v_total_discount NUMERIC := 0;
     v_grand_total NUMERIC := 0;
-    
+
     -- Identifiers
     v_order_id TEXT;
     v_order_number TEXT;
@@ -203,7 +427,7 @@ DECLARE
     v_customer_email TEXT;
     v_created_at TIMESTAMPTZ := NOW();
     v_existing_order RECORD;
-    
+
     -- Validated items buffer
     v_validated_items JSONB := '[]'::jsonb;
 BEGIN
@@ -272,7 +496,7 @@ BEGIN
     END IF;
 
     -- Postal PIN code validation: Exactly 6 numeric digits starting with 1-9
-    IF (v_address->>'pincode') IS NULL 
+    IF (v_address->>'pincode') IS NULL
        OR NOT (TRIM(v_address->>'pincode') ~ '^[1-9][0-9]{5}$') THEN
         RAISE EXCEPTION 'Please provide a valid 6-digit postal PIN code (e.g. 500001).';
     END IF;
@@ -304,9 +528,9 @@ BEGIN
 
         -- Strictly allow only positive integers from 1 to 50 via regex BEFORE any integer cast.
         -- Rejects negative numbers, 0, decimals, non-digits, and integer-overflow strings.
-        IF (v_item_element->>'quantity') IS NULL 
+        IF (v_item_element->>'quantity') IS NULL
            OR NOT (v_item_element->>'quantity' ~ '^([1-9]|[1-4][0-9]|50)$') THEN
-            RAISE EXCEPTION 'Invalid quantity for product %. Quantity must be an integer between 1 and 50.', 
+            RAISE EXCEPTION 'Invalid quantity for product %. Quantity must be an integer between 1 and 50.',
                 v_item_element->>'product_id';
         END IF;
     END LOOP;
@@ -357,7 +581,7 @@ BEGIN
         -- Advisory lock serializes concurrent retries for this exact idempotency key
         PERFORM pg_advisory_xact_lock(hashtext('place_order_' || v_idempotency_key));
 
-        SELECT id, order_number, tracking_code, subtotal, delivery_fee, 
+        SELECT id, order_number, tracking_code, subtotal, delivery_fee,
                discount_amount, grand_total, order_status, payment_status, created_at,
                payment_session_token, delivery_address_json, idempotency_payload_hash,
                payment_method, applied_coupon_code, customer_phone
@@ -373,7 +597,7 @@ BEGIN
                     RAISE EXCEPTION 'Idempotency key "%" was already used for a different order payload.', v_idempotency_key;
                 END IF;
             ELSE
-                RAISE EXCEPTION 'Idempotency key "%" is already bound to existing order #% without cryptographic payload verification. Please submit with a new idempotency key.', 
+                RAISE EXCEPTION 'Idempotency key "%" is already bound to existing order #% without cryptographic payload verification. Please submit with a new idempotency key.',
                     v_idempotency_key, v_existing_order.order_number;
             END IF;
 
@@ -403,8 +627,8 @@ BEGIN
     -- -------------------------------------------------------------------------
     -- 4. Aggregate Demanded Quantities & Lock Rows in Deterministic Order
     -- -------------------------------------------------------------------------
-    FOR v_agg_rec IN 
-        SELECT 
+    FOR v_agg_rec IN
+        SELECT
             x.product_id,
             SUM((x.quantity)::INT) AS total_demanded_qty
         FROM jsonb_to_recordset(v_items) AS x(
@@ -426,7 +650,7 @@ BEGIN
         END IF;
 
         IF v_db_product.out_of_stock = true OR COALESCE(v_db_product.inventory_count, 0) < v_agg_rec.total_demanded_qty THEN
-            RAISE EXCEPTION 'Insufficient stock for "%". Total requested %, but only % available.', 
+            RAISE EXCEPTION 'Insufficient stock for "%". Total requested %, but only % available.',
                 v_db_product.name, v_agg_rec.total_demanded_qty, GREATEST(0, COALESCE(v_db_product.inventory_count, 0));
         END IF;
     END LOOP;
@@ -434,8 +658,8 @@ BEGIN
     -- -------------------------------------------------------------------------
     -- 5. Strict Weight Option Validation & Price Accumulation
     -- -------------------------------------------------------------------------
-    FOR v_item_rec IN 
-        SELECT 
+    FOR v_item_rec IN
+        SELECT
             x.product_id,
             TRIM(COALESCE(x.selected_weight, '')) AS selected_weight,
             (x.quantity)::INT AS quantity
@@ -466,7 +690,7 @@ BEGIN
             LIMIT 1;
 
             IF v_db_price IS NULL THEN
-                RAISE EXCEPTION 'Selected weight "%" is not valid or available for product "%".', 
+                RAISE EXCEPTION 'Selected weight "%" is not valid or available for product "%".',
                     v_item_rec.selected_weight, v_db_product.name;
             END IF;
         ELSE
@@ -511,7 +735,7 @@ BEGIN
 
             -- Minimum order subtotal check
             IF v_subtotal < COALESCE(v_coupon_rec.min_order_amount, 0) THEN
-                RAISE EXCEPTION 'Coupon "%" requires a minimum order amount of ₹%.', 
+                RAISE EXCEPTION 'Coupon "%" requires a minimum order amount of ₹%.',
                     v_coupon_code, v_coupon_rec.min_order_amount;
             END IF;
 
@@ -536,7 +760,7 @@ BEGIN
                 END LOOP;
 
                 IF v_coupon_eligible_subtotal <= 0 THEN
-                    RAISE EXCEPTION 'Coupon "%" is valid only for items in category "%". No eligible items in cart.', 
+                    RAISE EXCEPTION 'Coupon "%" is valid only for items in category "%". No eligible items in cart.',
                         v_coupon_code, v_coupon_rec.target_category;
                 END IF;
 
@@ -555,30 +779,30 @@ BEGIN
                 END LOOP;
 
                 IF v_coupon_eligible_subtotal <= 0 THEN
-                    RAISE EXCEPTION 'Coupon "%" is valid only for designated target product. Eligible product not in cart.', 
+                    RAISE EXCEPTION 'Coupon "%" is valid only for designated target product. Eligible product not in cart.',
                         v_coupon_code;
                 END IF;
 
             ELSE
-                RAISE EXCEPTION 'Coupon "%" has invalid scope "%". Permitted scopes are all, category, product.', 
+                RAISE EXCEPTION 'Coupon "%" has invalid scope "%". Permitted scopes are all, category, product.',
                     v_coupon_code, v_coupon_rec.applies_to;
             END IF;
 
             -- Compute coupon discount value safely (Matching confirmed coupon schema - no max_discount)
             IF v_coupon_rec.discount_type = 'percentage' THEN
                 IF v_coupon_rec.discount_value <= 0 OR v_coupon_rec.discount_value > 100 THEN
-                    RAISE EXCEPTION 'Coupon "%" has invalid percentage discount value (%).', 
+                    RAISE EXCEPTION 'Coupon "%" has invalid percentage discount value (%).',
                         v_coupon_code, v_coupon_rec.discount_value;
                 END IF;
                 v_coupon_discount := ROUND((v_coupon_eligible_subtotal * v_coupon_rec.discount_value) / 100.0, 2);
             ELSIF v_coupon_rec.discount_type = 'flat' THEN
                 IF v_coupon_rec.discount_value <= 0 THEN
-                    RAISE EXCEPTION 'Coupon "%" has invalid flat discount value (%).', 
+                    RAISE EXCEPTION 'Coupon "%" has invalid flat discount value (%).',
                         v_coupon_code, v_coupon_rec.discount_value;
                 END IF;
                 v_coupon_discount := LEAST(v_coupon_eligible_subtotal, v_coupon_rec.discount_value);
             ELSE
-                RAISE EXCEPTION 'Coupon "%" has unsupported discount type "%".', 
+                RAISE EXCEPTION 'Coupon "%" has unsupported discount type "%".',
                     v_coupon_code, v_coupon_rec.discount_type;
             END IF;
 
@@ -616,7 +840,7 @@ BEGIN
     v_order_id := 'ord-' || gen_random_uuid()::TEXT;
     v_order_number := 'Aishu-00' || nextval('public.order_number_seq')::TEXT;
     v_tracking_code := 'TRK-' || nextval('public.tracking_code_seq')::TEXT;
-    
+
     v_payment_session_token := encode(gen_random_bytes(32), 'hex');
     v_payment_token_expires_at := NOW() + INTERVAL '30 minutes';
 
@@ -686,23 +910,23 @@ BEGIN
     ) LOOP
         v_item_idx := v_item_idx + 1;
 
-        -- Confirmed columns: id ('oitem-' || UUID), order_id, product_id, product_name_snapshot, selected_weight, unit_price, quantity
+        -- Confirmed columns: order_id, product_id, product_name_snapshot, selected_weight, unit_price, quantity, line_total
         INSERT INTO public.order_items (
-            id,
             order_id,
             product_id,
             product_name_snapshot,
             selected_weight,
             unit_price,
-            quantity
+            quantity,
+            line_total
         ) VALUES (
-            'oitem-' || gen_random_uuid()::TEXT,
             v_order_id,
             v_item_rec.product_id,
             v_item_rec.product_name,
             v_item_rec.selected_weight,
             v_item_rec.unit_price,
-            v_item_rec.quantity
+            v_item_rec.quantity,
+            ROUND(v_item_rec.unit_price * v_item_rec.quantity, 2)
         );
 
         -- Stock History Log Entry (admin_name is NOT NULL, provided as 'Checkout System')
@@ -729,8 +953,8 @@ BEGIN
 
     -- Decrement stock by aggregated demand per product.
     -- Strict decrement: fails explicitly if stock is unexpectedly insufficient rather than silently clamping with GREATEST.
-    FOR v_agg_rec IN 
-        SELECT 
+    FOR v_agg_rec IN
+        SELECT
             x.product_id,
             SUM((x.quantity)::INT) AS total_demanded_qty
         FROM jsonb_to_recordset(v_items) AS x(
@@ -785,13 +1009,13 @@ CREATE OR REPLACE FUNCTION public.record_payment_attempt(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public, extensions, pg_temp
+SET search_path = pg_catalog, extensions, public, pg_temp
 AS $$
 DECLARE
     v_order RECORD;
 BEGIN
     -- Explicit calling context check
-    IF current_user <> 'service_role' AND auth.role() <> 'service_role' THEN
+    IF auth.role() IS DISTINCT FROM 'service_role' THEN
         RAISE EXCEPTION 'Access Denied: record_payment_attempt can only be executed by trusted server-side payment functions.';
     END IF;
 
@@ -833,10 +1057,15 @@ END;
 $$;
 
 -- 7. Finalize Payment Success RPC (Restricted strictly to trusted service_role)
+DROP FUNCTION IF EXISTS public.finalize_payment_success(TEXT, TEXT, TEXT, TEXT, BOOLEAN, JSONB);
+-- Preserve dependencies of the current signature when replacing its body.
+
 CREATE OR REPLACE FUNCTION public.finalize_payment_success(
     p_order_id TEXT,
     p_provider_payment_id TEXT,
     p_provider_order_id TEXT,
+    p_amount NUMERIC DEFAULT NULL,
+    p_currency TEXT DEFAULT 'INR',
     p_method TEXT DEFAULT 'online',
     p_signature_verified BOOLEAN DEFAULT true,
     p_metadata JSONB DEFAULT '{}'::jsonb
@@ -844,14 +1073,14 @@ CREATE OR REPLACE FUNCTION public.finalize_payment_success(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public, extensions, pg_temp
+SET search_path = pg_catalog, extensions, public, pg_temp
 AS $$
 DECLARE
     v_order RECORD;
     v_pay_record RECORD;
 BEGIN
     -- Strict authorization check: Only service_role (Edge Functions) can invoke this RPC!
-    IF current_user <> 'service_role' AND auth.role() <> 'service_role' THEN
+    IF auth.role() IS DISTINCT FROM 'service_role' THEN
         RAISE EXCEPTION 'Access Denied: finalize_payment_success can only be executed by trusted server-side payment functions.';
     END IF;
 
@@ -870,12 +1099,12 @@ BEGIN
         RETURN jsonb_build_object('success', false, 'error', 'Order not found');
     END IF;
 
-    -- Idempotency Guard: if already completed, return clean duplicate confirmation
-    IF v_order.payment_status = 'completed' AND v_order.order_status IN ('confirmed', 'processing', 'ready_to_ship', 'shipped', 'delivered') THEN
+    -- Idempotency Guard: if already completed, return clean duplicate confirmation for all order statuses
+    IF v_order.payment_status = 'completed' THEN
         RETURN jsonb_build_object(
             'success', true,
             'is_duplicate', true,
-            'message', 'Order already marked completed and confirmed.',
+            'message', 'Order payment already marked completed.',
             'order_id', p_order_id,
             'order_number', v_order.order_number,
             'payment_status', v_order.payment_status,
@@ -883,66 +1112,83 @@ BEGIN
         );
     END IF;
 
-    -- Verify that the recorded payment attempt matches the provider order ID if attempt was logged
-    SELECT id, amount, status INTO v_pay_record
+    -- Require a matching recorded provider order attempt in payments table
+    SELECT id, amount, currency, status INTO v_pay_record
     FROM public.payments
     WHERE order_id = p_order_id
       AND provider_order_id = p_provider_order_id
     ORDER BY created_at DESC
-    LIMIT 1;
+    LIMIT 1
+    FOR UPDATE;
 
-    -- Update payments tracking table
-    IF FOUND THEN
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'No matching recorded payment attempt found for provider order "%" on order "%".',
+            p_provider_order_id, p_order_id;
+    END IF;
+
+    -- Validate payment amount matching order grand total
+    IF p_amount IS NOT NULL AND p_amount <> v_order.grand_total THEN
+        RAISE EXCEPTION 'Payment amount mismatch: passed amount % does not match order grand total %.',
+            p_amount, v_order.grand_total;
+    END IF;
+
+    IF v_pay_record.amount <> v_order.grand_total THEN
+        RAISE EXCEPTION 'Recorded payment attempt amount % does not match order grand total %.',
+            v_pay_record.amount, v_order.grand_total;
+    END IF;
+
+    -- Validate both stored and provider-confirmed currency
+    IF UPPER(v_pay_record.currency) <> 'INR' THEN
+        RAISE EXCEPTION 'Stored payment currency (%) is invalid. Expected INR.', v_pay_record.currency;
+    END IF;
+
+    IF UPPER(COALESCE(p_currency, 'INR')) <> 'INR' THEN
+        RAISE EXCEPTION 'Provider confirmed payment currency (%) is invalid. Expected INR.', p_currency;
+    END IF;
+
+    -- Late Payment Recovery Workflow for previously cancelled orders
+    IF v_order.order_status = 'cancelled' THEN
+        UPDATE public.orders
+        SET payment_status = 'completed',
+            admin_notes = COALESCE(admin_notes, '') || ' [LATE PAYMENT CAPTURED: ₹' || v_order.grand_total || ' (' || p_provider_payment_id || ') received for cancelled order #' || v_order.order_number || '. Action Required: Restock & fulfill OR initiate gateway refund.]'
+        WHERE id = p_order_id;
+
         UPDATE public.payments
         SET status = 'captured',
             provider_payment_id = p_provider_payment_id,
             provider_signature = 'verified',
             payment_method = COALESCE(p_method, 'online'),
-            metadata = p_metadata,
+            metadata = p_metadata || jsonb_build_object('is_late_payment', true, 'captured_at', NOW()),
             captured_at = NOW(),
             updated_at = NOW()
         WHERE id = v_pay_record.id;
-    ELSE
-        INSERT INTO public.payments (
-            order_id,
-            provider,
-            provider_order_id,
-            provider_payment_id,
-            provider_signature,
-            amount,
-            currency,
-            status,
-            payment_method,
-            metadata,
-            captured_at,
-            created_at,
-            updated_at
-        ) VALUES (
-            p_order_id,
-            'razorpay',
-            p_provider_order_id,
-            p_provider_payment_id,
-            'verified',
-            v_order.grand_total,
-            'INR',
-            'captured',
-            COALESCE(p_method, 'online'),
-            p_metadata,
-            NOW(),
-            NOW(),
-            NOW()
+
+        RETURN jsonb_build_object(
+            'success', true,
+            'order_id', p_order_id,
+            'order_number', v_order.order_number,
+            'payment_status', 'completed',
+            'order_status', 'cancelled',
+            'is_late_payment', true,
+            'late_payment_action_required', 'restock_or_refund'
         );
     END IF;
+
+    -- Update payments tracking table to captured
+    UPDATE public.payments
+    SET status = 'captured',
+        provider_payment_id = p_provider_payment_id,
+        provider_signature = 'verified',
+        payment_method = COALESCE(p_method, 'online'),
+        metadata = p_metadata,
+        captured_at = NOW(),
+        updated_at = NOW()
+    WHERE id = v_pay_record.id;
 
     -- Update primary order row strictly within allowed constraints ('completed', 'confirmed')
     UPDATE public.orders
     SET payment_status = 'completed',
-        order_status = CASE WHEN order_status = 'cancelled' THEN 'cancelled' ELSE 'confirmed' END,
-        admin_notes = CASE 
-            WHEN order_status = 'cancelled' THEN 
-                COALESCE(admin_notes, '') || ' [WARNING: Payment captured for previously cancelled order. Needs manual refund or restocking.]'
-            ELSE admin_notes 
-        END
+        order_status = 'confirmed'
     WHERE id = p_order_id;
 
     RETURN jsonb_build_object(
@@ -950,7 +1196,8 @@ BEGIN
         'order_id', p_order_id,
         'order_number', v_order.order_number,
         'payment_status', 'completed',
-        'order_status', CASE WHEN v_order.order_status = 'cancelled' THEN 'cancelled' ELSE 'confirmed' END
+        'order_status', 'confirmed',
+        'is_late_payment', false
     );
 END;
 $$;
@@ -959,84 +1206,225 @@ $$;
 CREATE OR REPLACE FUNCTION public.record_payment_failure(
     p_order_id TEXT,
     p_provider_order_id TEXT,
-    p_failure_code TEXT,
-    p_failure_desc TEXT
+    p_failure_code TEXT DEFAULT 'PAYMENT_FAILED',
+    p_failure_desc TEXT DEFAULT 'Payment was cancelled or rejected by customer/bank'
 )
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public, extensions, pg_temp
+SET search_path = pg_catalog, extensions, public, pg_temp
 AS $$
+DECLARE
+    v_order RECORD;
 BEGIN
-    IF current_user <> 'service_role' AND auth.role() <> 'service_role' THEN
+    IF auth.role() IS DISTINCT FROM 'service_role' THEN
         RAISE EXCEPTION 'Access Denied: record_payment_failure can only be executed by trusted server-side payment functions.';
+    END IF;
+
+    SELECT id, payment_status, order_status INTO v_order
+    FROM public.orders
+    WHERE id = p_order_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Order not found');
+    END IF;
+
+    -- Prevent delayed failure events from overwriting successful payments!
+    IF v_order.payment_status = 'completed' THEN
+        -- Never downgrade captured, paid, or refunded payment attempts!
+        UPDATE public.payments
+        SET status = 'failed',
+            failure_code = p_failure_code,
+            failure_description = p_failure_desc,
+            failed_at = NOW(),
+            updated_at = NOW()
+        WHERE order_id = p_order_id
+          AND (provider_order_id = p_provider_order_id OR provider_order_id IS NULL)
+          AND status NOT IN ('captured', 'paid', 'refunded', 'partially_refunded');
+
+        RETURN jsonb_build_object(
+            'success', true,
+            'ignored_for_order', true,
+            'reason', 'Order is already marked completed. Payment status was not overwritten.'
+        );
     END IF;
 
     UPDATE public.orders
     SET payment_status = 'failed'
-    WHERE id = p_order_id;
+    WHERE id = p_order_id
+      AND payment_status <> 'completed';
 
+    -- Never downgrade captured, paid, or refunded payment attempts!
     UPDATE public.payments
     SET status = 'failed',
         failure_code = p_failure_code,
         failure_description = p_failure_desc,
+        failed_at = NOW(),
         updated_at = NOW()
-    WHERE order_id = p_order_id 
-      AND (provider_order_id = p_provider_order_id OR provider_order_id IS NULL);
+    WHERE order_id = p_order_id
+      AND (provider_order_id = p_provider_order_id OR provider_order_id IS NULL)
+      AND status NOT IN ('captured', 'paid', 'refunded', 'partially_refunded');
 
     RETURN jsonb_build_object('success', true);
 END;
 $$;
 
--- 9. Record Refund Success RPC (Restricted strictly to trusted service_role)
+-- 9. Record Refund Success RPC with Durable Ledger (Restricted strictly to trusted service_role)
+DROP FUNCTION IF EXISTS public.record_refund_success(TEXT, TEXT, NUMERIC, TEXT);
+DROP FUNCTION IF EXISTS public.record_refund_success(TEXT, TEXT, NUMERIC, TEXT, TEXT);
+
 CREATE OR REPLACE FUNCTION public.record_refund_success(
     p_order_id TEXT,
     p_refund_id TEXT,
     p_refund_amount NUMERIC,
-    p_reason TEXT DEFAULT 'Customer Refund'
+    p_reason TEXT DEFAULT 'Customer Refund',
+    p_provider_payment_id TEXT DEFAULT NULL
 )
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public, extensions, pg_temp
+SET search_path = pg_catalog, extensions, public, pg_temp
 AS $$
+DECLARE
+    v_pay RECORD;
+    v_existing_refund RECORD;
+    v_current_total_refunded NUMERIC := 0;
+    v_new_total_refunded NUMERIC := 0;
+    v_new_status TEXT;
 BEGIN
-    IF current_user <> 'service_role' AND auth.role() <> 'service_role' THEN
+    IF auth.role() IS DISTINCT FROM 'service_role' THEN
         RAISE EXCEPTION 'Access Denied: record_refund_success can only be executed by trusted server-side payment functions.';
     END IF;
 
+    IF p_refund_amount IS NULL OR p_refund_amount <= 0 THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Refund amount must be strictly positive.');
+    END IF;
+
+    IF p_refund_id IS NULL OR TRIM(p_refund_id) = '' THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Provider refund ID is required.');
+    END IF;
+
+    -- 1. Lock payment record FOR UPDATE
+    SELECT id, amount, currency, status, provider_payment_id INTO v_pay
+    FROM public.payments
+    WHERE order_id = p_order_id
+      AND (p_provider_payment_id IS NULL OR provider_payment_id = p_provider_payment_id)
+      AND status IN ('captured', 'paid', 'partially_refunded', 'refunded')
+    ORDER BY created_at DESC
+    LIMIT 1
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'No captured payment found for this order to refund.');
+    END IF;
+
+    -- 2. Idempotency Check: Verify if this provider_refund_id was already recorded
+    SELECT id, amount, status INTO v_existing_refund
+    FROM public.payment_refunds
+    WHERE provider_refund_id = p_refund_id;
+
+    IF FOUND THEN
+        RETURN jsonb_build_object(
+            'success', true,
+            'is_duplicate', true,
+            'message', 'Refund with this provider ID was already recorded.',
+            'refund_id', p_refund_id,
+            'order_id', p_order_id,
+            'payment_status', v_pay.status
+        );
+    END IF;
+
+    -- 3. Calculate current total refunded for this payment
+    SELECT COALESCE(SUM(amount), 0) INTO v_current_total_refunded
+    FROM public.payment_refunds
+    WHERE payment_id = v_pay.id AND status = 'processed';
+
+    v_new_total_refunded := v_current_total_refunded + p_refund_amount;
+
+    -- 4. Over-refund Guard: Prevent cumulative refunds greater than captured amount
+    IF v_new_total_refunded > v_pay.amount THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Requested refund of ₹' || p_refund_amount || ' exceeds remaining refundable balance of ₹' || (v_pay.amount - v_current_total_refunded) || '.'
+        );
+    END IF;
+
+    -- 5. Insert durable refund record
+    INSERT INTO public.payment_refunds (
+        order_id,
+        payment_id,
+        provider_refund_id,
+        provider_payment_id,
+        amount,
+        currency,
+        status,
+        reason,
+        created_at
+    ) VALUES (
+        p_order_id,
+        v_pay.id,
+        p_refund_id,
+        COALESCE(p_provider_payment_id, v_pay.provider_payment_id, 'pay_unknown'),
+        p_refund_amount,
+        v_pay.currency,
+        'processed',
+        p_reason,
+        NOW()
+    );
+
+    -- 6. Update payment status
+    IF v_new_total_refunded >= v_pay.amount THEN
+        v_new_status := 'refunded';
+    ELSE
+        v_new_status := 'partially_refunded';
+    END IF;
+
     UPDATE public.payments
-    SET status = 'refunded',
+    SET status = v_new_status,
         refund_id = p_refund_id,
-        refund_amount = p_refund_amount,
+        refund_amount = v_new_total_refunded,
         refunded_at = NOW(),
         updated_at = NOW()
-    WHERE order_id = p_order_id;
+    WHERE id = v_pay.id;
 
+    -- 7. Update orders audit notes
     UPDATE public.orders
-    SET admin_notes = COALESCE(admin_notes, '') || ' [Refund processed: ₹' || p_refund_amount || ' - ' || p_reason || ']'
+    SET admin_notes = COALESCE(admin_notes, '') || ' [Refund Recorded: ₹' || p_refund_amount || ' (' || p_refund_id || ') - ' || p_reason || ']'
     WHERE id = p_order_id;
 
-    RETURN jsonb_build_object('success', true);
+    RETURN jsonb_build_object(
+        'success', true,
+        'refund_id', p_refund_id,
+        'refund_amount', p_refund_amount,
+        'cumulative_refund', v_new_total_refunded,
+        'payment_status', v_new_status
+    );
 END;
 $$;
 
 -- 10. Order Cancellation and Inventory Auto-Release Engine
+DROP FUNCTION IF EXISTS public.cancel_order_secure(TEXT, TEXT);
+DROP FUNCTION IF EXISTS public.cancel_order_secure(TEXT, TEXT, TEXT);
+DROP FUNCTION IF EXISTS public.cancel_order_secure(TEXT, TEXT, TEXT, BOOLEAN);
+
 CREATE OR REPLACE FUNCTION public.cancel_order_secure(
     p_order_id TEXT,
-    p_reason TEXT DEFAULT 'Cancelled by customer'
+    p_reason TEXT DEFAULT 'Cancelled by customer',
+    p_refund_id TEXT DEFAULT NULL,
+    p_allow_unrefunded BOOLEAN DEFAULT false
 )
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public, extensions, pg_temp
+SET search_path = pg_catalog, extensions, public, pg_temp
 AS $$
 DECLARE
     v_order RECORD;
     v_item RECORD;
     v_is_authorized BOOLEAN := false;
 BEGIN
-    SELECT id, order_number, customer_id, order_status, payment_status, payment_method, applied_coupon_code
+    SELECT id, order_number, customer_id, order_status, payment_status, payment_method, applied_coupon_code, grand_total
     INTO v_order
     FROM public.orders
     WHERE id = p_order_id
@@ -1047,7 +1435,7 @@ BEGIN
     END IF;
 
     -- Caller check: Owner customer, staff, or service_role
-    IF current_user = 'service_role' OR auth.role() = 'service_role' 
+    IF current_user = 'service_role' OR auth.role() = 'service_role'
        OR (auth.uid() IS NOT NULL AND auth.uid() = v_order.customer_id) THEN
         v_is_authorized := true;
     END IF;
@@ -1060,10 +1448,35 @@ BEGIN
     IF v_order.order_status = 'cancelled' THEN
         RETURN jsonb_build_object(
             'success', true,
+            'is_duplicate', true,
             'message', 'Order is already cancelled.',
             'order_id', p_order_id,
             'order_status', 'cancelled'
         );
+    END IF;
+
+    -- Prevent cancellation of paid orders unless refund workflow is handled by staff/service_role
+    IF v_order.payment_status = 'completed' THEN
+        IF auth.role() IS DISTINCT FROM 'service_role' THEN
+            RETURN jsonb_build_object(
+                'success', false,
+                'error', 'Paid orders cannot be self-cancelled. Please contact customer support for cancellations and refunds.'
+            );
+        END IF;
+
+        -- Staff or service_role cancellation of paid order requires refund ID or explicit unrefunded authorization
+        IF p_refund_id IS NOT NULL AND p_refund_id <> '' THEN
+            PERFORM public.record_refund_success(p_order_id, p_refund_id, v_order.grand_total, 'Cancellation Refund');
+        ELSIF p_allow_unrefunded IS TRUE THEN
+            UPDATE public.orders
+            SET admin_notes = COALESCE(admin_notes, '') || ' [CANCELLED WITHOUT GATEWAY REFUND: ' || p_reason || ']'
+            WHERE id = p_order_id;
+        ELSE
+            RETURN jsonb_build_object(
+                'success', false,
+                'error', 'Cannot cancel paid order without an authoritative refund ID or explicit unrefunded authorization.'
+            );
+        END IF;
     END IF;
 
     -- Only allow cancellation of unfulfilled orders
@@ -1074,20 +1487,22 @@ BEGIN
         );
     END IF;
 
-    -- Release inventory back to products table
+    -- Release inventory back to products table exactly once, aggregated per product in ASC order
     FOR v_item IN
-        SELECT product_id, quantity, product_name_snapshot
+        SELECT product_id, SUM(quantity) AS quantity, MAX(product_name_snapshot) AS product_name_snapshot
         FROM public.order_items
         WHERE order_id = p_order_id
           AND product_id IS NOT NULL
+        GROUP BY product_id
+        ORDER BY product_id ASC
     LOOP
         UPDATE public.products
         SET inventory_count = inventory_count + v_item.quantity,
-            out_of_stock = false,
+            out_of_stock = ((inventory_count + v_item.quantity) <= 0),
             updated_at = NOW()
         WHERE id = v_item.product_id;
 
-        -- Record Restock Log in stock_history_logs
+        -- Record Restock Log in stock_history_logs (idempotent ON CONFLICT)
         INSERT INTO public.stock_history_logs (
             id,
             product_id,
@@ -1106,14 +1521,18 @@ BEGIN
             'Restock from cancelled order #' || v_order.order_number,
             'Cancellation Engine (Server)',
             NOW()
-        );
+        ) ON CONFLICT (id) DO NOTHING;
     END LOOP;
 
-    -- If a coupon was applied, restore 1 usage count
+    -- If a coupon was applied, restore 1 usage count exactly once
     IF v_order.applied_coupon_code IS NOT NULL AND v_order.applied_coupon_code <> '' THEN
         UPDATE public.coupons
         SET usage_count = GREATEST(0, usage_count - 1)
         WHERE UPPER(TRIM(code)) = UPPER(TRIM(v_order.applied_coupon_code));
+
+        UPDATE public.orders
+        SET applied_coupon_code = NULL
+        WHERE id = p_order_id;
     END IF;
 
     -- Update Order Status
@@ -1124,6 +1543,7 @@ BEGIN
 
     RETURN jsonb_build_object(
         'success', true,
+        'is_duplicate', false,
         'message', 'Order cancelled and stock released successfully.',
         'order_id', p_order_id,
         'order_status', 'cancelled'
@@ -1138,13 +1558,14 @@ CREATE OR REPLACE FUNCTION public.cleanup_expired_unpaid_orders(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public, extensions, pg_temp
+SET search_path = pg_catalog, extensions, public, pg_temp
 AS $$
 DECLARE
     v_order RECORD;
+    v_cancel_res JSONB;
     v_cancelled_count INT := 0;
 BEGIN
-    IF current_user <> 'service_role' AND auth.role() <> 'service_role' THEN
+    IF auth.role() IS DISTINCT FROM 'service_role' THEN
         RAISE EXCEPTION 'Access Denied: cleanup_expired_unpaid_orders can only be executed by trusted server-side payment functions.';
     END IF;
 
@@ -1156,9 +1577,14 @@ BEGIN
           AND payment_method NOT ILIKE '%cash%'
           AND order_status = 'placed'
           AND created_at < NOW() - (p_timeout_minutes || ' minutes')::INTERVAL
+        FOR UPDATE SKIP LOCKED
     LOOP
-        PERFORM public.cancel_order_secure(v_order.id, 'Auto-cancelled due to payment timeout (' || p_timeout_minutes || 'm)');
-        v_cancelled_count := v_cancelled_count + 1;
+        v_cancel_res := public.cancel_order_secure(v_order.id, 'Auto-cancelled due to payment timeout (' || p_timeout_minutes || 'm)');
+
+        -- Increment count ONLY if cancellation succeeded and was not a duplicate
+        IF (v_cancel_res->>'success')::BOOLEAN IS TRUE AND (v_cancel_res->>'is_duplicate')::BOOLEAN IS NOT TRUE THEN
+            v_cancelled_count := v_cancelled_count + 1;
+        END IF;
     END LOOP;
 
     RETURN jsonb_build_object(
@@ -1174,24 +1600,30 @@ REVOKE ALL ON FUNCTION public.place_order_secure(JSONB) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.place_order_secure(JSONB) TO anon, authenticated, service_role;
 
 -- B. cancel_order_secure: callable by authenticated users (own orders) and service_role
-REVOKE ALL ON FUNCTION public.cancel_order_secure(TEXT, TEXT) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.cancel_order_secure(TEXT, TEXT) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.cancel_order_secure(TEXT, TEXT, TEXT, BOOLEAN) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.cancel_order_secure(TEXT, TEXT, TEXT, BOOLEAN) TO authenticated, service_role;
 
 -- C. Privileged Payment Lifecycle RPCs: STRICTLY service_role only!
 REVOKE ALL ON FUNCTION public.record_payment_attempt(TEXT, TEXT, NUMERIC, TEXT) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.record_payment_attempt(TEXT, TEXT, NUMERIC, TEXT) TO service_role;
 
-REVOKE ALL ON FUNCTION public.finalize_payment_success(TEXT, TEXT, TEXT, TEXT, BOOLEAN, JSONB) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.finalize_payment_success(TEXT, TEXT, TEXT, TEXT, BOOLEAN, JSONB) TO service_role;
+REVOKE ALL ON FUNCTION public.finalize_payment_success(TEXT, TEXT, TEXT, NUMERIC, TEXT, TEXT, BOOLEAN, JSONB) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.finalize_payment_success(TEXT, TEXT, TEXT, NUMERIC, TEXT, TEXT, BOOLEAN, JSONB) TO service_role;
 
 REVOKE ALL ON FUNCTION public.record_payment_failure(TEXT, TEXT, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.record_payment_failure(TEXT, TEXT, TEXT, TEXT) TO service_role;
 
-REVOKE ALL ON FUNCTION public.record_refund_success(TEXT, TEXT, NUMERIC, TEXT) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.record_refund_success(TEXT, TEXT, NUMERIC, TEXT) TO service_role;
+REVOKE ALL ON FUNCTION public.record_refund_success(TEXT, TEXT, NUMERIC, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.record_refund_success(TEXT, TEXT, NUMERIC, TEXT, TEXT) TO service_role;
 
 REVOKE ALL ON FUNCTION public.cleanup_expired_unpaid_orders(INT) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.cleanup_expired_unpaid_orders(INT) TO service_role;
+
+REVOKE ALL ON FUNCTION public.claim_webhook_event(TEXT, TEXT, TEXT, INT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.claim_webhook_event(TEXT, TEXT, TEXT, INT) TO service_role;
+
+REVOKE ALL ON FUNCTION public.complete_webhook_event(TEXT, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.complete_webhook_event(TEXT, TEXT, TEXT) TO service_role;
 
 -- 13. Force PostgREST to Immediately Reload Schema Cache
 NOTIFY pgrst, 'reload schema';

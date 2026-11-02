@@ -85,7 +85,7 @@ import {
 import {
   fetchUserProfile,
   logoutSupabaseUser,
-  getCurrentSession,
+
   getCurrentAdminIdentityFromDb,
   getAdminRoleFromDb,
   manageStaffAccountInDb,
@@ -95,6 +95,7 @@ interface AppContextType {
   // Supabase State
   isSupabaseConnected: boolean;
   supabaseUser: any;
+  authLoading: boolean;
   adminAuthLoading: boolean;
   currentAdminIdentity: AdminSessionIdentity | null;
   hasPermission: (permission: AdminPermission | string) => boolean;
@@ -246,7 +247,7 @@ interface AppContextType {
   // Store Settings & Controls Admin
   storeInfo: StoreInfo;
   updateStoreInfo: (updated: Partial<StoreInfo>) => void;
-  setPaymentEnabled: (enabled: boolean) => void;
+  setPaymentEnabled: (enabled: boolean) => Promise<boolean>;
   updateHeaderSettings: (settings: Partial<HeaderSettings>) => void;
   exportStoreBackupJson: () => string;
   resetStoreToDefault: () => void;
@@ -265,6 +266,8 @@ interface AppContextType {
   deleteWhatsAppContact: (id: string) => void;
   addNewsletterSubscriber: (email: string) => void;
 }
+
+const EMPTY_LOCATION: UserLocation = { id: 'unselected', label: 'Select location', address: '', city: '', pincode: '' };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
@@ -545,6 +548,7 @@ const INITIAL_MOCK_ORDERS: Order[] = [
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isSupabaseConnected, setIsSupabaseConnected] = useState<boolean>(isSupabaseConfigured());
+  const [authLoading, setAuthLoading] = useState(true);
   const [supabaseUser, setSupabaseUser] = useState<any>(null);
 
   const [products, setProducts] = useState<Product[]>(() =>
@@ -570,19 +574,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getInitialState('aura_cart', [])
   );
   const [wishlistProductIds, setWishlistProductIds] = useState<string[]>(() =>
-    getInitialState('aura_wishlist', ['prod-1', 'prod-6'])
+    []
   );
   const [recentlyViewedIds, setRecentlyViewedIds] = useState<string[]>(() =>
     getInitialState('aura_recently_viewed', ['prod-1', 'prod-7'])
   );
   const [locations, setLocations] = useState<UserLocation[]>(() =>
-    getInitialState('aura_locations', MOCK_LOCATIONS)
+    []
   );
   const [currentLocation, setCurrentLocation] = useState<UserLocation>(() =>
-    getInitialState('aura_current_location', MOCK_LOCATIONS[0])
+    EMPTY_LOCATION
   );
   const [userProfile, setUserProfile] = useState<UserProfile>(() =>
-    getInitialState('aura_user_profile', MOCK_USER_PROFILE)
+    ({ ...MOCK_USER_PROFILE, name: 'Customer', email: '', phone: '' })
   );
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [weeklyHighlights, setWeeklyHighlights] = useState<WeeklyHighlights>(() =>
@@ -606,7 +610,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Load data from Supabase when configured
   useEffect(() => {
-    if (!isSupabaseConfigured()) return;
+    if (!isSupabaseConfigured()) {
+      setAuthLoading(false);
+      setAdminAuthLoading(false);
+      return;
+    }
 
     let isMounted = true;
 
@@ -625,7 +633,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ] = await Promise.allSettled([
           fetchAllProducts(),
           fetchAllCategories(),
-          fetchAllOrders(),
+          Promise.resolve([] as Order[]),
           fetchHomeSections(),
           fetchHeroBanners(),
           fetchHeaderAnnouncements(),
@@ -681,99 +689,82 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     loadSupabaseData();
 
-    // Subscribe to Auth State Changes & Verify Admin Session
-    const resolveAdminSession = async (user: any) => {
-      if (!user) {
-        setIsAdminAuthenticated(false);
-        setCurrentAdminRole(null);
-        setCurrentAdminEmail(null);
-        setCurrentAdminIdentity(null);
-        setAdminAuthLoading(false);
-        return;
-      }
-
+    // Defer network work outside the Supabase auth lock. A revision prevents
+    // requests from a previous user/session repopulating protected state.
+    let revision = 0;
+    let currentUserId: string | null | undefined;
+    const resetAdmin = () => {
+      setIsAdminAuthenticated(false);
+      setCurrentAdminRole(null);
+      setCurrentAdminEmail(null);
+      setCurrentAdminIdentity(null);
+    };
+    const syncSession = async (user: any, version: number, changed: boolean) => {
+      const current = () => isMounted && version === revision;
       try {
-        const identity = await getCurrentAdminIdentityFromDb();
-        if (identity && identity.isActive) {
+        if (!user) return;
+        const { data, error } = await supabase.auth.getUser();
+        if (!current()) return;
+        if (error || data.user?.id !== user.id) {
+          setSupabaseUser(null);
+          resetAdmin();
+          return;
+        }
+        const [profile, identity, dbOrders] = await Promise.all([
+          fetchUserProfile(user.id), getCurrentAdminIdentityFromDb(), fetchAllOrders(),
+        ]);
+        if (!current()) return;
+        if (changed) {
+          setWishlistProductIds(getInitialState('aura_wishlist_' + user.id, []));
+          setLocations(getInitialState('aura_locations_' + user.id, []));
+          setCurrentLocation(getInitialState('aura_current_location_' + user.id, EMPTY_LOCATION));
+        }
+        setSupabaseUser(data.user);
+        setUserProfile({
+          ...MOCK_USER_PROFILE, id: user.id,
+          name: profile?.full_name || user.user_metadata?.full_name || 'Customer',
+          email: user.email || '', phone: profile?.phone_number || '',
+          role: profile?.role || 'customer',
+        });
+        setOrders(dbOrders);
+        if (identity?.isActive) {
           setIsAdminAuthenticated(true);
           setCurrentAdminRole(identity.role);
           setCurrentAdminEmail(identity.email);
           setCurrentAdminIdentity(identity);
-        } else {
-          const roleRow = await getAdminRoleFromDb(user.id);
-          if (roleRow && roleRow.status === 'active') {
-            const resolved: AdminSessionIdentity = {
-              userId: user.id,
-              email: user.email || '',
-              name: user.email?.split('@')[0] || 'Admin',
-              role: roleRow.role,
-              status: roleRow.status,
-              allowedTabs: roleRow.allowed_tabs || [],
-              permissions: roleRow.permissions || [],
-            };
-            setIsAdminAuthenticated(true);
-            setCurrentAdminRole(roleRow.role);
-            setCurrentAdminEmail(user.email || null);
-            setCurrentAdminIdentity(resolved);
-          } else {
-            setIsAdminAuthenticated(false);
-            setCurrentAdminRole(null);
-            setCurrentAdminEmail(null);
-            setCurrentAdminIdentity(null);
-          }
         }
-      } catch (err) {
-        console.warn('Could not resolve admin identity from database:', err);
-        setIsAdminAuthenticated(false);
-        setCurrentAdminRole(null);
-        setCurrentAdminEmail(null);
-        setCurrentAdminIdentity(null);
+      } catch {
+        if (current()) { setSupabaseUser(null); resetAdmin(); }
       } finally {
-        setAdminAuthLoading(false);
+        if (current()) { setAuthLoading(false); setAdminAuthLoading(false); }
       }
     };
-
-    // Initial check on mount
-    getCurrentSession().then((session) => {
-      if (isMounted) {
-        if (session?.user) {
-          setSupabaseUser(session.user);
-          resolveAdminSession(session.user);
-        } else {
-          setAdminAuthLoading(false);
-        }
-      }
-    });
-
-    const { data: authSub } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: authSub } = supabase.auth.onAuthStateChange((event, session) => {
       if (!isMounted) return;
-
-      if (session?.user) {
-        setSupabaseUser(session.user);
-        const profile = await fetchUserProfile(session.user.id);
-        if (profile && isMounted) {
-          setUserProfile((prev) => ({
-            ...prev,
-            id: session.user.id,
-            name: profile.full_name || prev.name,
-            email: session.user.email || prev.email,
-            phone: profile.phone_number || prev.phone,
-            role: profile.role,
-          }));
-        }
-        await resolveAdminSession(session.user);
-      } else {
+      const version = ++revision;
+      const user = session?.user ?? null;
+      const changed = currentUserId !== (user?.id ?? null);
+      currentUserId = user?.id ?? null;
+      setAuthLoading(Boolean(user));
+      setAdminAuthLoading(Boolean(user));
+      resetAdmin();
+      if (changed || !user) {
         setSupabaseUser(null);
-        setIsAdminAuthenticated(false);
-        setCurrentAdminRole(null);
-        setCurrentAdminEmail(null);
-        setCurrentAdminIdentity(null);
-        setAdminAuthLoading(false);
+        setOrders([]);
+        setUserProfile({ ...MOCK_USER_PROFILE, name: 'Customer', email: '', phone: '' });
+        setLocations([]);
+        setCurrentLocation(EMPTY_LOCATION);
+        if (event !== 'INITIAL_SESSION') setWishlistProductIds([]);
       }
+      if (event === 'PASSWORD_RECOVERY') {
+        window.history.replaceState(null, '', '/auth/reset-password');
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      }
+      setTimeout(() => { if (isMounted && version === revision) void syncSession(user, version, changed); }, 0);
     });
-
     return () => {
       isMounted = false;
+      revision++;
       authSub.subscription.unsubscribe();
     };
   }, []);
@@ -1243,14 +1234,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [newsletterSubscribers, setNewsletterSubscribers] = useState<string[]>(() =>
     getInitialState('aura_subscribers', MOCK_SUBSCRIBERS)
   );
-  const [paymentEnabled, setPaymentEnabledState] = useState<boolean>(() =>
-    getInitialState('aura_payment_enabled', true)
-  );
+  // Online payments stay denied until the authoritative Supabase policy loads.
+  const [paymentEnabled, setPaymentEnabledState] = useState<boolean>(false);
   const [storeInfo, setStoreInfo] = useState<StoreInfo>(() =>
     getInitialState('aura_store_info', DEFAULT_STORE_INFO)
   );
   const [orders, setOrders] = useState<Order[]>(() =>
-    getInitialState('aura_orders', INITIAL_MOCK_ORDERS)
+    []
   );
 
   // Persistent LocalStorage Effects (Isolate business and order state to development mode)
@@ -1271,20 +1261,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [cartItems]);
 
   useEffect(() => {
-    localStorage.setItem('aura_wishlist', JSON.stringify(wishlistProductIds));
-  }, [wishlistProductIds]);
+    if (supabaseUser) localStorage.setItem('aura_wishlist_' + supabaseUser.id, JSON.stringify(wishlistProductIds));
+  }, [wishlistProductIds, supabaseUser]);
 
   useEffect(() => {
     localStorage.setItem('aura_recently_viewed', JSON.stringify(recentlyViewedIds));
   }, [recentlyViewedIds]);
 
   useEffect(() => {
-    localStorage.setItem('aura_locations', JSON.stringify(locations));
-  }, [locations]);
+    if (supabaseUser) localStorage.setItem('aura_locations_' + supabaseUser.id, JSON.stringify(locations));
+  }, [locations, supabaseUser]);
 
   useEffect(() => {
-    localStorage.setItem('aura_current_location', JSON.stringify(currentLocation));
-  }, [currentLocation]);
+    if (supabaseUser) localStorage.setItem('aura_current_location_' + supabaseUser.id, JSON.stringify(currentLocation));
+  }, [currentLocation, supabaseUser]);
 
   useEffect(() => {
     localStorage.setItem('aura_user_profile', JSON.stringify(userProfile));
@@ -1357,6 +1347,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.setItem('aura_orders', JSON.stringify(orders));
     }
   }, [orders]);
+
+  // Load Authoritative Payment Policy from Supabase store_settings (Default: Denied)
+  useEffect(() => {
+    let isMounted = true;
+    async function loadStorePaymentPolicy() {
+      try {
+        const { data, error } = await supabase
+          .from('store_settings')
+          .select('payment_enabled')
+          .eq('id', 'default')
+          .maybeSingle();
+
+        if (isMounted) {
+          const enabled = !error && data?.payment_enabled === true;
+          setPaymentEnabledState(enabled);
+          localStorage.setItem('aura_payment_enabled', JSON.stringify(enabled));
+        }
+      } catch (err) {
+        console.warn('Failed to load store payment policy:', err);
+        if (isMounted) {
+          setPaymentEnabledState(false);
+          localStorage.setItem('aura_payment_enabled', 'false');
+        }
+      }
+    }
+    loadStorePaymentPolicy();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Toast Helper
   const addToast = (title: string, message: string, type: 'success' | 'error' | 'info' = 'success') => {
@@ -2574,13 +2594,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const resetStoreToDefault = () => {
     setStoreInfo(DEFAULT_STORE_INFO);
-    setPaymentEnabledState(true);
+    void setPaymentEnabled(false);
     addToast('Settings Reset', 'Store settings restored to default values.', 'info');
   };
 
-  const setPaymentEnabled = (enabled: boolean) => {
-    setPaymentEnabledState(enabled);
-    addToast('Payment Settings Saved', `Payment gateway is now ${enabled ? 'ENABLED' : 'DISABLED'}.`, 'success');
+  const setPaymentEnabled = async (enabled: boolean): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase
+        .from('store_settings')
+        .upsert(
+          { id: 'default', payment_enabled: enabled, updated_at: new Date().toISOString() },
+          { onConflict: 'id' }
+        )
+        .select('payment_enabled')
+        .single();
+
+      if (error || data?.payment_enabled !== enabled) {
+        throw error ?? new Error('The saved payment policy did not match the requested value.');
+      }
+
+      setPaymentEnabledState(enabled);
+      localStorage.setItem('aura_payment_enabled', JSON.stringify(enabled));
+      addToast(
+        'Payment Policy Updated',
+        `Online payments (Razorpay) are now ${enabled ? 'ALLOWED (ACTIVE)' : 'DENIED (BLOCKED)'}.`,
+        enabled ? 'success' : 'info'
+      );
+      return true;
+    } catch (err: any) {
+      console.error('Could not persist payment policy to Supabase:', err);
+      addToast('Payment Policy Not Saved', 'The database did not confirm this change. The existing policy remains in effect.', 'error');
+      return false;
+    }
   };
 
   const addWhatsAppContact = (name: string, phone: string) => {
@@ -2612,6 +2657,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         isSupabaseConnected,
         supabaseUser,
+        authLoading,
         products,
         categories,
         siteLogo,

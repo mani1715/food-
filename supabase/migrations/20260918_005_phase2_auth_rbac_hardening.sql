@@ -65,7 +65,7 @@ AS $$
           AND (
               role IN ('super_admin', 'admin')
               OR p_permission = ANY(permissions)
-              OR split_part(p_permission, '.', 1) = ANY(allowed_tabs)
+              OR to_jsonb(allowed_tabs) ? split_part(p_permission, '.', 1)
           )
     );
 $$;
@@ -206,7 +206,7 @@ BEGIN
             p_target_user_id,
             p_role,
             'active',
-            p_allowed_tabs,
+            (jsonb_populate_record(NULL::public.admin_roles, jsonb_build_object('allowed_tabs', p_allowed_tabs))).allowed_tabs,
             p_permissions,
             auth.uid(),
             NOW(),
@@ -235,7 +235,7 @@ BEGIN
 
         UPDATE public.admin_roles
         SET role = p_role,
-            allowed_tabs = p_allowed_tabs,
+            allowed_tabs = (jsonb_populate_record(NULL::public.admin_roles, jsonb_build_object('allowed_tabs', p_allowed_tabs))).allowed_tabs,
             permissions = p_permissions,
             updated_at = NOW()
         WHERE user_id = p_target_user_id;
@@ -343,7 +343,7 @@ BEGIN
         v_user_id,
         'super_admin',
         'active',
-        ARRAY['analytics', 'notifications', 'products', 'orders', 'banners', 'bestsellers', 'discounts', 'settings', 'newsletter', 'profile'],
+        (jsonb_populate_record(NULL::public.admin_roles, jsonb_build_object('allowed_tabs', ARRAY['analytics', 'notifications', 'products', 'orders', 'banners', 'bestsellers', 'discounts', 'settings', 'newsletter', 'profile']))).allowed_tabs,
         ARRAY['*'],
         NOW(),
         NOW()
@@ -351,7 +351,7 @@ BEGIN
     ON CONFLICT (user_id) DO UPDATE SET
         role = 'super_admin',
         status = 'active',
-        allowed_tabs = ARRAY['analytics', 'notifications', 'products', 'orders', 'banners', 'bestsellers', 'discounts', 'settings', 'newsletter', 'profile'],
+        allowed_tabs = (jsonb_populate_record(NULL::public.admin_roles, jsonb_build_object('allowed_tabs', ARRAY['analytics', 'notifications', 'products', 'orders', 'banners', 'bestsellers', 'discounts', 'settings', 'newsletter', 'profile']))).allowed_tabs,
         permissions = ARRAY['*'],
         updated_at = NOW();
 

@@ -57,6 +57,7 @@ export const SettingsManagementTab: React.FC = () => {
 
   // Temporary visual feedback state for save buttons
   const [savedSections, setSavedSections] = useState<Record<string, boolean>>({});
+  const [isSavingPaymentPolicy, setIsSavingPaymentPolicy] = useState(false);
 
   const showSaveSuccess = (sectionKey: string) => {
     setSavedSections((prev) => ({ ...prev, [sectionKey]: true }));
@@ -591,21 +592,42 @@ export const SettingsManagementTab: React.FC = () => {
               {/* Payment Methods Toggles */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Master Online Gateway Toggle */}
-                <div className="p-4 rounded-2xl border border-neutral-200 bg-neutral-50 flex items-center justify-between gap-3">
+                <div className={`p-4 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                  paymentEnabled ? 'border-emerald-200 bg-emerald-50/50' : 'border-rose-200 bg-rose-50/50'
+                }`}>
                   <div>
-                    <span className="text-xs font-extrabold text-black block">Online Payments (UPI, Cards, NetBanking)</span>
-                    <span className="text-[11px] text-neutral-500 font-normal mt-0.5 block">
-                      {paymentEnabled ? 'Razorpay live checkout accepting UPI, GPay, PhonePe, Cards.' : 'Online payment checkout disabled.'}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-extrabold text-black block">Online Payments (Razorpay Master Switch)</span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                        paymentEnabled ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+                      }`}>
+                        {paymentEnabled ? 'ALLOWED' : 'DENIED'}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-neutral-600 font-normal mt-1 block max-w-md">
+                      {paymentEnabled
+                        ? 'Online payment gateway is ALLOWED. Real transactions via UPI, Cards, and NetBanking will be processed.'
+                        : 'Online payments are DENIED. Customers are restricted to Cash on Delivery (COD) until you turn this on.'}
                     </span>
                   </div>
                   <button
                     type="button"
-                    onClick={() => setPaymentEnabled(!paymentEnabled)}
-                    className={`px-3.5 py-2 text-xs font-extrabold rounded-xl transition-all cursor-pointer shrink-0 shadow-xs ${
-                      paymentEnabled ? 'bg-black text-white' : 'bg-rose-100 text-rose-800 border border-rose-300'
+                    disabled={isSavingPaymentPolicy}
+                    onClick={async () => {
+                      setIsSavingPaymentPolicy(true);
+                      try {
+                        await setPaymentEnabled(!paymentEnabled);
+                      } finally {
+                        setIsSavingPaymentPolicy(false);
+                      }
+                    }}
+                    className={`px-4 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer shrink-0 shadow-sm disabled:opacity-60 disabled:cursor-wait ${
+                      paymentEnabled
+                        ? 'bg-emerald-700 hover:bg-emerald-800 text-white'
+                        : 'bg-rose-700 hover:bg-rose-800 text-white'
                     }`}
                   >
-                    {paymentEnabled ? 'ACTIVE ✓' : 'DISABLED ✕'}
+                    {isSavingPaymentPolicy ? 'SAVING…' : paymentEnabled ? 'SWITCH TO DENY ✕' : 'SWITCH TO ALLOW ✓'}
                   </button>
                 </div>
 

@@ -28,3 +28,7 @@ dist-ssr
 
 # Deployment Archives
 *.zip
+
+.temp
+**/.temp
+

@@ -27,6 +27,27 @@ serve(async (req: Request) => {
       return errorResponse('Unauthorized: Invalid or expired session.', 401);
     }
 
+    // Enforce Active Staff Role & Reconciliation Permission
+    const { data: roleData, error: roleErr } = await supabase
+      .from('admin_roles')
+      .select('role, status, permissions')
+      .eq('user_id', userData.user.id)
+      .eq('status', 'active')
+      .single();
+
+    if (roleErr || !roleData) {
+      return errorResponse('Forbidden: Administrative privileges required.', 403);
+    }
+
+    const hasReconcilePerm =
+      roleData.role === 'super_admin' ||
+      roleData.role === 'admin' ||
+      (Array.isArray(roleData.permissions) && roleData.permissions.includes('payments.reconcile'));
+
+    if (!hasReconcilePerm) {
+      return errorResponse('Forbidden: Insufficient permissions for payment reconciliation.', 403);
+    }
+
     const { orderId } = await req.json();
     if (!orderId) {
       return errorResponse('Valid orderId is required for reconciliation.');
@@ -71,19 +92,38 @@ serve(async (req: Request) => {
     }
 
     const rzpPayments = await rzpRes.json();
-    const capturedPayment = rzpPayments.items?.find((p: any) => p.status === 'captured');
+    if (!rzpPayments || !Array.isArray(rzpPayments.items)) {
+      return errorResponse('Invalid response structure from Razorpay payments API.', 502);
+    }
+
+    // Verify payment belongs to this exact provider order, is captured, has INR currency, and amount matches grand total
+    const capturedPayment = rzpPayments.items.find((p: any) =>
+      p.status === 'captured' &&
+      p.order_id === payment.provider_order_id &&
+      (p.currency || 'INR').toUpperCase() === 'INR' &&
+      Math.abs(Number(p.amount) / 100 - Number(order.grand_total)) < 0.01
+    );
 
     let reconcileResult;
     if (capturedPayment) {
-      const { data, error } = await supabase.rpc('reconcile_order_payment', {
+      const { data: rpcData, error: rpcErr } = await supabase.rpc('finalize_payment_success', {
         p_order_id: orderId,
-        p_gateway_status: 'captured',
-        p_gateway_payment_id: capturedPayment.id,
-        p_gateway_amount_paise: capturedPayment.amount,
+        p_provider_payment_id: capturedPayment.id,
+        p_provider_order_id: payment.provider_order_id,
+        p_amount: Number(capturedPayment.amount) / 100,
+        p_currency: 'INR',
+        p_method: capturedPayment.method || 'online',
+        p_signature_verified: true,
+        p_metadata: { source: 'admin_reconciliation', admin_user_id: userData.user.id },
       });
-      reconcileResult = { status: 'captured', synced: !error, data };
+
+      if (rpcErr || !rpcData || rpcData.success === false) {
+        return errorResponse(rpcErr?.message || rpcData?.error || 'Database error during payment reconciliation.', 500);
+      }
+
+      reconcileResult = { status: 'captured', synced: true, data: rpcData };
     } else {
-      reconcileResult = { status: 'no_captured_payment_found', localStatus: order.payment_status };
+      reconcileResult = { status: 'no_matching_captured_payment_found', localStatus: order.payment_status };
     }
 
     return jsonResponse({

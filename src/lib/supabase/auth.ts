@@ -11,6 +11,7 @@ export const signUpCustomer = async (
     email,
     password,
     options: {
+      emailRedirectTo: `${window.location.origin}/login`,
       data: {
         full_name: fullName,
         phone_number: phoneNumber,
@@ -20,18 +21,7 @@ export const signUpCustomer = async (
 
   if (error) throw error;
 
-  if (data.user) {
-    // Upsert profile record
-    const { error: profileErr } = await supabase.from('profiles').upsert({
-      id: data.user.id,
-      full_name: fullName,
-      phone_number: phoneNumber,
-      role: 'customer',
-      updated_at: new Date().toISOString(),
-    });
-    if (profileErr) console.warn('Could not auto-create profile:', profileErr.message);
-  }
-
+  // Confirmation may return a user without a session; do not write profile data before authentication.
   return data;
 };
 
@@ -71,11 +61,17 @@ export const getCustomerProfile = async (userId: string): Promise<DbProfile | nu
 
 export const updateCustomerProfile = async (
   userId: string,
-  updates: Partial<Omit<DbProfile, 'id' | 'created_at'>>
+  updates: Partial<Pick<DbProfile, 'full_name' | 'phone_number' | 'avatar_url'>>
 ) => {
+  // Whitelist at runtime too; the database owns timestamps and authorization fields.
+  const permittedUpdates = Object.fromEntries(
+    ['full_name', 'phone_number', 'avatar_url']
+      .filter(key => Object.prototype.hasOwnProperty.call(updates, key))
+      .map(key => [key, updates[key as keyof typeof updates]])
+  );
   const { data, error } = await supabase
     .from('profiles')
-    .update({ ...updates, updated_at: new Date().toISOString() })
+    .update(permittedUpdates)
     .eq('id', userId)
     .select()
     .single();
@@ -217,7 +213,7 @@ export const getAdminProfile = async (userId: string): Promise<DbAdminProfile | 
 
 export const sendPasswordResetEmail = async (email: string) => {
   const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/profile`,
+    redirectTo: `${window.location.origin}/auth/reset-password`,
   });
   if (error) throw error;
   return data;

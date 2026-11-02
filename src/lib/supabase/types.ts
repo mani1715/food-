@@ -2,6 +2,7 @@ export interface DbProfile {
   id: string; // Auth User ID
   full_name: string | null;
   phone_number: string | null;
+  avatar_url?: string | null;
   role: string; // 'customer' | 'admin'
   created_at: string;
   updated_at: string;

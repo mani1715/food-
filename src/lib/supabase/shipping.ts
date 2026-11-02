@@ -319,6 +319,46 @@ export const dispositionReturnedFoodStockInDb = async (params: {
 };
 
 /**
+ * Check Courier Serviceability with NimbusPost via Edge Function
+ */
+export const checkNimbusServiceability = async (params: {
+  pickupPincode?: string;
+  deliveryPincode: string;
+  weightGrams?: number;
+  isCod?: boolean;
+}): Promise<{ success: boolean; couriers: any[]; message?: string; error?: string }> => {
+  try {
+    const { data, error } = await supabase.functions.invoke('nimbuspost-serviceability', {
+      body: params,
+    });
+    if (error) throw error;
+    return data;
+  } catch (err: any) {
+    return { success: false, couriers: [], error: err.message || 'Serviceability check failed' };
+  }
+};
+
+/**
+ * Create Automated NimbusPost Shipment via Edge Function (Requires Staff Session)
+ */
+export const createNimbusShipmentViaEdge = async (params: {
+  orderId: string;
+  courierId?: string | number;
+  pickupLocationId?: string;
+}): Promise<{ success: boolean; shipment?: any; awb?: string; courier?: string; label_url?: string; error?: string }> => {
+  try {
+    const { data, error } = await supabase.functions.invoke('create-nimbuspost-shipment', {
+      body: params,
+    });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    return data;
+  } catch (err: any) {
+    throw new Error(err.message || 'Failed to dispatch shipment via NimbusPost');
+  }
+};
+
+/**
  * Get sanitized or admin shipping details for an order
  */
 export const fetchOrderShippingDetailsFromDb = async (orderId: string): Promise<any> => {

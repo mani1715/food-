@@ -1,0 +1,1632 @@
+[
+  {
+    "table_name": "admin_profiles",
+    "column_name": "id",
+    "position": 1,
+    "type": "uuid",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "admin_profiles",
+    "column_name": "name",
+    "position": 2,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "admin_profiles",
+    "column_name": "role_title",
+    "position": 3,
+    "type": "text",
+    "not_null": true,
+    "default_expr": "'Store Manager'::text",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "admin_profiles",
+    "column_name": "allowed_tabs",
+    "position": 4,
+    "type": "jsonb",
+    "not_null": true,
+    "default_expr": "'[\"analytics\", \"products\", \"orders\"]'::jsonb",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "admin_profiles",
+    "column_name": "created_at",
+    "position": 5,
+    "type": "timestamp with time zone",
+    "not_null": true,
+    "default_expr": "now()",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "admin_profiles",
+    "column_name": "updated_at",
+    "position": 6,
+    "type": "timestamp with time zone",
+    "not_null": true,
+    "default_expr": "now()",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "admin_roles",
+    "column_name": "id",
+    "position": 1,
+    "type": "uuid",
+    "not_null": true,
+    "default_expr": "uuid_generate_v4()",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "admin_roles",
+    "column_name": "user_id",
+    "position": 2,
+    "type": "uuid",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "admin_roles",
+    "column_name": "role",
+    "position": 3,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "admin_roles",
+    "column_name": "status",
+    "position": 4,
+    "type": "text",
+    "not_null": true,
+    "default_expr": "'active'::text",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "admin_roles",
+    "column_name": "allowed_tabs",
+    "position": 5,
+    "type": "text[]",
+    "not_null": true,
+    "default_expr": "ARRAY['analytics'::text, 'notifications'::text, 'products'::text, 'orders'::text, 'shipping'::text, 'banners'::text, 'bestsellers'::text, 'discounts'::text, 'settings'::text, 'newsletter'::text, 'profile'::text]",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "admin_roles",
+    "column_name": "permissions",
+    "position": 6,
+    "type": "text[]",
+    "not_null": true,
+    "default_expr": "ARRAY['*'::text]",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "admin_roles",
+    "column_name": "created_by",
+    "position": 7,
+    "type": "uuid",
+    "not_null": false,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "admin_roles",
+    "column_name": "created_at",
+    "position": 8,
+    "type": "timestamp with time zone",
+    "not_null": true,
+    "default_expr": "now()",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "admin_roles",
+    "column_name": "updated_at",
+    "position": 9,
+    "type": "timestamp with time zone",
+    "not_null": true,
+    "default_expr": "now()",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "categories",
+    "column_name": "id",
+    "position": 1,
+    "type": "text",
+    "not_null": true,
+    "default_expr": "('cat-'::text || (gen_random_uuid())::text)",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "categories",
+    "column_name": "name",
+    "position": 2,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "categories",
+    "column_name": "slug",
+    "position": 3,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "categories",
+    "column_name": "image_url",
+    "position": 4,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "categories",
+    "column_name": "description",
+    "position": 5,
+    "type": "text",
+    "not_null": false,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "categories",
+    "column_name": "display_order",
+    "position": 6,
+    "type": "integer",
+    "not_null": true,
+    "default_expr": "0",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "categories",
+    "column_name": "created_at",
+    "position": 7,
+    "type": "timestamp with time zone",
+    "not_null": true,
+    "default_expr": "now()",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "categories",
+    "column_name": "updated_at",
+    "position": 8,
+    "type": "timestamp with time zone",
+    "not_null": true,
+    "default_expr": "now()",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "coupons",
+    "column_name": "id",
+    "position": 1,
+    "type": "text",
+    "not_null": true,
+    "default_expr": "('cpn-'::text || (gen_random_uuid())::text)",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "coupons",
+    "column_name": "code",
+    "position": 2,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "coupons",
+    "column_name": "description",
+    "position": 3,
+    "type": "text",
+    "not_null": false,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "coupons",
+    "column_name": "discount_type",
+    "position": 4,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "coupons",
+    "column_name": "discount_value",
+    "position": 5,
+    "type": "numeric(10,2)",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "coupons",
+    "column_name": "min_order_amount",
+    "position": 6,
+    "type": "numeric(10,2)",
+    "not_null": true,
+    "default_expr": "0",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "coupons",
+    "column_name": "applies_to",
+    "position": 7,
+    "type": "text",
+    "not_null": true,
+    "default_expr": "'all'::text",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "coupons",
+    "column_name": "target_category",
+    "position": 8,
+    "type": "text",
+    "not_null": false,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "coupons",
+    "column_name": "target_product_id",
+    "position": 9,
+    "type": "text",
+    "not_null": false,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "coupons",
+    "column_name": "expiry_date",
+    "position": 10,
+    "type": "timestamp with time zone",
+    "not_null": false,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "coupons",
+    "column_name": "is_enabled",
+    "position": 11,
+    "type": "boolean",
+    "not_null": true,
+    "default_expr": "true",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "coupons",
+    "column_name": "usage_count",
+    "position": 12,
+    "type": "integer",
+    "not_null": true,
+    "default_expr": "0",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "coupons",
+    "column_name": "created_at",
+    "position": 13,
+    "type": "timestamp with time zone",
+    "not_null": true,
+    "default_expr": "now()",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "customer_addresses",
+    "column_name": "id",
+    "position": 1,
+    "type": "text",
+    "not_null": true,
+    "default_expr": "('loc-'::text || (gen_random_uuid())::text)",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "customer_addresses",
+    "column_name": "user_id",
+    "position": 2,
+    "type": "uuid",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "customer_addresses",
+    "column_name": "label",
+    "position": 3,
+    "type": "text",
+    "not_null": true,
+    "default_expr": "'Home'::text",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "customer_addresses",
+    "column_name": "address_line",
+    "position": 4,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "customer_addresses",
+    "column_name": "city",
+    "position": 5,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "customer_addresses",
+    "column_name": "state",
+    "position": 6,
+    "type": "text",
+    "not_null": true,
+    "default_expr": "'Telangana'::text",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "customer_addresses",
+    "column_name": "pincode",
+    "position": 7,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "customer_addresses",
+    "column_name": "created_at",
+    "position": 8,
+    "type": "timestamp with time zone",
+    "not_null": true,
+    "default_expr": "now()",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "customer_addresses",
+    "column_name": "updated_at",
+    "position": 9,
+    "type": "timestamp with time zone",
+    "not_null": true,
+    "default_expr": "now()",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "delivery_cities",
+    "column_name": "id",
+    "position": 1,
+    "type": "text",
+    "not_null": true,
+    "default_expr": "('city-'::text || (gen_random_uuid())::text)",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "delivery_cities",
+    "column_name": "name",
+    "position": 2,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "delivery_cities",
+    "column_name": "state",
+    "position": 3,
+    "type": "text",
+    "not_null": true,
+    "default_expr": "'Telangana'::text",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "delivery_cities",
+    "column_name": "charge",
+    "position": 4,
+    "type": "numeric(10,2)",
+    "not_null": true,
+    "default_expr": "0",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "delivery_cities",
+    "column_name": "free_delivery_threshold",
+    "position": 5,
+    "type": "numeric(10,2)",
+    "not_null": false,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "delivery_cities",
+    "column_name": "is_enabled",
+    "position": 6,
+    "type": "boolean",
+    "not_null": true,
+    "default_expr": "true",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "header_announcements",
+    "column_name": "id",
+    "position": 1,
+    "type": "text",
+    "not_null": true,
+    "default_expr": "('ann-'::text || (gen_random_uuid())::text)",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "header_announcements",
+    "column_name": "text",
+    "position": 2,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "header_announcements",
+    "column_name": "is_enabled",
+    "position": 3,
+    "type": "boolean",
+    "not_null": true,
+    "default_expr": "true",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "header_announcements",
+    "column_name": "display_order",
+    "position": 4,
+    "type": "integer",
+    "not_null": true,
+    "default_expr": "0",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "header_announcements",
+    "column_name": "created_at",
+    "position": 5,
+    "type": "timestamp with time zone",
+    "not_null": true,
+    "default_expr": "now()",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "hero_banners",
+    "column_name": "id",
+    "position": 1,
+    "type": "text",
+    "not_null": true,
+    "default_expr": "('banner-'::text || (gen_random_uuid())::text)",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "hero_banners",
+    "column_name": "image_url",
+    "position": 2,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "hero_banners",
+    "column_name": "badge",
+    "position": 3,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "hero_banners",
+    "column_name": "title",
+    "position": 4,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "hero_banners",
+    "column_name": "subtitle",
+    "position": 5,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "hero_banners",
+    "column_name": "cta_text",
+    "position": 6,
+    "type": "text",
+    "not_null": true,
+    "default_expr": "'Shop Now'::text",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "hero_banners",
+    "column_name": "cta_link",
+    "position": 7,
+    "type": "text",
+    "not_null": true,
+    "default_expr": "'/'::text",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "hero_banners",
+    "column_name": "is_enabled",
+    "position": 8,
+    "type": "boolean",
+    "not_null": true,
+    "default_expr": "true",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "hero_banners",
+    "column_name": "object_position",
+    "position": 9,
+    "type": "text",
+    "not_null": false,
+    "default_expr": "'center'::text",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "hero_banners",
+    "column_name": "object_fit",
+    "position": 10,
+    "type": "text",
+    "not_null": false,
+    "default_expr": "'cover'::text",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "hero_banners",
+    "column_name": "overlay_opacity",
+    "position": 11,
+    "type": "text",
+    "not_null": false,
+    "default_expr": "'medium'::text",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "hero_banners",
+    "column_name": "display_order",
+    "position": 12,
+    "type": "integer",
+    "not_null": true,
+    "default_expr": "0",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "hero_banners",
+    "column_name": "created_at",
+    "position": 13,
+    "type": "timestamp with time zone",
+    "not_null": true,
+    "default_expr": "now()",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "home_section_products",
+    "column_name": "section_id",
+    "position": 1,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "home_section_products",
+    "column_name": "product_id",
+    "position": 2,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "home_sections",
+    "column_name": "id",
+    "position": 1,
+    "type": "text",
+    "not_null": true,
+    "default_expr": "('sec-'::text || (gen_random_uuid())::text)",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "home_sections",
+    "column_name": "title",
+    "position": 2,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "home_sections",
+    "column_name": "subtitle",
+    "position": 3,
+    "type": "text",
+    "not_null": false,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "home_sections",
+    "column_name": "badge",
+    "position": 4,
+    "type": "text",
+    "not_null": false,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "home_sections",
+    "column_name": "category_filter",
+    "position": 5,
+    "type": "text",
+    "not_null": false,
+    "default_expr": "'all'::text",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "home_sections",
+    "column_name": "is_enabled",
+    "position": 6,
+    "type": "boolean",
+    "not_null": true,
+    "default_expr": "true",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "home_sections",
+    "column_name": "display_order",
+    "position": 7,
+    "type": "integer",
+    "not_null": true,
+    "default_expr": "0",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "home_sections",
+    "column_name": "created_at",
+    "position": 8,
+    "type": "timestamp with time zone",
+    "not_null": true,
+    "default_expr": "now()",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "home_sections",
+    "column_name": "updated_at",
+    "position": 9,
+    "type": "timestamp with time zone",
+    "not_null": true,
+    "default_expr": "now()",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "order_items",
+    "column_name": "id",
+    "position": 1,
+    "type": "text",
+    "not_null": true,
+    "default_expr": "('oitem-'::text || (gen_random_uuid())::text)",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "order_items",
+    "column_name": "order_id",
+    "position": 2,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "order_items",
+    "column_name": "product_id",
+    "position": 3,
+    "type": "text",
+    "not_null": false,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "order_items",
+    "column_name": "product_name_snapshot",
+    "position": 4,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "order_items",
+    "column_name": "selected_weight",
+    "position": 5,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "order_items",
+    "column_name": "unit_price",
+    "position": 6,
+    "type": "numeric(10,2)",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "order_items",
+    "column_name": "quantity",
+    "position": 7,
+    "type": "integer",
+    "not_null": true,
+    "default_expr": "1",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "orders",
+    "column_name": "id",
+    "position": 1,
+    "type": "text",
+    "not_null": true,
+    "default_expr": "('ord-'::text || (gen_random_uuid())::text)",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "orders",
+    "column_name": "order_number",
+    "position": 2,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "orders",
+    "column_name": "tracking_code",
+    "position": 3,
+    "type": "text",
+    "not_null": false,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "orders",
+    "column_name": "customer_id",
+    "position": 4,
+    "type": "uuid",
+    "not_null": false,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "orders",
+    "column_name": "customer_name",
+    "position": 5,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "orders",
+    "column_name": "customer_phone",
+    "position": 6,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "orders",
+    "column_name": "customer_email",
+    "position": 7,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "orders",
+    "column_name": "delivery_address_json",
+    "position": 8,
+    "type": "jsonb",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "orders",
+    "column_name": "subtotal",
+    "position": 9,
+    "type": "numeric(10,2)",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "orders",
+    "column_name": "delivery_fee",
+    "position": 10,
+    "type": "numeric(10,2)",
+    "not_null": true,
+    "default_expr": "0",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "orders",
+    "column_name": "discount_amount",
+    "position": 11,
+    "type": "numeric(10,2)",
+    "not_null": true,
+    "default_expr": "0",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "orders",
+    "column_name": "grand_total",
+    "position": 12,
+    "type": "numeric(10,2)",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "orders",
+    "column_name": "payment_method",
+    "position": 13,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "orders",
+    "column_name": "payment_status",
+    "position": 14,
+    "type": "text",
+    "not_null": true,
+    "default_expr": "'completed'::text",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "orders",
+    "column_name": "order_status",
+    "position": 15,
+    "type": "text",
+    "not_null": true,
+    "default_expr": "'placed'::text",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "orders",
+    "column_name": "admin_notes",
+    "position": 16,
+    "type": "text",
+    "not_null": false,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "orders",
+    "column_name": "delivery_days",
+    "position": 17,
+    "type": "integer",
+    "not_null": false,
+    "default_expr": "3",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "orders",
+    "column_name": "cancel_reason",
+    "position": 18,
+    "type": "text",
+    "not_null": false,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "orders",
+    "column_name": "created_at",
+    "position": 19,
+    "type": "timestamp with time zone",
+    "not_null": true,
+    "default_expr": "now()",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "orders",
+    "column_name": "shipped_at",
+    "position": 20,
+    "type": "timestamp with time zone",
+    "not_null": false,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "orders",
+    "column_name": "delivered_at",
+    "position": 21,
+    "type": "timestamp with time zone",
+    "not_null": false,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "product_gallery",
+    "column_name": "id",
+    "position": 1,
+    "type": "text",
+    "not_null": true,
+    "default_expr": "('gal-'::text || (gen_random_uuid())::text)",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "product_gallery",
+    "column_name": "product_id",
+    "position": 2,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "product_gallery",
+    "column_name": "image_url",
+    "position": 3,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "product_gallery",
+    "column_name": "is_main",
+    "position": 4,
+    "type": "boolean",
+    "not_null": true,
+    "default_expr": "false",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "product_gallery",
+    "column_name": "display_order",
+    "position": 5,
+    "type": "integer",
+    "not_null": true,
+    "default_expr": "0",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "product_ingredients",
+    "column_name": "id",
+    "position": 1,
+    "type": "text",
+    "not_null": true,
+    "default_expr": "('ing-'::text || (gen_random_uuid())::text)",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "product_ingredients",
+    "column_name": "product_id",
+    "position": 2,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "product_ingredients",
+    "column_name": "ingredient_name",
+    "position": 3,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "product_ingredients",
+    "column_name": "display_order",
+    "position": 4,
+    "type": "integer",
+    "not_null": true,
+    "default_expr": "0",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "product_weight_options",
+    "column_name": "id",
+    "position": 1,
+    "type": "text",
+    "not_null": true,
+    "default_expr": "('wopt-'::text || (gen_random_uuid())::text)",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "product_weight_options",
+    "column_name": "product_id",
+    "position": 2,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "product_weight_options",
+    "column_name": "weight_label",
+    "position": 3,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "product_weight_options",
+    "column_name": "price",
+    "position": 4,
+    "type": "numeric(10,2)",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "product_weight_options",
+    "column_name": "created_at",
+    "position": 5,
+    "type": "timestamp with time zone",
+    "not_null": true,
+    "default_expr": "now()",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "products",
+    "column_name": "id",
+    "position": 1,
+    "type": "text",
+    "not_null": true,
+    "default_expr": "('prod-'::text || (gen_random_uuid())::text)",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "products",
+    "column_name": "name",
+    "position": 2,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "products",
+    "column_name": "slug",
+    "position": 3,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "products",
+    "column_name": "category_id",
+    "position": 4,
+    "type": "text",
+    "not_null": false,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "products",
+    "column_name": "description",
+    "position": 5,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "products",
+    "column_name": "is_veg",
+    "position": 6,
+    "type": "boolean",
+    "not_null": true,
+    "default_expr": "true",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "products",
+    "column_name": "inventory_count",
+    "position": 7,
+    "type": "integer",
+    "not_null": true,
+    "default_expr": "100",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "products",
+    "column_name": "out_of_stock",
+    "position": 8,
+    "type": "boolean",
+    "not_null": true,
+    "default_expr": "false",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "products",
+    "column_name": "rating",
+    "position": 9,
+    "type": "numeric(3,2)",
+    "not_null": true,
+    "default_expr": "5.00",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "products",
+    "column_name": "reviews_count",
+    "position": 10,
+    "type": "integer",
+    "not_null": true,
+    "default_expr": "1",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "products",
+    "column_name": "is_bestseller",
+    "position": 11,
+    "type": "boolean",
+    "not_null": true,
+    "default_expr": "false",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "products",
+    "column_name": "is_new_arrival",
+    "position": 12,
+    "type": "boolean",
+    "not_null": true,
+    "default_expr": "false",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "products",
+    "column_name": "is_festival",
+    "position": 13,
+    "type": "boolean",
+    "not_null": true,
+    "default_expr": "false",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "products",
+    "column_name": "discount_percentage",
+    "position": 14,
+    "type": "numeric(5,2)",
+    "not_null": false,
+    "default_expr": "0",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "products",
+    "column_name": "discount_expiry_date",
+    "position": 15,
+    "type": "timestamp with time zone",
+    "not_null": false,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "products",
+    "column_name": "grandma_story",
+    "position": 16,
+    "type": "text",
+    "not_null": false,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "products",
+    "column_name": "how_we_do_text",
+    "position": 17,
+    "type": "text",
+    "not_null": false,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "products",
+    "column_name": "sourcing_text",
+    "position": 18,
+    "type": "text",
+    "not_null": false,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "products",
+    "column_name": "quality_guarantee_text",
+    "position": 19,
+    "type": "text",
+    "not_null": false,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "products",
+    "column_name": "created_at",
+    "position": 20,
+    "type": "timestamp with time zone",
+    "not_null": true,
+    "default_expr": "now()",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "products",
+    "column_name": "updated_at",
+    "position": 21,
+    "type": "timestamp with time zone",
+    "not_null": true,
+    "default_expr": "now()",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "profiles",
+    "column_name": "id",
+    "position": 1,
+    "type": "uuid",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "profiles",
+    "column_name": "full_name",
+    "position": 2,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "profiles",
+    "column_name": "phone_number",
+    "position": 3,
+    "type": "text",
+    "not_null": false,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "profiles",
+    "column_name": "avatar_url",
+    "position": 4,
+    "type": "text",
+    "not_null": false,
+    "default_expr": "'/aishu-logo.jpg'::text",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "profiles",
+    "column_name": "role",
+    "position": 5,
+    "type": "text",
+    "not_null": true,
+    "default_expr": "'customer'::text",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "profiles",
+    "column_name": "joined_date",
+    "position": 6,
+    "type": "timestamp with time zone",
+    "not_null": true,
+    "default_expr": "now()",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "profiles",
+    "column_name": "updated_at",
+    "position": 7,
+    "type": "timestamp with time zone",
+    "not_null": true,
+    "default_expr": "now()",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "stock_history_logs",
+    "column_name": "id",
+    "position": 1,
+    "type": "text",
+    "not_null": true,
+    "default_expr": "('log-'::text || (gen_random_uuid())::text)",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "stock_history_logs",
+    "column_name": "product_id",
+    "position": 2,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "stock_history_logs",
+    "column_name": "product_name",
+    "position": 3,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "stock_history_logs",
+    "column_name": "type",
+    "position": 4,
+    "type": "text",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "stock_history_logs",
+    "column_name": "quantity",
+    "position": 5,
+    "type": "integer",
+    "not_null": true,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "stock_history_logs",
+    "column_name": "note",
+    "position": 6,
+    "type": "text",
+    "not_null": false,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "stock_history_logs",
+    "column_name": "admin_name",
+    "position": 7,
+    "type": "text",
+    "not_null": true,
+    "default_expr": "'Store Admin'::text",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "stock_history_logs",
+    "column_name": "created_at",
+    "position": 8,
+    "type": "timestamp with time zone",
+    "not_null": true,
+    "default_expr": "now()",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "store_settings",
+    "column_name": "id",
+    "position": 1,
+    "type": "text",
+    "not_null": true,
+    "default_expr": "'default'::text",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "store_settings",
+    "column_name": "site_logo_url",
+    "position": 2,
+    "type": "text",
+    "not_null": false,
+    "default_expr": "'/aishu-logo.jpg'::text",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "store_settings",
+    "column_name": "header_settings_json",
+    "position": 3,
+    "type": "jsonb",
+    "not_null": false,
+    "default_expr": null,
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "store_settings",
+    "column_name": "payment_enabled",
+    "position": 4,
+    "type": "boolean",
+    "not_null": true,
+    "default_expr": "true",
+    "attidentity": "",
+    "attgenerated": ""
+  },
+  {
+    "table_name": "store_settings",
+    "column_name": "updated_at",
+    "position": 5,
+    "type": "timestamp with time zone",
+    "not_null": true,
+    "default_expr": "now()",
+    "attidentity": "",
+    "attgenerated": ""
+  }
+]

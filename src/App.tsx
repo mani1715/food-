@@ -1,6 +1,7 @@
 import React, { useState, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Scroll Restoration and Smooth Page Transition Component
@@ -52,12 +53,15 @@ const ScrollRestorationManager: React.FC = () => {
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('beforeunload', () => {
-      sessionStorage.setItem('scroll_pos_' + currentKey, window.scrollY.toString());
-    });
+    const savePosition = () => {
+      try { sessionStorage.setItem('scroll_pos_' + currentKey, window.scrollY.toString()); } catch { /* Storage may be unavailable. */ }
+    };
+    window.addEventListener('beforeunload', savePosition);
 
     return () => {
+      clearTimeout(timeoutId);
       window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('beforeunload', savePosition);
     };
   }, [location.pathname, location.search]);
 
@@ -98,6 +102,8 @@ const RefundPolicyPage = lazy(() => import('./pages/customer/RefundPolicyPage').
 const NotFoundPage = lazy(() => import('./pages/customer/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage').then(m => ({ default: m.AdminDashboardPage })));
 
+const AuthPage = lazy(() => import('./pages/customer/AuthPage').then(m => ({ default: m.AuthPage })));
+
 // Loading Fallback Component
 const RouteLoadingFallback: React.FC = () => (
   <div className="min-h-[50vh] flex flex-col items-center justify-center p-6 space-y-3">
@@ -135,10 +141,14 @@ const MainLayout: React.FC = () => {
             <Route path="/our-process" element={<OurProcessPage />} />
             <Route path="/sourcing" element={<RegionalSourcingPage />} />
             <Route path="/quality-promise" element={<QualityPromisePage />} />
-            <Route path="/wishlist" element={<WishlistPage />} />
-            <Route path="/orders" element={<OrdersPage />} />
+            <Route path="/login" element={<AuthPage />} />
+            <Route path="/auth/reset-password" element={<AuthPage recovery />} />
+            <Route element={<ProtectedRoute />}>
+              <Route path="/wishlist" element={<WishlistPage />} />
+              <Route path="/profile" element={<CustomerProfilePage />} />
+              <Route path="/orders" element={<OrdersPage />} />
+            </Route>
             <Route path="/track-order" element={<TrackOrderPage />} />
-            <Route path="/profile" element={<CustomerProfilePage />} />
             <Route path="/categories" element={<CategoriesPage />} />
             <Route path="/help" element={<HelpSupportPage />} />
             <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />

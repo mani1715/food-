@@ -10,7 +10,17 @@ export const OrderSuccessPage: React.FC = () => {
   const { orders } = useApp();
   const cardPrintRef = useRef<HTMLDivElement>(null);
 
-  const order = orders.find((o) => o.id === id) || orders[0];
+  const order = orders.find((o) => o.id === id);
+  if (!order) {
+    return (
+      <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-4">
+        <h1 className="text-2xl font-bold">Check your order status</h1>
+        <p>Your order details are not available in this session. Use your order number and phone number to track it.</p>
+        <button onClick={() => navigate('/track-order')} className="rounded-xl bg-black text-white px-6 py-3">Track order</button>
+      </div>
+    );
+  }
+  const paymentPending = !order.paymentMethod.toLowerCase().includes('cod') && !['paid', 'completed'].includes(order.paymentStatus);
   const customerName = order.customerName || 'Valued Food Lover';
 
   const handlePrintGreetingCard = () => {
@@ -32,12 +42,12 @@ export const OrderSuccessPage: React.FC = () => {
 
       {/* Success Title */}
       <div className="space-y-2 max-w-lg print:hidden">
-        <span className="text-xs font-bold uppercase tracking-widest text-neutral-400">Order Confirmed</span>
+        <span className="text-xs font-bold uppercase tracking-widest text-neutral-400">{paymentPending ? 'Payment confirmation pending' : 'Order received'}</span>
         <h1 className="text-2xl sm:text-4xl font-extrabold text-black tracking-tight">
           Thank You For Your Order!
         </h1>
         <p className="text-xs sm:text-sm text-neutral-600">
-          Order <strong className="text-black font-mono">#{order.orderNumber}</strong> has been received and is being handcrafted fresh for you.
+          Order <strong className="text-black font-mono">#{order.orderNumber}</strong> {paymentPending ? 'is awaiting payment confirmation. Check its status before attempting another payment.' : 'has been received.'}
         </p>
       </div>
 
